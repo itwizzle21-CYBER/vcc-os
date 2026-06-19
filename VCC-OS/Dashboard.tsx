@@ -1088,7 +1088,7 @@ button, input { font: inherit; }
 }
 
 .vcc-topbar {
-  height: 92px;
+  height: 78px;
   display: flex;
   align-items: center;
   padding: 0 30px;
@@ -1140,7 +1140,7 @@ button, input { font: inherit; }
 
 .vcc-dropdown-menu {
   position: absolute;
-  top: 66px;
+  top: 58px;
   left: 0;
   width: min(420px, calc(100vw - 36px));
   max-height: calc(100vh - 110px);
@@ -1209,7 +1209,7 @@ button, input { font: inherit; }
 
 .vcc-scrim {
   position: fixed;
-  inset: 92px 0 0 0;
+  inset: 78px 0 0 0;
   background: rgba(2, 6, 23, 0.55);
   border: 0;
   z-index: 90;
@@ -1217,7 +1217,7 @@ button, input { font: inherit; }
 
 .vcc-content {
   width: 100%;
-  padding: 28px;
+  padding: 22px;
   max-width: 1440px;
   margin: 0 auto;
 }
@@ -1233,23 +1233,23 @@ button, input { font: inherit; }
 }
 
 .briefing-panel {
-  padding: 30px;
-  margin-bottom: 26px;
+  padding: 22px;
+  margin-bottom: 18px;
 }
 
 .briefing-head {
   display: flex;
   justify-content: space-between;
-  gap: 24px;
+  gap: 18px;
   align-items: flex-start;
-  margin-bottom: 22px;
+  margin-bottom: 14px;
 }
 
 .status-row {
   display: flex;
   align-items: center;
-  gap: 20px;
-  margin-bottom: 22px;
+  gap: 14px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
@@ -1279,16 +1279,16 @@ button, input { font: inherit; }
 }
 
 .briefing-title {
-  margin: 10px 0;
-  font-size: clamp(34px, 5vw, 56px);
-  line-height: 1;
+  margin: 8px 0;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.05;
 }
 
 .briefing-subtitle {
   margin: 0;
   color: #cbd5e1;
-  font-size: clamp(16px, 2vw, 21px);
-  line-height: 1.45;
+  font-size: clamp(14px, 1.8vw, 18px);
+  line-height: 1.35;
   max-width: 780px;
 }
 
@@ -1308,9 +1308,9 @@ button, input { font: inherit; }
 .briefing-why {
   background: rgba(2, 6, 23, 0.45);
   border: 1px solid rgba(148, 163, 184, 0.12);
-  border-radius: 20px;
-  padding: 18px;
-  margin-bottom: 18px;
+  border-radius: 18px;
+  padding: 14px;
+  margin-bottom: 14px;
 }
 
 .briefing-why p {
@@ -1324,22 +1324,22 @@ button, input { font: inherit; }
 .briefing-why h2 {
   margin: 0;
   color: #f8fafc;
-  font-size: clamp(20px, 3vw, 30px);
+  font-size: clamp(17px, 2.4vw, 24px);
   line-height: 1.25;
 }
 
 .objective-window {
   border: 1px solid rgba(251, 191, 36, 0.28);
   background: rgba(120, 53, 15, 0.1);
-  border-radius: 22px;
-  padding: 16px;
-  margin-bottom: 18px;
+  border-radius: 20px;
+  padding: 12px;
+  margin-bottom: 14px;
 }
 
 .objective-window.scroll {
-  max-height: 380px;
+  max-height: 260px;
   overflow-y: auto;
-  padding-right: 12px;
+  padding-right: 10px;
 }
 
 .objective-head {
@@ -1347,7 +1347,7 @@ button, input { font: inherit; }
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .objective-head p {
@@ -1367,20 +1367,20 @@ button, input { font: inherit; }
 
 .objective-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .objective-item {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 14px;
+  gap: 12px;
   align-items: flex-start;
   width: 100%;
   background: rgba(15, 23, 42, 0.74);
   color: #f8fafc;
   border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 16px;
-  padding: 14px;
+  border-radius: 14px;
+  padding: 11px;
   cursor: pointer;
   text-align: left;
 }
@@ -1389,9 +1389,9 @@ button, input { font: inherit; }
 .objective-item.high { border-color: rgba(251, 191, 36, 0.45); }
 
 .objective-rank {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   background: rgba(59, 130, 246, 0.16);
@@ -1410,8 +1410,8 @@ button, input { font: inherit; }
 }
 
 .objective-item h3 {
-  margin: 0 0 6px;
-  font-size: 18px;
+  margin: 0 0 4px;
+  font-size: 16px;
 }
 
 .objective-item span {
@@ -1422,7 +1422,7 @@ button, input { font: inherit; }
 .proof-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .proof-box,
@@ -1436,8 +1436,8 @@ button, input { font: inherit; }
 }
 
 .proof-box {
-  border-radius: 18px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 12px;
 }
 
 .proof-box:hover,
@@ -1457,9 +1457,9 @@ button, input { font: inherit; }
 }
 
 .proof-box h3 {
-  margin: 10px 0 6px;
+  margin: 8px 0 5px;
   color: #60a5fa;
-  font-size: 30px;
+  font-size: 24px;
 }
 
 .proof-box span {
@@ -1470,16 +1470,16 @@ button, input { font: inherit; }
 .glance-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .glance-card {
-  min-height: 210px;
+  min-height: 165px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  border-radius: 24px;
-  padding: 20px;
+  border-radius: 20px;
+  padding: 16px;
   box-shadow: 0 18px 40px rgba(0,0,0,0.25);
 }
 
@@ -1526,8 +1526,8 @@ button, input { font: inherit; }
 }
 
 .glance-main h2 {
-  margin: 22px 0 8px;
-  font-size: clamp(28px, 3vw, 42px);
+  margin: 16px 0 7px;
+  font-size: clamp(24px, 2.6vw, 34px);
   line-height: 1;
 }
 
@@ -1539,12 +1539,12 @@ button, input { font: inherit; }
 }
 
 .glance-bottom {
-  margin-top: 20px;
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   color: #94a3b8;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .section-header {
