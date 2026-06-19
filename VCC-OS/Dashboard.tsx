@@ -1702,4 +1702,288 @@ td input:focus {
     width: 100%;
   }
 }
+
+
+/* ===== VCC COMPACT DAILY MODE OVERRIDES ===== */
+
+.content {
+  padding: 18px;
+}
+
+.topbar {
+  min-height: 70px;
+  padding: 12px 22px;
+}
+
+.brand {
+  font-size: 21px;
+  letter-spacing: 6px;
+}
+
+.logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+}
+
+.menu {
+  top: 64px;
+}
+
+.hero {
+  padding: 20px;
+  margin-bottom: 14px;
+  border-radius: 22px;
+}
+
+.statusline {
+  margin-bottom: 12px;
+  font-size: 15px;
+  gap: 12px;
+}
+
+.online {
+  padding: 8px 12px;
+}
+
+.kicker {
+  margin-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: 4px;
+}
+
+.hero h1,
+.pageHeader h1 {
+  font-size: clamp(30px, 4.8vw, 52px);
+  line-height: 1;
+}
+
+.heroText {
+  margin-top: 12px;
+  font-size: clamp(15px, 1.6vw, 18px);
+  line-height: 1.35;
+}
+
+.primary,
+.secondary,
+.back,
+.delete {
+  padding: 11px 15px;
+  border-radius: 13px;
+}
+
+.movePanel {
+  padding: 18px;
+  margin-bottom: 14px;
+  border-radius: 22px;
+}
+
+.moveTop {
+  margin-bottom: 14px;
+}
+
+.moveTop h2 {
+  font-size: clamp(25px, 3.3vw, 38px);
+}
+
+.moveGrid {
+  gap: 10px;
+}
+
+.moveGrid div {
+  padding: 12px;
+  border-radius: 14px;
+}
+
+.moveGrid p {
+  margin-bottom: 7px;
+  font-size: 10px;
+  letter-spacing: 3px;
+}
+
+.moveGrid h3 {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.proof {
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.proofCard,
+.card {
+  padding: 14px;
+  border-radius: 16px;
+}
+
+.proofCard p,
+.card p,
+.alert p,
+.stackHead p {
+  font-size: 10px;
+  letter-spacing: 3px;
+}
+
+.proofCard h3,
+.card h2 {
+  margin: 8px 0 5px;
+  font-size: clamp(24px, 2.5vw, 31px);
+}
+
+.cards {
+  gap: 10px;
+}
+
+.card {
+  min-height: 135px;
+}
+
+.card small {
+  margin-top: 9px;
+}
+
+.stack {
+  padding: 14px;
+  margin-bottom: 14px;
+  border-radius: 22px;
+}
+
+.stackItem {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 15px;
+}
+
+.stackItem > span {
+  width: 31px;
+  height: 31px;
+  border-radius: 10px;
+}
+
+.stackItem h3 {
+  margin: 4px 0;
+  font-size: 18px;
+}
+
+.stackItem small {
+  font-size: 13px;
+}
+
+.pageHeader {
+  padding: 20px;
+  margin-bottom: 14px;
+  border-radius: 22px;
+}
+
+.pageHeader > p:last-child {
+  font-size: 16px;
+}
+
+.actions {
+  margin-bottom: 14px;
+}
+
+.tableWrap {
+  padding: 10px;
+  border-radius: 20px;
+}
+
+th {
+  padding: 10px;
+}
+
+td {
+  padding: 6px;
+}
+
+td input {
+  padding: 9px;
+  min-width: 135px;
+}
+
+.alertGrid {
+  gap: 10px;
+}
+
+.alert {
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.alert h2 {
+  margin: 10px 0;
+}
+
+.empty {
+  padding: 18px;
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    min-height: 64px;
+    padding: 10px 14px;
+  }
+
+  .brand {
+    font-size: 18px;
+    letter-spacing: 5px;
+    gap: 10px;
+  }
+
+  .logo {
+    width: 38px;
+    height: 38px;
+  }
+
+  .menu {
+    top: 58px;
+    left: 14px;
+    width: calc(100vw - 28px);
+  }
+
+  .content {
+    padding: 12px;
+  }
+
+  .hero {
+    padding: 16px;
+  }
+
+  .hero h1,
+  .pageHeader h1 {
+    font-size: 32px;
+  }
+
+  .movePanel {
+    padding: 15px;
+  }
+
+  .moveTop h2 {
+    font-size: 28px;
+  }
+
+  .proofCard,
+  .card {
+    padding: 13px;
+  }
+
+  .card {
+    min-height: 118px;
+  }
+
+  .stackItem {
+    grid-template-columns: 30px 1fr;
+    gap: 10px;
+  }
+
+  .stackItem h3 {
+    font-size: 16px;
+  }
+
+  table {
+    min-width: 850px;
+  }
+}
+
 `;
