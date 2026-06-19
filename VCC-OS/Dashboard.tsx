@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 type SectionKey =
-  | "briefing"
+  | "moneySnapshot"
+  | "weeklyCash"
   | "missions"
   | "alerts"
   | "buyNext"
@@ -11,7 +12,6 @@ type SectionKey =
   | "savings";
 
 type PageView = "home" | SectionKey;
-
 type Row = Record<string, string>;
 
 type Section = {
@@ -20,30 +20,71 @@ type Section = {
   title: string;
   subtitle: string;
   status: string;
-  group: "command" | "finance";
+  group: "briefing" | "command" | "finance";
   columns: string[];
   rows: Row[];
 };
 
-const STORAGE_KEY = "vcc_os_dropdown_sections_v1";
+type AlertItem = {
+  alert: string;
+  source: SectionKey;
+  urgency: "Critical" | "High" | "Medium";
+  proof: string;
+  action: string;
+};
+
+type Metrics = {
+  monthlyIncome: number;
+  monthlyBills: number;
+  remainingCash: number;
+  weeklyIncome: number;
+  weeklyOutflow: number;
+  weeklyNet: number;
+  openMissions: number;
+  criticalBuyNext: number;
+  avgGoalProgress: number;
+  unpaidBills: number;
+  billTotal: number;
+  activeDebt: number;
+  debtTotal: number;
+  savingsAmount: number;
+};
+
+type Briefing = {
+  title: string;
+  action: string;
+  why: string;
+  priority: SectionKey;
+  proof: { label: string; value: string; source: SectionKey }[];
+};
+
+const STORAGE_KEY = "vcc_os_auto_priority_alerts_v1";
 
 const defaultSections: Section[] = [
   {
-    key: "briefing",
-    label: "Briefing",
-    title: "Daily Briefing",
-    subtitle: "Daily command status, focus, and notes.",
-    status: "ONLINE",
-    group: "command",
-    columns: ["Date", "Status", "Main Focus", "Money Status", "Notes"],
+    key: "moneySnapshot",
+    label: "Money Snapshot",
+    title: "Money Snapshot",
+    subtitle: "Monthly income, bills, cashflow, and remaining cash.",
+    status: "INPUT",
+    group: "briefing",
+    columns: ["Category", "Amount", "Status", "Notes"],
     rows: [
-      {
-        Date: today(),
-        Status: "Active",
-        "Main Focus": "Stabilize money",
-        "Money Status": "Needs update",
-        Notes: "Enter real numbers and check today’s pressure.",
-      },
+      { Category: "Monthly Income", Amount: "", Status: "Needs update", Notes: "Enter total expected monthly income." },
+      { Category: "Monthly Bills", Amount: "", Status: "Needs update", Notes: "Enter total recurring bills." },
+      { Category: "Remaining Cash", Amount: "", Status: "Auto / Manual", Notes: "Use this to compare actual cash remaining." },
+    ],
+  },
+  {
+    key: "weeklyCash",
+    label: "Weekly Cash",
+    title: "Weekly Cash Flow",
+    subtitle: "Weekly income, spending, borrows, rollover, and true cashflow.",
+    status: "TRACK",
+    group: "briefing",
+    columns: ["Week", "Income", "Bills", "Spending", "Borrowed", "Rollover", "Net", "Notes"],
+    rows: [
+      { Week: currentWeekLabel(), Income: "", Bills: "", Spending: "", Borrowed: "", Rollover: "", Net: "", Notes: "" },
     ],
   },
   {
@@ -60,7 +101,7 @@ const defaultSections: Section[] = [
         Priority: "High",
         Status: "Open",
         "Due Date": today(),
-        "Next Action": "Enter bills, debt, and cash",
+        "Next Action": "Enter bills, debt, cash, and priorities",
         Notes: "",
       },
       {
@@ -68,7 +109,7 @@ const defaultSections: Section[] = [
         Priority: "High",
         Status: "Open",
         "Due Date": today(),
-        "Next Action": "Decide what gets paid or delayed",
+        "Next Action": "Decide what gets paid, delayed, or handled first",
         Notes: "",
       },
     ],
@@ -76,29 +117,12 @@ const defaultSections: Section[] = [
   {
     key: "alerts",
     label: "Priority Alerts",
-    title: "Priority Alert Radar",
-    subtitle: "Problems that need attention first.",
-    status: "WATCH",
+    title: "Priority Alerts",
+    subtitle: "Auto-generated view of what can block financial freedom if ignored.",
+    status: "AUTO",
     group: "command",
-    columns: ["Alert", "Category", "Urgency", "Status", "Recommended Action", "Notes"],
-    rows: [
-      {
-        Alert: "Bills check",
-        Category: "Money",
-        Urgency: "High",
-        Status: "Open",
-        "Recommended Action": "Confirm due dates and amounts",
-        Notes: "",
-      },
-      {
-        Alert: "Food / Gas check",
-        Category: "Inventory",
-        Urgency: "High",
-        Status: "Open",
-        "Recommended Action": "Enter what is actually needed",
-        Notes: "",
-      },
-    ],
+    columns: [],
+    rows: [],
   },
   {
     key: "buyNext",
@@ -109,24 +133,8 @@ const defaultSections: Section[] = [
     group: "command",
     columns: ["Item", "Category", "Current Level", "Urgency", "Estimated Cost", "Buy Status", "Notes"],
     rows: [
-      {
-        Item: "Food",
-        Category: "House",
-        "Current Level": "Low",
-        Urgency: "Critical",
-        "Estimated Cost": "",
-        "Buy Status": "Needed",
-        Notes: "",
-      },
-      {
-        Item: "Gas",
-        Category: "Car",
-        "Current Level": "Low",
-        Urgency: "High",
-        "Estimated Cost": "",
-        "Buy Status": "Needed",
-        Notes: "",
-      },
+      { Item: "Food", Category: "House", "Current Level": "Low", Urgency: "Critical", "Estimated Cost": "", "Buy Status": "Needed", Notes: "" },
+      { Item: "Gas", Category: "Car", "Current Level": "Low", Urgency: "High", "Estimated Cost": "", "Buy Status": "Needed", Notes: "" },
     ],
   },
   {
@@ -138,24 +146,8 @@ const defaultSections: Section[] = [
     group: "command",
     columns: ["Goal", "Category", "Target", "Current", "Progress %", "Next Step", "Notes"],
     rows: [
-      {
-        Goal: "VCC recovery",
-        Category: "System",
-        Target: "Working app",
-        Current: "Dashboard online",
-        "Progress %": "50",
-        "Next Step": "Build dedicated pages",
-        Notes: "",
-      },
-      {
-        Goal: "Emergency fund",
-        Category: "Money",
-        Target: "500",
-        Current: "0",
-        "Progress %": "0",
-        "Next Step": "Save first small amount",
-        Notes: "",
-      },
+      { Goal: "VCC recovery", Category: "System", Target: "Working app", Current: "Dashboard online", "Progress %": "70", "Next Step": "Auto priority alerts", Notes: "" },
+      { Goal: "Emergency fund", Category: "Money", Target: "500", Current: "0", "Progress %": "0", "Next Step": "Save first small amount", Notes: "" },
     ],
   },
   {
@@ -167,71 +159,23 @@ const defaultSections: Section[] = [
     group: "finance",
     columns: ["Bill", "Due Date", "Amount", "Status", "Paid Date", "Priority", "Notes"],
     rows: [
-      {
-        Bill: "Car note",
-        "Due Date": "",
-        Amount: "",
-        Status: "Unpaid",
-        "Paid Date": "",
-        Priority: "High",
-        Notes: "",
-      },
-      {
-        Bill: "Phone",
-        "Due Date": "",
-        Amount: "",
-        Status: "Unpaid",
-        "Paid Date": "",
-        Priority: "High",
-        Notes: "",
-      },
-      {
-        Bill: "Insurance",
-        "Due Date": "",
-        Amount: "",
-        Status: "Unpaid",
-        "Paid Date": "",
-        Priority: "High",
-        Notes: "",
-      },
+      { Bill: "Car note", "Due Date": "", Amount: "", Status: "Unpaid", "Paid Date": "", Priority: "High", Notes: "" },
+      { Bill: "Phone", "Due Date": "", Amount: "", Status: "Unpaid", "Paid Date": "", Priority: "High", Notes: "" },
+      { Bill: "Insurance", "Due Date": "", Amount: "", Status: "Unpaid", "Paid Date": "", Priority: "High", Notes: "" },
     ],
   },
   {
     key: "debt",
     label: "Debt",
     title: "Debt Command",
-    subtitle: "Car balance, MyPay, SpotMe, and personal debt pressure.",
+    subtitle: "Car balance, MyPay, SpotMe, and debt pressure.",
     status: "TRACK",
     group: "finance",
     columns: ["Debt", "Starting Balance", "Current Balance", "Payment", "Due Date", "Status", "Notes"],
     rows: [
-      {
-        Debt: "Car balance",
-        "Starting Balance": "",
-        "Current Balance": "",
-        Payment: "",
-        "Due Date": "",
-        Status: "Active",
-        Notes: "",
-      },
-      {
-        Debt: "MyPay",
-        "Starting Balance": "",
-        "Current Balance": "",
-        Payment: "",
-        "Due Date": "",
-        Status: "Active",
-        Notes: "",
-      },
-      {
-        Debt: "SpotMe",
-        "Starting Balance": "",
-        "Current Balance": "",
-        Payment: "",
-        "Due Date": "",
-        Status: "Active",
-        Notes: "",
-      },
+      { Debt: "Car balance", "Starting Balance": "", "Current Balance": "", Payment: "", "Due Date": "", Status: "Active", Notes: "" },
+      { Debt: "MyPay", "Starting Balance": "", "Current Balance": "", Payment: "", "Due Date": "", Status: "Active", Notes: "" },
+      { Debt: "SpotMe", "Starting Balance": "", "Current Balance": "", Payment: "", "Due Date": "", Status: "Active", Notes: "" },
     ],
   },
   {
@@ -243,24 +187,8 @@ const defaultSections: Section[] = [
     group: "finance",
     columns: ["Goal", "Target Amount", "Current Amount", "Needed", "Priority", "Deadline", "Notes"],
     rows: [
-      {
-        Goal: "Emergency fund",
-        "Target Amount": "500",
-        "Current Amount": "0",
-        Needed: "500",
-        Priority: "High",
-        Deadline: "",
-        Notes: "",
-      },
-      {
-        Goal: "Move-out fund",
-        "Target Amount": "",
-        "Current Amount": "0",
-        Needed: "",
-        Priority: "Medium",
-        Deadline: "",
-        Notes: "",
-      },
+      { Goal: "Emergency fund", "Target Amount": "500", "Current Amount": "0", Needed: "500", Priority: "High", Deadline: "", Notes: "" },
+      { Goal: "Move-out fund", "Target Amount": "", "Current Amount": "0", Needed: "", Priority: "Medium", Deadline: "", Notes: "" },
     ],
   },
 ];
@@ -275,7 +203,7 @@ export default function Dashboard() {
 
     try {
       const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : defaultSections;
+      return Array.isArray(parsed) ? mergeSections(defaultSections, parsed) : defaultSections;
     } catch {
       return defaultSections;
     }
@@ -290,22 +218,9 @@ export default function Dashboard() {
     return sections.find((section) => section.key === view) ?? null;
   }, [sections, view]);
 
-  const totals = useMemo(() => {
-    const bills = sections.find((section) => section.key === "bills");
-    const debt = sections.find((section) => section.key === "debt");
-    const savings = sections.find((section) => section.key === "savings");
-
-    const unpaidBills =
-      bills?.rows.filter((row) => (row.Status ?? "").toLowerCase() !== "paid").length ?? 0;
-
-    const activeDebt =
-      debt?.rows.filter((row) => (row.Status ?? "").toLowerCase() !== "paid").length ?? 0;
-
-    const savingsAmount =
-      savings?.rows.reduce((sum, row) => sum + toNumber(row["Current Amount"]), 0) ?? 0;
-
-    return { unpaidBills, activeDebt, savingsAmount };
-  }, [sections]);
+  const metrics = useMemo(() => getMetrics(sections), [sections]);
+  const alerts = useMemo(() => getAutoAlerts(sections, metrics), [sections, metrics]);
+  const briefing = useMemo(() => getBriefing(metrics, alerts), [metrics, alerts]);
 
   function openPage(nextView: PageView) {
     setView(nextView);
@@ -314,6 +229,8 @@ export default function Dashboard() {
   }
 
   function updateCell(sectionKey: SectionKey, rowIndex: number, column: string, value: string) {
+    if (sectionKey === "alerts") return;
+
     setSections((current) => {
       const nextSections = current.map((section) => {
         if (section.key !== sectionKey) return section;
@@ -338,6 +255,8 @@ export default function Dashboard() {
   }
 
   function addRow(sectionKey: SectionKey) {
+    if (sectionKey === "alerts") return;
+
     setSections((current) => {
       const nextSections = current.map((section) => {
         if (section.key !== sectionKey) return section;
@@ -356,6 +275,8 @@ export default function Dashboard() {
   }
 
   function deleteRow(sectionKey: SectionKey, rowIndex: number) {
+    if (sectionKey === "alerts") return;
+
     setSections((current) => {
       const nextSections = current.map((section) => {
         if (section.key !== sectionKey) return section;
@@ -368,6 +289,8 @@ export default function Dashboard() {
   }
 
   function resetSection(sectionKey: SectionKey) {
+    if (sectionKey === "alerts") return;
+
     const confirmed = window.confirm("Reset this page to the recommended starter rows?");
     if (!confirmed) return;
 
@@ -398,43 +321,34 @@ export default function Dashboard() {
 
           {menuOpen && (
             <div className="vcc-dropdown-menu">
-              <button
-                className={`vcc-dropdown-item ${view === "home" ? "active" : ""}`}
-                onClick={() => openPage("home")}
-              >
+              <button className={`vcc-dropdown-item ${view === "home" ? "active" : ""}`} onClick={() => openPage("home")}>
                 <span>⌂</span>
                 Dashboard
               </button>
 
-              <p className="vcc-dropdown-group">Command</p>
+              <p className="vcc-dropdown-group">Briefing Sources</p>
+              {sections.filter((section) => section.group === "briefing").map((section) => (
+                <button key={section.key} className={`vcc-dropdown-item ${view === section.key ? "active" : ""}`} onClick={() => openPage(section.key)}>
+                  <span>{sectionIcon(section.key)}</span>
+                  {section.label}
+                </button>
+              ))}
 
-              {sections
-                .filter((section) => section.group === "command")
-                .map((section) => (
-                  <button
-                    key={section.key}
-                    className={`vcc-dropdown-item ${view === section.key ? "active" : ""}`}
-                    onClick={() => openPage(section.key)}
-                  >
-                    <span>{sectionIcon(section.key)}</span>
-                    {section.label}
-                  </button>
-                ))}
+              <p className="vcc-dropdown-group">Command</p>
+              {sections.filter((section) => section.group === "command").map((section) => (
+                <button key={section.key} className={`vcc-dropdown-item ${view === section.key ? "active" : ""}`} onClick={() => openPage(section.key)}>
+                  <span>{sectionIcon(section.key)}</span>
+                  {section.label}
+                </button>
+              ))}
 
               <p className="vcc-dropdown-group">Finance</p>
-
-              {sections
-                .filter((section) => section.group === "finance")
-                .map((section) => (
-                  <button
-                    key={section.key}
-                    className={`vcc-dropdown-item ${view === section.key ? "active" : ""}`}
-                    onClick={() => openPage(section.key)}
-                  >
-                    <span>{sectionIcon(section.key)}</span>
-                    {section.label}
-                  </button>
-                ))}
+              {sections.filter((section) => section.group === "finance").map((section) => (
+                <button key={section.key} className={`vcc-dropdown-item ${view === section.key ? "active" : ""}`} onClick={() => openPage(section.key)}>
+                  <span>{sectionIcon(section.key)}</span>
+                  {section.label}
+                </button>
+              ))}
 
               <div className="vcc-dropdown-online">
                 <span />
@@ -449,7 +363,9 @@ export default function Dashboard() {
 
       <section className="vcc-content">
         {view === "home" ? (
-          <HomePage sections={sections} totals={totals} openPage={openPage} />
+          <HomePage sections={sections} metrics={metrics} alerts={alerts} briefing={briefing} openPage={openPage} />
+        ) : activeSection?.key === "alerts" ? (
+          <PriorityAlertsPage alerts={alerts} backHome={() => openPage("home")} openPage={openPage} />
         ) : activeSection ? (
           <SectionPage
             section={activeSection}
@@ -468,59 +384,137 @@ export default function Dashboard() {
 
 function HomePage({
   sections,
-  totals,
+  metrics,
+  alerts,
+  briefing,
   openPage,
 }: {
   sections: Section[];
-  totals: { unpaidBills: number; activeDebt: number; savingsAmount: number };
+  metrics: Metrics;
+  alerts: AlertItem[];
+  briefing: Briefing;
   openPage: (view: PageView) => void;
 }) {
   return (
     <>
-      <section className="mission-panel">
-        <div className="status-row">
-          <span className="online-pill">● ONLINE</span>
-          <span className="date-text">{prettyDate()}</span>
-        </div>
-
-        <h1 className="mission-title">
-          <span>MISSION</span> CONTROL
-        </h1>
-
-        <p className="mission-subtitle">Vitality Command Center · All systems nominal</p>
-
-        <div className="command-stats">
-          <div className="stat-box">
-            <p>UNPAID_BILLS</p>
-            <h2 className="blue">{totals.unpaidBills}</h2>
-          </div>
-
-          <div className="stat-box">
-            <p>ACTIVE_DEBT</p>
-            <h2 className="red">{totals.activeDebt}</h2>
-          </div>
-
-          <div className="stat-box">
-            <p>SAVINGS</p>
-            <h2 className="green">{formatMoney(totals.savingsAmount)}</h2>
-          </div>
-        </div>
-      </section>
-
-      <section className="dashboard-grid">
-        {sections.map((section) => (
-          <button key={section.key} className="vcc-card" onClick={() => openPage(section.key)}>
-            <div className="card-top">
-              <p>{section.label}</p>
-              <span>{section.status}</span>
+      <section className="briefing-panel">
+        <div className="briefing-head">
+          <div>
+            <div className="status-row">
+              <span className="online-pill">● ONLINE</span>
+              <span className="date-text">{prettyDate()}</span>
             </div>
 
-            <h2>{section.title}</h2>
-            <p className="card-note">{section.subtitle}</p>
+            <p className="briefing-kicker">TODAY_BRIEFING</p>
+            <h1 className="briefing-title">{briefing.title}</h1>
+            <p className="briefing-subtitle">{briefing.action}</p>
+          </div>
+
+          <button className="investigate-btn" onClick={() => openPage(briefing.priority)}>
+            INVESTIGATE →
           </button>
-        ))}
+        </div>
+
+        <div className="briefing-why">
+          <p>WHY_THIS_IS_THE_PRIORITY</p>
+          <h2>{briefing.why}</h2>
+        </div>
+
+        <div className="proof-grid">
+          {briefing.proof.map((item) => (
+            <button key={`${item.source}-${item.label}`} className="proof-box" onClick={() => openPage(item.source)}>
+              <p>{item.label}</p>
+              <h3>{item.value}</h3>
+              <span>Source: {getSectionLabel(item.source)}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="glance-grid">
+        {sections.map((section) => {
+          const card = getGlanceCard(section, metrics, alerts);
+
+          return (
+            <button key={section.key} className={`glance-card ${card.tone}`} onClick={() => openPage(section.key)}>
+              <div className="glance-top">
+                <p>{section.label}</p>
+                <span>{section.key === "alerts" ? "AUTO" : section.status}</span>
+              </div>
+
+              <div className="glance-main">
+                <h2>{card.value}</h2>
+                <p>{card.label}</p>
+              </div>
+
+              <div className="glance-bottom">
+                <span>{card.detailOne}</span>
+                <span>{card.detailTwo}</span>
+              </div>
+            </button>
+          );
+        })}
       </section>
     </>
+  );
+}
+
+function PriorityAlertsPage({
+  alerts,
+  backHome,
+  openPage,
+}: {
+  alerts: AlertItem[];
+  backHome: () => void;
+  openPage: (view: PageView) => void;
+}) {
+  return (
+    <section className="section-page">
+      <div className="section-header">
+        <button className="back-btn" onClick={backHome}>
+          ← DASHBOARD
+        </button>
+
+        <div className="section-title-row">
+          <div>
+            <p className="section-kicker">AUTO_GENERATED_VIEW</p>
+            <h1>Priority Alerts</h1>
+            <p>Read-only view of anything important or critical that can block financial freedom if ignored.</p>
+          </div>
+
+          <span className="section-status">AUTO</span>
+        </div>
+      </div>
+
+      <div className="alert-panel">
+        <div className="sheet-topline">
+          <p>CRITICAL_GROWTH_BLOCKERS</p>
+          <p>{alerts.length} ALERTS</p>
+        </div>
+
+        {alerts.length === 0 ? (
+          <div className="empty-alerts">
+            <h2>No major blockers detected.</h2>
+            <p>Keep your sections updated so the system can keep watching for pressure.</p>
+          </div>
+        ) : (
+          <div className="alert-list">
+            {alerts.map((alert, index) => (
+              <button key={`${alert.alert}-${index}`} className={`alert-card ${alert.urgency.toLowerCase()}`} onClick={() => openPage(alert.source)}>
+                <div className="alert-card-top">
+                  <p>{alert.urgency}</p>
+                  <span>{getSectionLabel(alert.source)}</span>
+                </div>
+
+                <h2>{alert.alert}</h2>
+                <p className="alert-proof">{alert.proof}</p>
+                <p className="alert-action">{alert.action}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -592,9 +586,7 @@ function SectionPage({
                     <td key={column}>
                       <input
                         value={row[column] ?? ""}
-                        onChange={(event) =>
-                          updateCell(section.key, rowIndex, column, event.target.value)
-                        }
+                        onChange={(event) => updateCell(section.key, rowIndex, column, event.target.value)}
                         onKeyDown={commitInput}
                         placeholder="-"
                       />
@@ -618,6 +610,229 @@ function SectionPage({
   );
 }
 
+function getMetrics(sections: Section[]): Metrics {
+  const moneySnapshot = sections.find((section) => section.key === "moneySnapshot");
+  const weeklyCash = sections.find((section) => section.key === "weeklyCash");
+  const missions = sections.find((section) => section.key === "missions");
+  const buyNext = sections.find((section) => section.key === "buyNext");
+  const goals = sections.find((section) => section.key === "goals");
+  const bills = sections.find((section) => section.key === "bills");
+  const debt = sections.find((section) => section.key === "debt");
+  const savings = sections.find((section) => section.key === "savings");
+
+  const monthlyIncome = getMoneySnapshotAmount(moneySnapshot, "Monthly Income");
+  const monthlyBills = getMoneySnapshotAmount(moneySnapshot, "Monthly Bills");
+  const remainingCash = getMoneySnapshotAmount(moneySnapshot, "Remaining Cash");
+
+  const weeklyIncome = weeklyCash?.rows.reduce((sum, row) => sum + toNumber(row.Income), 0) ?? 0;
+  const weeklyOutflow =
+    weeklyCash?.rows.reduce((sum, row) => sum + toNumber(row.Bills) + toNumber(row.Spending) + toNumber(row.Borrowed), 0) ?? 0;
+
+  const weeklyNet =
+    weeklyCash?.rows.reduce((sum, row) => {
+      const enteredNet = toNumber(row.Net);
+      if (enteredNet !== 0) return sum + enteredNet;
+      return sum + toNumber(row.Income) + toNumber(row.Rollover) - toNumber(row.Bills) - toNumber(row.Spending) - toNumber(row.Borrowed);
+    }, 0) ?? 0;
+
+  const openMissions =
+    missions?.rows.filter((row) => !["done", "closed", "complete"].includes((row.Status ?? "").toLowerCase())).length ?? 0;
+
+  const criticalBuyNext =
+    buyNext?.rows.filter((row) => ["high", "critical"].includes((row.Urgency ?? "").toLowerCase())).length ?? 0;
+
+  const goalRows = goals?.rows ?? [];
+  const avgGoalProgress =
+    goalRows.length === 0 ? 0 : Math.round(goalRows.reduce((sum, row) => sum + toNumber(row["Progress %"]), 0) / goalRows.length);
+
+  const unpaidBillRows = bills?.rows.filter((row) => (row.Status ?? "").toLowerCase() !== "paid") ?? [];
+  const billTotal = unpaidBillRows.reduce((sum, row) => sum + toNumber(row.Amount), 0);
+
+  const activeDebtRows =
+    debt?.rows.filter((row) => !["paid", "closed", "done"].includes((row.Status ?? "").toLowerCase())) ?? [];
+  const debtTotal = activeDebtRows.reduce((sum, row) => sum + toNumber(row["Current Balance"]), 0);
+
+  const savingsAmount = savings?.rows.reduce((sum, row) => sum + toNumber(row["Current Amount"]), 0) ?? 0;
+
+  return {
+    monthlyIncome,
+    monthlyBills,
+    remainingCash,
+    weeklyIncome,
+    weeklyOutflow,
+    weeklyNet,
+    openMissions,
+    criticalBuyNext,
+    avgGoalProgress,
+    unpaidBills: unpaidBillRows.length,
+    billTotal,
+    activeDebt: activeDebtRows.length,
+    debtTotal,
+    savingsAmount,
+  };
+}
+
+function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
+  const alerts: AlertItem[] = [];
+  const buyNext = sections.find((section) => section.key === "buyNext");
+  const goals = sections.find((section) => section.key === "goals");
+
+  if (metrics.monthlyIncome === 0 && metrics.weeklyIncome === 0) {
+    alerts.push({
+      alert: "Income is missing",
+      source: "moneySnapshot",
+      urgency: "Critical",
+      proof: "Monthly Income and Weekly Income are both $0 or blank.",
+      action: "Enter income so the system can make accurate money decisions.",
+    });
+  }
+
+  if (metrics.weeklyNet < 0) {
+    alerts.push({
+      alert: "Weekly cashflow is negative",
+      source: "weeklyCash",
+      urgency: "Critical",
+      proof: `Weekly Net is ${formatMoney(metrics.weeklyNet)}.`,
+      action: "Review weekly bills, spending, borrowed money, and rollover.",
+    });
+  }
+
+  if (metrics.unpaidBills > 0) {
+    alerts.push({
+      alert: "Unpaid bills can block progress",
+      source: "bills",
+      urgency: metrics.unpaidBills >= 3 ? "Critical" : "High",
+      proof: `${metrics.unpaidBills} bill(s) are marked unpaid. Current bill pressure: ${formatMoney(metrics.billTotal)}.`,
+      action: "Decide what must be paid, delayed, or watched.",
+    });
+  }
+
+  if (metrics.activeDebt > 0) {
+    alerts.push({
+      alert: "Active debt is creating pressure",
+      source: "debt",
+      urgency: metrics.debtTotal > 0 ? "Critical" : "High",
+      proof: `${metrics.activeDebt} debt item(s) are active. Debt balance entered: ${formatMoney(metrics.debtTotal)}.`,
+      action: "Update balances and identify the most urgent debt.",
+    });
+  }
+
+  if (metrics.savingsAmount <= 0) {
+    alerts.push({
+      alert: "No emergency buffer",
+      source: "savings",
+      urgency: "High",
+      proof: "Savings is currently $0.",
+      action: "Build a starter buffer once survival bills are handled.",
+    });
+  }
+
+  buyNext?.rows.forEach((row) => {
+    const urgency = (row.Urgency ?? "").toLowerCase();
+    const status = (row["Buy Status"] ?? "").toLowerCase();
+
+    if (["critical", "high"].includes(urgency) && !["bought", "done", "handled"].includes(status)) {
+      alerts.push({
+        alert: `${row.Item || "Buy Next item"} needs attention`,
+        source: "buyNext",
+        urgency: urgency === "critical" ? "Critical" : "High",
+        proof: `${row.Item || "Item"} is marked ${row.Urgency || "urgent"} and status is ${row["Buy Status"] || "not handled"}.`,
+        action: "Handle or update this item so it does not disrupt daily stability.",
+      });
+    }
+  });
+
+  goals?.rows.forEach((row) => {
+    const progress = toNumber(row["Progress %"]);
+    const priority = (row.Priority ?? "").toLowerCase();
+
+    if (priority === "high" && progress < 25) {
+      alerts.push({
+        alert: `${row.Goal || "Goal"} is behind`,
+        source: "goals",
+        urgency: "High",
+        proof: `${row.Goal || "Goal"} is high priority but only ${progress}% complete.`,
+        action: "Set the next small step or adjust the target.",
+      });
+    }
+  });
+
+  return alerts.sort((a, b) => urgencyWeight(b.urgency) - urgencyWeight(a.urgency));
+}
+
+function getBriefing(metrics: Metrics, alerts: AlertItem[]): Briefing {
+  if (alerts.length > 0) {
+    const top = alerts[0];
+
+    return {
+      title: top.alert,
+      action: top.action,
+      why: top.proof,
+      priority: top.source,
+      proof: [
+        { label: "Auto Alerts", value: String(alerts.length), source: "alerts" },
+        { label: "Unpaid Bills", value: String(metrics.unpaidBills), source: "bills" },
+        { label: "Weekly Net", value: formatMoney(metrics.weeklyNet), source: "weeklyCash" },
+        { label: "Savings", value: formatMoney(metrics.savingsAmount), source: "savings" },
+      ],
+    };
+  }
+
+  return {
+    title: "No major blockers detected",
+    action: "Keep numbers updated and execute the next mission.",
+    why: "The system is not detecting critical pressure from income, weekly cash, bills, debt, buy-next, goals, or savings.",
+    priority: "missions",
+    proof: [
+      { label: "Open Missions", value: String(metrics.openMissions), source: "missions" },
+      { label: "Savings", value: formatMoney(metrics.savingsAmount), source: "savings" },
+      { label: "Weekly Net", value: formatMoney(metrics.weeklyNet), source: "weeklyCash" },
+      { label: "Goal Progress", value: `${metrics.avgGoalProgress}%`, source: "goals" },
+    ],
+  };
+}
+
+function getGlanceCard(section: Section, metrics: Metrics, alerts: AlertItem[]) {
+  switch (section.key) {
+    case "moneySnapshot":
+      return { value: formatMoney(metrics.remainingCash), label: "Remaining cash", detailOne: `Income: ${formatMoney(metrics.monthlyIncome)}`, detailTwo: `Bills: ${formatMoney(metrics.monthlyBills)}`, tone: metrics.remainingCash < 0 ? "red" : "blue" };
+    case "weeklyCash":
+      return { value: formatMoney(metrics.weeklyNet), label: "Weekly net", detailOne: `Income: ${formatMoney(metrics.weeklyIncome)}`, detailTwo: `Outflow: ${formatMoney(metrics.weeklyOutflow)}`, tone: metrics.weeklyNet < 0 ? "red" : "green" };
+    case "missions":
+      return { value: String(metrics.openMissions), label: "Open missions", detailOne: "Daily execution", detailTwo: "Tap to manage", tone: "blue" };
+    case "alerts":
+      return { value: String(alerts.length), label: "Auto blockers", detailOne: "Read-only view", detailTwo: "Feeds briefing", tone: alerts.length > 0 ? "red" : "green" };
+    case "buyNext":
+      return { value: String(metrics.criticalBuyNext), label: "Urgent buy items", detailOne: "Food · Gas · Basics", detailTwo: "Tap to update", tone: metrics.criticalBuyNext > 0 ? "gold" : "green" };
+    case "goals":
+      return { value: `${metrics.avgGoalProgress}%`, label: "Average progress", detailOne: "Long-term build", detailTwo: "Tap to track", tone: "blue" };
+    case "bills":
+      return { value: formatMoney(metrics.billTotal), label: `${metrics.unpaidBills} unpaid bills`, detailOne: "Bills due", detailTwo: "Tap to review", tone: metrics.unpaidBills > 0 ? "red" : "green" };
+    case "debt":
+      return { value: metrics.debtTotal > 0 ? formatMoney(metrics.debtTotal) : String(metrics.activeDebt), label: metrics.debtTotal > 0 ? "Debt balance" : "Active debt items", detailOne: "Car · MyPay · SpotMe", detailTwo: "Tap to update", tone: metrics.activeDebt > 0 ? "red" : "green" };
+    case "savings":
+      return { value: formatMoney(metrics.savingsAmount), label: "Saved total", detailOne: "Emergency · Move-out", detailTwo: "Tap to grow", tone: metrics.savingsAmount > 0 ? "green" : "blue" };
+  }
+}
+
+function urgencyWeight(urgency: AlertItem["urgency"]) {
+  if (urgency === "Critical") return 3;
+  if (urgency === "High") return 2;
+  return 1;
+}
+
+function getMoneySnapshotAmount(section: Section | undefined, category: string) {
+  const row = section?.rows.find((item) => item.Category === category);
+  return toNumber(row?.Amount);
+}
+
+function mergeSections(defaultList: Section[], savedList: Section[]) {
+  return defaultList.map((defaultSection) => {
+    const saved = savedList.find((section) => section.key === defaultSection.key);
+    return saved ? { ...defaultSection, rows: saved.rows ?? defaultSection.rows } : defaultSection;
+  });
+}
+
 function saveSections(sections: Section[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sections));
 }
@@ -628,21 +843,42 @@ function cloneSection(section: Section): Section {
 
 function sectionIcon(key: SectionKey) {
   const icons: Record<SectionKey, string> = {
-    briefing: "◉",
+    moneySnapshot: "▣",
+    weeklyCash: "▤",
     missions: "⊕",
     alerts: "⌾",
     buyNext: "□",
     goals: "◎",
-    bills: "▤",
-    debt: "▣",
+    bills: "▥",
+    debt: "▦",
     savings: "$",
   };
 
   return icons[key];
 }
 
+function getSectionLabel(key: SectionKey) {
+  const labels: Record<SectionKey, string> = {
+    moneySnapshot: "Money Snapshot",
+    weeklyCash: "Weekly Cash",
+    missions: "Missions",
+    alerts: "Priority Alerts",
+    buyNext: "Buy Next",
+    goals: "Goal Progress",
+    bills: "Bills Due",
+    debt: "Debt",
+    savings: "Savings",
+  };
+
+  return labels[key];
+}
+
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function currentWeekLabel() {
+  return `Week of ${today()}`;
 }
 
 function prettyDate() {
@@ -654,7 +890,9 @@ function prettyDate() {
 }
 
 function toNumber(value: string | undefined) {
-  const number = Number(value);
+  if (!value) return 0;
+  const clean = String(value).replace(/[$,]/g, "");
+  const number = Number(clean);
   return Number.isFinite(number) ? number : 0;
 }
 
@@ -667,22 +905,9 @@ function formatMoney(value: number) {
 }
 
 const css = `
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  min-height: 100%;
-  margin: 0;
-  background: #030712;
-}
-
-button,
-input {
-  font: inherit;
-}
+* { box-sizing: border-box; }
+html, body, #root { min-height: 100%; margin: 0; background: #030712; }
+button, input { font: inherit; }
 
 .vcc-page {
   min-height: 100vh;
@@ -704,10 +929,7 @@ input {
   backdrop-filter: blur(16px);
 }
 
-.vcc-dropdown-wrap {
-  position: relative;
-  width: 100%;
-}
+.vcc-dropdown-wrap { position: relative; width: 100%; }
 
 .vcc-brand {
   display: flex;
@@ -743,9 +965,7 @@ input {
   transition: transform 160ms ease;
 }
 
-.vcc-caret.open {
-  transform: rotate(180deg);
-}
+.vcc-caret.open { transform: rotate(180deg); }
 
 .vcc-dropdown-menu {
   position: absolute;
@@ -831,17 +1051,27 @@ input {
   margin: 0 auto;
 }
 
-.mission-panel {
-  min-height: 300px;
+.briefing-panel,
+.section-header,
+.sheet-card,
+.alert-panel {
   border-radius: 28px;
+  border: 1px solid rgba(59, 130, 246, 0.34);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.96));
+  box-shadow: 0 24px 60px rgba(0,0,0,0.32);
+}
+
+.briefing-panel {
   padding: 30px;
-  border: 1px solid rgba(59, 130, 246, 0.38);
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.96)),
-    repeating-linear-gradient(0deg, transparent, transparent 48px, rgba(59,130,246,.08) 49px),
-    repeating-linear-gradient(90deg, transparent, transparent 48px, rgba(59,130,246,.08) 49px);
-  box-shadow: 0 0 0 1px rgba(59,130,246,.15), 0 30px 70px rgba(0,0,0,.45);
   margin-bottom: 26px;
+}
+
+.briefing-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 22px;
 }
 
 .status-row {
@@ -868,130 +1098,194 @@ input {
   letter-spacing: 3px;
 }
 
-.mission-title {
+.briefing-kicker,
+.section-kicker {
   margin: 0;
-  font-size: clamp(36px, 6vw, 54px);
-  line-height: 1;
-  letter-spacing: 1px;
-}
-
-.mission-title span {
-  color: #3b82f6;
-}
-
-.mission-subtitle {
-  margin: 18px 0 34px;
-  color: #94a3b8;
-  font-size: clamp(16px, 2.5vw, 21px);
-}
-
-.command-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.stat-box {
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  background: rgba(2, 6, 23, 0.44);
-  border-radius: 20px;
-  padding: 18px;
-}
-
-.stat-box p {
-  margin: 0;
-  color: #94a3b8;
-  font-size: 14px;
+  color: #60a5fa;
+  font-size: 13px;
   letter-spacing: 4px;
   font-weight: 900;
 }
 
-.stat-box h2 {
-  margin: 10px 0 0;
-  font-size: 42px;
+.briefing-title {
+  margin: 10px 0;
+  font-size: clamp(34px, 5vw, 56px);
+  line-height: 1;
 }
 
-.blue {
-  color: #60a5fa;
+.briefing-subtitle {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: clamp(16px, 2vw, 21px);
+  line-height: 1.45;
+  max-width: 780px;
 }
 
-.red {
-  color: #fb7185;
+.investigate-btn,
+.primary-btn {
+  background: #3b82f6;
+  color: #020617;
+  border: 1px solid rgba(147,197,253,.6);
+  border-radius: 16px;
+  padding: 13px 18px;
+  cursor: pointer;
+  font-weight: 900;
+  letter-spacing: 2px;
+  white-space: nowrap;
 }
 
-.green {
-  color: #34d399;
+.briefing-why {
+  background: rgba(2, 6, 23, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 20px;
+  padding: 18px;
+  margin-bottom: 18px;
 }
 
-.dashboard-grid {
+.briefing-why p {
+  margin: 0 0 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  letter-spacing: 3px;
+  font-weight: 900;
+}
+
+.briefing-why h2 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: clamp(20px, 3vw, 30px);
+  line-height: 1.25;
+}
+
+.proof-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
 }
 
-.vcc-card {
-  min-height: 170px;
+.proof-box,
+.glance-card,
+.alert-card {
   background: rgba(15, 23, 42, 0.74);
   color: #f8fafc;
   border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 24px;
-  padding: 22px;
   cursor: pointer;
   text-align: left;
+}
+
+.proof-box {
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.proof-box:hover,
+.glance-card:hover,
+.alert-card:hover {
+  border-color: rgba(96, 165, 250, 0.75);
+}
+
+.proof-box p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+  letter-spacing: 2px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.proof-box h3 {
+  margin: 10px 0 6px;
+  color: #60a5fa;
+  font-size: 30px;
+}
+
+.proof-box span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.glance-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.glance-card {
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 24px;
+  padding: 20px;
   box-shadow: 0 18px 40px rgba(0,0,0,0.25);
 }
 
-.vcc-card:hover {
-  border-color: rgba(59, 130, 246, 0.7);
+.glance-card.blue { border-color: rgba(59, 130, 246, 0.26); }
+.glance-card.red {
+  border-color: rgba(251, 113, 133, 0.3);
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.18), rgba(15, 23, 42, 0.78));
+}
+.glance-card.gold {
+  border-color: rgba(251, 191, 36, 0.32);
+  background: linear-gradient(180deg, rgba(120, 53, 15, 0.18), rgba(15, 23, 42, 0.78));
+}
+.glance-card.green {
+  border-color: rgba(52, 211, 153, 0.32);
+  background: linear-gradient(180deg, rgba(6, 78, 59, 0.16), rgba(15, 23, 42, 0.78));
 }
 
-.card-top {
+.glance-top,
+.alert-card-top {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
 }
 
-.card-top p {
+.glance-top p,
+.alert-card-top p {
   margin: 0;
   color: #60a5fa;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 3px;
 }
 
-.card-top span {
+.glance-top span,
+.alert-card-top span {
   color: #94a3b8;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 999px;
   padding: 5px 9px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
 }
 
-.vcc-card h2 {
-  margin: 20px 0 10px;
-  font-size: 27px;
+.glance-main h2 {
+  margin: 22px 0 8px;
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1;
 }
 
-.card-note {
-  margin: 0;
+.glance-main p,
+.glance-bottom,
+.alert-proof {
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.glance-bottom {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   color: #94a3b8;
-  line-height: 1.55;
-  font-size: 16px;
-}
-
-.section-page {
-  width: 100%;
+  font-size: 13px;
 }
 
 .section-header {
-  border-radius: 28px;
   padding: 26px;
-  border: 1px solid rgba(59, 130, 246, 0.34);
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.96));
   margin-bottom: 22px;
 }
 
@@ -1012,14 +1306,6 @@ input {
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-}
-
-.section-kicker {
-  margin: 0;
-  color: #60a5fa;
-  font-size: 13px;
-  letter-spacing: 4px;
-  font-weight: 900;
 }
 
 .section-title-row h1 {
@@ -1052,8 +1338,10 @@ input {
   margin-top: 24px;
 }
 
-.primary-btn,
 .secondary-btn {
+  background: transparent;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.45);
   border-radius: 16px;
   padding: 13px 18px;
   cursor: pointer;
@@ -1061,24 +1349,9 @@ input {
   letter-spacing: 2px;
 }
 
-.primary-btn {
-  background: #3b82f6;
-  color: #020617;
-  border: 1px solid rgba(147,197,253,.6);
-}
-
-.secondary-btn {
-  background: transparent;
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.45);
-}
-
-.sheet-card {
-  background: rgba(15, 23, 42, 0.78);
-  border: 1px solid rgba(59, 130, 246, 0.28);
-  border-radius: 28px;
+.sheet-card,
+.alert-panel {
   padding: 18px;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.32);
 }
 
 .sheet-topline {
@@ -1160,120 +1433,89 @@ td input:focus {
   font-size: 13px;
 }
 
+.alert-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.alert-card {
+  border-radius: 22px;
+  padding: 20px;
+}
+
+.alert-card.critical {
+  border-color: rgba(251, 113, 133, 0.5);
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.22), rgba(15, 23, 42, 0.82));
+}
+
+.alert-card.high {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: linear-gradient(180deg, rgba(120, 53, 15, 0.2), rgba(15, 23, 42, 0.82));
+}
+
+.alert-card h2 {
+  margin: 20px 0 10px;
+}
+
+.alert-action {
+  color: #f8fafc;
+  font-weight: 900;
+}
+
+.empty-alerts {
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  background: rgba(6, 78, 59, 0.12);
+  border-radius: 20px;
+  padding: 22px;
+}
+
+.empty-alerts h2 {
+  margin: 0 0 8px;
+  color: #34d399;
+}
+
+.empty-alerts p {
+  margin: 0;
+  color: #94a3b8;
+}
+
+@media (max-width: 1350px) {
+  .glance-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .proof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 900px) {
-  .vcc-topbar {
-    height: 88px;
-    padding: 0 24px;
-  }
-
-  .vcc-brand-text {
-    font-size: 22px;
-    letter-spacing: 7px;
-  }
-
-  .vcc-dropdown-menu {
-    top: 62px;
-  }
-
-  .vcc-scrim {
-    inset: 88px 0 0 0;
-  }
-
-  .vcc-content {
-    padding: 22px;
-  }
-
-  .command-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .section-title-row {
-    flex-direction: column;
-  }
-
-  .section-status {
-    width: fit-content;
-  }
-
-  .section-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .primary-btn,
-  .secondary-btn {
-    width: 100%;
-  }
+  .vcc-topbar { height: 88px; padding: 0 24px; }
+  .vcc-brand-text { font-size: 22px; letter-spacing: 7px; }
+  .vcc-dropdown-menu { top: 62px; }
+  .vcc-scrim { inset: 88px 0 0 0; }
+  .vcc-content { padding: 22px; }
+  .briefing-head { flex-direction: column; }
+  .investigate-btn { width: 100%; }
+  .proof-grid { grid-template-columns: 1fr; }
+  .glance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .alert-list { grid-template-columns: 1fr; }
+  .section-title-row { flex-direction: column; }
+  .section-status { width: fit-content; }
+  .section-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .primary-btn, .secondary-btn { width: 100%; }
 }
 
 @media (max-width: 520px) {
-  .vcc-topbar {
-    height: 82px;
-    padding: 0 18px;
-  }
-
-  .vcc-logo {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-  }
-
-  .vcc-brand-text {
-    font-size: 20px;
-    letter-spacing: 6px;
-  }
-
-  .vcc-caret {
-    font-size: 20px;
-  }
-
-  .vcc-dropdown-menu {
-    top: 58px;
-    width: calc(100vw - 36px);
-  }
-
-  .vcc-scrim {
-    inset: 82px 0 0 0;
-  }
-
-  .vcc-content {
-    padding: 16px;
-  }
-
-  .mission-panel,
-  .section-header,
-  .sheet-card {
-    border-radius: 22px;
-  }
-
-  .mission-panel {
-    padding: 22px;
-    min-height: auto;
-  }
-
-  .stat-box h2 {
-    font-size: 36px;
-  }
-
-  .vcc-card {
-    min-height: 150px;
-    padding: 19px;
-  }
-
-  .section-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .sheet-topline {
-    flex-direction: column;
-  }
-
-  table {
-    min-width: 850px;
-  }
+  .vcc-topbar { height: 82px; padding: 0 18px; }
+  .vcc-logo { width: 42px; height: 42px; border-radius: 14px; }
+  .vcc-brand-text { font-size: 20px; letter-spacing: 6px; }
+  .vcc-caret { font-size: 20px; }
+  .vcc-dropdown-menu { top: 58px; width: calc(100vw - 36px); }
+  .vcc-scrim { inset: 82px 0 0 0; }
+  .vcc-content { padding: 16px; }
+  .briefing-panel, .section-header, .sheet-card, .alert-panel { border-radius: 22px; }
+  .briefing-panel { padding: 22px; }
+  .glance-grid { grid-template-columns: 1fr; }
+  .glance-card { min-height: 165px; padding: 19px; }
+  .section-actions { grid-template-columns: 1fr; }
+  .sheet-topline { flex-direction: column; }
+  table { min-width: 850px; }
 }
 `;
