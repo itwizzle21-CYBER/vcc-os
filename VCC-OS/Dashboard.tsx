@@ -1985,4 +1985,79 @@ td input {
   }
 }
 
+
+
+/* ===== VCC SOFT BRIGHTNESS PASS ===== */
+
+.vcc {
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.22), transparent 28rem),
+    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.08), transparent 24rem),
+    linear-gradient(180deg, #07111f, #050b18);
+}
+
+.topbar {
+  background: rgba(7, 17, 31, 0.96);
+  border-bottom-color: rgba(148, 163, 184, 0.24);
+}
+
+.hero,
+.pageHeader,
+.tableWrap,
+.empty,
+.stack,
+.alert,
+.movePanel {
+  background: linear-gradient(180deg, rgba(20, 31, 54, 0.98), rgba(9, 17, 34, 0.98));
+  border-color: rgba(96, 165, 250, 0.38);
+}
+
+.proofCard,
+.card,
+.stackItem,
+.moveGrid div {
+  background: rgba(18, 30, 54, 0.92);
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+.proofCard.danger,
+.card.bad,
+.movePanel.danger,
+.alert.critical {
+  background: linear-gradient(180deg, rgba(100, 28, 45, 0.42), rgba(19, 27, 48, 0.94));
+  border-color: rgba(251, 113, 133, 0.55);
+}
+
+.card.warn,
+.movePanel.warning,
+.alert.high,
+.stackItem.high {
+  background: linear-gradient(180deg, rgba(113, 74, 22, 0.34), rgba(19, 27, 48, 0.94));
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.card.good,
+.movePanel.stable {
+  background: linear-gradient(180deg, rgba(16, 82, 72, 0.25), rgba(19, 27, 48, 0.94));
+  border-color: rgba(52, 211, 153, 0.44);
+}
+
+td input {
+  background: rgba(23, 37, 64, 0.96);
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+table {
+  background: #07111f;
+}
+
+th {
+  background: #0d1b31;
+}
+
+.menu {
+  background: rgba(7, 17, 31, 0.99);
+  border-color: rgba(96, 165, 250, 0.42);
+}
+
 `;
