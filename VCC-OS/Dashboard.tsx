@@ -67,6 +67,18 @@ type RecommendedMove = {
 
 const STORAGE_KEY = "vcc_os_protected_vault_v2";
 
+const moneyColumns = new Set([
+  "Amount",
+  "Expected",
+  "Received",
+  "Current Balance",
+  "Payment Due",
+  "Target Amount",
+  "Current Amount",
+  "Allowed Withdrawal",
+  "Needed",
+]);
+
 const defaultSections: Section[] = [
   {
     key: "money",
@@ -74,11 +86,11 @@ const defaultSections: Section[] = [
     subtitle: "Operating cash only. Savings is protected and does not count as spendable.",
     columns: ["Category", "Amount", "Status", "Priority", "Notes"],
     rows: [
-      { Category: "Cash On Hand", Amount: "", Status: "Needs update", Priority: "Critical", Notes: "Money available right now." },
-      { Category: "Weekly Income", Amount: "", Status: "Needs update", Priority: "High", Notes: "Job check or weekly expected income." },
-      { Category: "Other Income", Amount: "", Status: "Optional", Priority: "Medium", Notes: "Side money, payout, help, etc." },
-      { Category: "Food Needed", Amount: "", Status: "Needs update", Priority: "Critical", Notes: "Food money needed before next check." },
-      { Category: "Gas Needed", Amount: "", Status: "Needs update", Priority: "Critical", Notes: "Gas money needed before next check." },
+      { Category: "Cash On Hand", Amount: "", Status: "", Priority: "Critical", Notes: "Money available right now." },
+      { Category: "Weekly Income", Amount: "", Status: "", Priority: "High", Notes: "Job check or weekly expected income." },
+      { Category: "Other Income", Amount: "", Status: "", Priority: "Medium", Notes: "Side money, payout, help, etc." },
+      { Category: "Food Needed", Amount: "", Status: "", Priority: "Critical", Notes: "Food money needed before next check." },
+      { Category: "Gas Needed", Amount: "", Status: "", Priority: "Critical", Notes: "Gas money needed before next check." },
     ],
   },
   {
@@ -98,9 +110,9 @@ const defaultSections: Section[] = [
     subtitle: "Paychecks, payouts, side money, and expected money.",
     columns: ["Source", "Expected", "Received", "Date", "Status", "Notes"],
     rows: [
-      { Source: "Job check", Expected: "", Received: "", Date: "", Status: "Expected", Notes: "" },
-      { Source: "Trading payout", Expected: "", Received: "", Date: "", Status: "Pending", Notes: "" },
-      { Source: "Other income", Expected: "", Received: "", Date: "", Status: "Pending", Notes: "" },
+      { Source: "Job check", Expected: "", Received: "", Date: "", Status: "", Notes: "" },
+      { Source: "Trading payout", Expected: "", Received: "", Date: "", Status: "", Notes: "" },
+      { Source: "Other income", Expected: "", Received: "", Date: "", Status: "", Notes: "" },
     ],
   },
   {
@@ -144,11 +156,11 @@ const defaultSections: Section[] = [
       {
         Goal: "Emergency Fund",
         "Vault Type": "Emergency",
-        "Target Amount": "500",
-        "Current Amount": "0",
+        "Target Amount": "",
+        "Current Amount": "",
         Protected: "Yes",
         "Access Rule": "Food, gas, shelter, car, shutoff, or true emergency only",
-        "Allowed Withdrawal": "0",
+        "Allowed Withdrawal": "",
         "Withdrawal Reason": "",
         Status: "Locked",
         Notes: "Protected. Do not count as spendable cash.",
@@ -157,10 +169,10 @@ const defaultSections: Section[] = [
         Goal: "Move-Out Fund",
         "Vault Type": "Future",
         "Target Amount": "",
-        "Current Amount": "0",
+        "Current Amount": "",
         Protected: "Yes",
         "Access Rule": "Do not touch unless move-out mission requires it",
-        "Allowed Withdrawal": "0",
+        "Allowed Withdrawal": "",
         "Withdrawal Reason": "",
         Status: "Locked",
         Notes: "Future stability money.",
@@ -169,10 +181,10 @@ const defaultSections: Section[] = [
         Goal: "Investment Fund",
         "Vault Type": "Growth",
         "Target Amount": "",
-        "Current Amount": "0",
+        "Current Amount": "",
         Protected: "Flexible",
         "Access Rule": "Approved investment only. No emotional spending.",
-        "Allowed Withdrawal": "0",
+        "Allowed Withdrawal": "",
         "Withdrawal Reason": "",
         Status: "Watch",
         Notes: "Only use when upside is clear and risk is controlled.",
@@ -185,8 +197,8 @@ const defaultSections: Section[] = [
     subtitle: "Food, gas, hygiene, car, and home survival items.",
     columns: ["Item", "Category", "Current Level", "Needed", "Urgency", "Status", "Notes"],
     rows: [
-      { Item: "Food", Category: "House", "Current Level": "Low", Needed: "", Urgency: "Critical", Status: "Needed", Notes: "" },
-      { Item: "Gas", Category: "Car", "Current Level": "Low", Needed: "", Urgency: "High", Status: "Needed", Notes: "" },
+      { Item: "Food", Category: "House", "Current Level": "", Needed: "", Urgency: "Critical", Status: "", Notes: "" },
+      { Item: "Gas", Category: "Car", "Current Level": "", Needed: "", Urgency: "High", Status: "", Notes: "" },
     ],
   },
   {
@@ -195,8 +207,8 @@ const defaultSections: Section[] = [
     subtitle: "Big-picture progress toward freedom, stability, and growth.",
     columns: ["Goal", "Category", "Target", "Current", "Progress %", "Priority", "Next Step", "Notes"],
     rows: [
-      { Goal: "Emergency Fund", Category: "Money", Target: "500", Current: "0", "Progress %": "0", Priority: "High", "Next Step": "Save first amount", Notes: "" },
-      { Goal: "VCC System", Category: "System", Target: "Clean app", Current: "Working", "Progress %": "90", Priority: "High", "Next Step": "Recommended Move logic", Notes: "" },
+      { Goal: "Emergency Fund", Category: "Money", Target: "", Current: "", "Progress %": "", Priority: "High", "Next Step": "", Notes: "" },
+      { Goal: "VCC System", Category: "System", Target: "", Current: "", "Progress %": "", Priority: "High", "Next Step": "", Notes: "" },
     ],
   },
   {
@@ -254,6 +266,46 @@ export default function Dashboard() {
     );
   }
 
+  function formatCell(sectionKey: SectionKey, rowIndex: number, column: string, value: string) {
+    if (!moneyColumns.has(column)) return;
+    if (!value.trim()) return;
+
+    const formatted = formatCurrencyInput(value);
+    updateCell(sectionKey, rowIndex, column, formatted);
+  }
+
+  function handleCellKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>,
+    sectionKey: SectionKey,
+    rowIndex: number,
+    columnIndex: number
+  ) {
+    const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+    if (!arrows.includes(event.key)) return;
+
+    event.preventDefault();
+
+    const active = getSection(sections, sectionKey);
+    const maxRow = active.rows.length - 1;
+    const maxColumn = active.columns.length - 1;
+
+    let nextRow = rowIndex;
+    let nextColumn = columnIndex;
+
+    if (event.key === "ArrowUp") nextRow = Math.max(0, rowIndex - 1);
+    if (event.key === "ArrowDown") nextRow = Math.min(maxRow, rowIndex + 1);
+    if (event.key === "ArrowLeft") nextColumn = Math.max(0, columnIndex - 1);
+    if (event.key === "ArrowRight") nextColumn = Math.min(maxColumn, columnIndex + 1);
+
+    const selector = `[data-section="${sectionKey}"][data-row="${nextRow}"][data-column="${nextColumn}"]`;
+    const nextInput = document.querySelector<HTMLInputElement>(selector);
+
+    if (nextInput) {
+      nextInput.focus();
+      nextInput.select();
+    }
+  }
+
   function addRow(sectionKey: SectionKey) {
     if (sectionKey === "alerts") return;
 
@@ -309,6 +361,8 @@ export default function Dashboard() {
     <main className="vcc">
       <style>{styles}</style>
 
+      {menuOpen && <button className="menuScrim" aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
+
       <header className="topbar">
         <button className="brand" onClick={() => setMenuOpen((current) => !current)}>
           <span className="logo">⌁</span>
@@ -357,6 +411,8 @@ export default function Dashboard() {
         <SectionPage
           section={activeSection}
           updateCell={updateCell}
+          formatCell={formatCell}
+          handleCellKeyDown={handleCellKeyDown}
           addRow={addRow}
           deleteRow={deleteRow}
           resetSection={resetSection}
@@ -554,6 +610,8 @@ function AlertsPage({
 function SectionPage({
   section,
   updateCell,
+  formatCell,
+  handleCellKeyDown,
   addRow,
   deleteRow,
   resetSection,
@@ -561,6 +619,13 @@ function SectionPage({
 }: {
   section: Section;
   updateCell: (sectionKey: SectionKey, rowIndex: number, column: string, value: string) => void;
+  formatCell: (sectionKey: SectionKey, rowIndex: number, column: string, value: string) => void;
+  handleCellKeyDown: (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    sectionKey: SectionKey,
+    rowIndex: number,
+    columnIndex: number
+  ) => void;
   addRow: (sectionKey: SectionKey) => void;
   deleteRow: (sectionKey: SectionKey, rowIndex: number) => void;
   resetSection: (sectionKey: SectionKey) => void;
@@ -587,12 +652,17 @@ function SectionPage({
           <tbody>
             {section.rows.map((row, rowIndex) => (
               <tr key={`${section.key}-${rowIndex}`}>
-                {section.columns.map((column) => (
+                {section.columns.map((column, columnIndex) => (
                   <td key={column}>
                     <input
+                      data-section={section.key}
+                      data-row={rowIndex}
+                      data-column={columnIndex}
                       value={row[column] ?? ""}
                       onChange={(event) => updateCell(section.key, rowIndex, column, event.target.value)}
-                      placeholder="-"
+                      onBlur={(event) => formatCell(section.key, rowIndex, column, event.target.value)}
+                      onKeyDown={(event) => handleCellKeyDown(event, section.key, rowIndex, columnIndex)}
+                      placeholder={moneyColumns.has(column) ? "$0" : "-"}
                     />
                   </td>
                 ))}
@@ -603,6 +673,8 @@ function SectionPage({
             ))}
           </tbody>
         </table>
+
+        <p className="sheetHint">Tip: Use arrow keys to move between cells. Money cells auto-format when you click out.</p>
       </div>
     </section>
   );
@@ -1075,6 +1147,17 @@ function number(value: string | undefined) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function formatCurrencyInput(value: string) {
+  const parsed = number(value);
+  if (!Number.isFinite(parsed)) return "";
+  if (parsed === 0 && !value.includes("0")) return "";
+  return parsed.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+}
+
 function money(value: number) {
   return value.toLocaleString("en-US", {
     style: "currency",
@@ -1140,22 +1223,32 @@ input {
 .vcc {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 28rem),
-    linear-gradient(180deg, #020617, #030712);
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.22), transparent 28rem),
+    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.08), transparent 24rem),
+    linear-gradient(180deg, #07111f, #050b18);
   color: #f8fafc;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.menuScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: rgba(2, 6, 23, 0.22);
+  border: 0;
+  cursor: default;
 }
 
 .topbar {
   position: sticky;
   top: 0;
   z-index: 50;
-  min-height: 82px;
+  min-height: 70px;
   display: flex;
   align-items: center;
-  padding: 18px 28px;
-  background: rgba(2, 6, 23, 0.94);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 12px 22px;
+  background: rgba(7, 17, 31, 0.96);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
   backdrop-filter: blur(18px);
 }
 
@@ -1166,19 +1259,19 @@ input {
   background: transparent;
   border: 0;
   color: #60a5fa;
-  font-size: 25px;
+  font-size: 21px;
   font-weight: 900;
-  letter-spacing: 8px;
+  letter-spacing: 6px;
   cursor: pointer;
 }
 
 .logo {
-  width: 50px;
-  height: 50px;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
   border: 1px solid rgba(96, 165, 250, 0.5);
-  border-radius: 18px;
+  border-radius: 15px;
   background: rgba(15, 23, 42, 0.9);
 }
 
@@ -1189,13 +1282,14 @@ input {
 
 .menu {
   position: absolute;
-  top: 74px;
+  z-index: 60;
+  top: 64px;
   left: 28px;
   width: min(390px, calc(100vw - 56px));
   max-height: calc(100vh - 105px);
   overflow: auto;
-  background: rgba(2, 6, 23, 0.98);
-  border: 1px solid rgba(96, 165, 250, 0.3);
+  background: rgba(7, 17, 31, 0.99);
+  border: 1px solid rgba(96, 165, 250, 0.42);
   border-radius: 22px;
   padding: 12px;
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
@@ -1231,7 +1325,7 @@ input {
 .content {
   width: min(1440px, 100%);
   margin: 0 auto;
-  padding: 28px;
+  padding: 18px;
 }
 
 .hero,
@@ -1241,9 +1335,9 @@ input {
 .stack,
 .alert,
 .movePanel {
-  border: 1px solid rgba(96, 165, 250, 0.28);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.95));
-  border-radius: 28px;
+  border: 1px solid rgba(96, 165, 250, 0.38);
+  background: linear-gradient(180deg, rgba(20, 31, 54, 0.98), rgba(9, 17, 34, 0.98));
+  border-radius: 22px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
 }
 
@@ -1251,18 +1345,18 @@ input {
   display: flex;
   justify-content: space-between;
   gap: 22px;
-  padding: 28px;
-  margin-bottom: 18px;
+  padding: 20px;
+  margin-bottom: 14px;
 }
 
 .statusline {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 18px;
+  gap: 12px;
   color: #94a3b8;
-  margin-bottom: 18px;
-  font-size: 18px;
+  margin-bottom: 12px;
+  font-size: 15px;
   letter-spacing: 4px;
   font-weight: 900;
 }
@@ -1272,39 +1366,39 @@ input {
   border: 1px solid rgba(52, 211, 153, 0.45);
   background: rgba(16, 185, 129, 0.12);
   border-radius: 12px;
-  padding: 10px 15px;
+  padding: 8px 12px;
 }
 
 .kicker {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   color: #60a5fa;
-  font-size: 13px;
-  letter-spacing: 5px;
+  font-size: 11px;
+  letter-spacing: 4px;
   font-weight: 900;
 }
 
 .hero h1,
 .pageHeader h1 {
   margin: 0;
-  font-size: clamp(38px, 6vw, 68px);
-  line-height: 1.02;
+  font-size: clamp(30px, 4.8vw, 52px);
+  line-height: 1;
   letter-spacing: -2px;
 }
 
 .heroText {
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   max-width: 900px;
   color: #cbd5e1;
-  font-size: clamp(17px, 2vw, 22px);
-  line-height: 1.45;
+  font-size: clamp(15px, 1.6vw, 18px);
+  line-height: 1.35;
 }
 
 .primary,
 .secondary,
 .back,
 .delete {
-  border-radius: 15px;
-  padding: 13px 18px;
+  border-radius: 13px;
+  padding: 11px 15px;
   cursor: pointer;
   font-weight: 900;
   letter-spacing: 2px;
@@ -1341,23 +1435,24 @@ input {
   width: 100%;
   text-align: left;
   color: #f8fafc;
-  padding: 22px;
-  margin-bottom: 18px;
+  padding: 18px;
+  margin-bottom: 14px;
   cursor: pointer;
 }
 
 .movePanel.danger {
-  border-color: rgba(251, 113, 133, 0.5);
-  background: linear-gradient(180deg, rgba(127, 29, 29, 0.24), rgba(15, 23, 42, 0.92));
+  border-color: rgba(251, 113, 133, 0.55);
+  background: linear-gradient(180deg, rgba(100, 28, 45, 0.42), rgba(19, 27, 48, 0.94));
 }
 
 .movePanel.warning {
   border-color: rgba(251, 191, 36, 0.5);
-  background: linear-gradient(180deg, rgba(120, 53, 15, 0.24), rgba(15, 23, 42, 0.92));
+  background: linear-gradient(180deg, rgba(113, 74, 22, 0.34), rgba(19, 27, 48, 0.94));
 }
 
 .movePanel.stable {
-  border-color: rgba(52, 211, 153, 0.38);
+  background: linear-gradient(180deg, rgba(16, 82, 72, 0.25), rgba(19, 27, 48, 0.94));
+  border-color: rgba(52, 211, 153, 0.44);
 }
 
 .moveTop {
@@ -1365,12 +1460,12 @@ input {
   justify-content: space-between;
   gap: 18px;
   align-items: flex-start;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .moveTop h2 {
   margin: 0;
-  font-size: clamp(28px, 4vw, 46px);
+  font-size: clamp(25px, 3.3vw, 38px);
   line-height: 1.05;
 }
 
@@ -1384,20 +1479,20 @@ input {
 .moveGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .moveGrid div {
-  background: rgba(2, 6, 23, 0.42);
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 18px;
-  padding: 15px;
+  background: rgba(18, 30, 54, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  padding: 12px;
 }
 
 .moveGrid p {
-  margin: 0 0 10px;
+  margin: 0 0 7px;
   color: #94a3b8;
-  font-size: 12px;
+  font-size: 10px;
   letter-spacing: 3px;
   font-weight: 900;
 }
@@ -1405,40 +1500,42 @@ input {
 .moveGrid h3 {
   margin: 0;
   color: #f8fafc;
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .proof {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .proofCard,
 .card {
   text-align: left;
   color: #f8fafc;
-  background: rgba(15, 23, 42, 0.78);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 20px;
-  padding: 18px;
+  background: rgba(18, 30, 54, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  padding: 14px;
   cursor: pointer;
 }
 
 .proofCard.danger,
 .card.bad {
-  border-color: rgba(251, 113, 133, 0.45);
-  background: linear-gradient(180deg, rgba(127, 29, 29, 0.22), rgba(15, 23, 42, 0.82));
+  border-color: rgba(251, 113, 133, 0.55);
+  background: linear-gradient(180deg, rgba(100, 28, 45, 0.42), rgba(19, 27, 48, 0.94));
 }
 
 .card.good {
-  border-color: rgba(52, 211, 153, 0.34);
+  background: linear-gradient(180deg, rgba(16, 82, 72, 0.25), rgba(19, 27, 48, 0.94));
+  border-color: rgba(52, 211, 153, 0.44);
 }
 
 .card.warn {
-  border-color: rgba(251, 191, 36, 0.42);
+  border-color: rgba(251, 191, 36, 0.5);
+  background: linear-gradient(180deg, rgba(113, 74, 22, 0.34), rgba(19, 27, 48, 0.94));
 }
 
 .proofCard p,
@@ -1449,15 +1546,15 @@ input {
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 3px;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 900;
 }
 
 .proofCard h3,
 .card h2 {
-  margin: 12px 0 8px;
+  margin: 8px 0 5px;
   color: #60a5fa;
-  font-size: clamp(24px, 3vw, 34px);
+  font-size: clamp(24px, 2.5vw, 31px);
 }
 
 .proofCard span,
@@ -1469,8 +1566,8 @@ input {
 }
 
 .stack {
-  padding: 18px;
-  margin-bottom: 18px;
+  padding: 14px;
+  margin-bottom: 14px;
 }
 
 .stackHead {
@@ -1492,61 +1589,67 @@ input {
   gap: 16px;
   text-align: left;
   color: #f8fafc;
-  background: rgba(2, 6, 23, 0.35);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 18px;
-  padding: 15px;
-  margin-bottom: 10px;
+  background: rgba(18, 30, 54, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 15px;
+  padding: 12px;
+  margin-bottom: 8px;
   cursor: pointer;
 }
 
 .stackItem.critical {
-  border-color: rgba(251, 113, 133, 0.45);
+  border-color: rgba(251, 113, 133, 0.55);
 }
 
 .stackItem.high {
-  border-color: rgba(251, 191, 36, 0.42);
+  background: linear-gradient(180deg, rgba(113, 74, 22, 0.34), rgba(19, 27, 48, 0.94));
+  border-color: rgba(251, 191, 36, 0.5);
 }
 
 .stackItem > span {
-  width: 36px;
-  height: 36px;
+  width: 31px;
+  height: 31px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(59, 130, 246, 0.18);
   color: #60a5fa;
   font-weight: 900;
 }
 
 .stackItem h3 {
-  margin: 6px 0;
+  margin: 4px 0;
+  font-size: 18px;
+}
+
+.stackItem small {
+  font-size: 13px;
 }
 
 .cards {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .card {
-  min-height: 180px;
+  min-height: 135px;
 }
 
 .card small {
   display: block;
-  margin-top: 14px;
+  margin-top: 9px;
   color: #94a3b8;
 }
 
 .pageHeader {
-  padding: 28px;
-  margin-bottom: 18px;
+  padding: 20px;
+  margin-bottom: 14px;
 }
 
 .pageHeader > p:last-child {
   color: #cbd5e1;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.45;
 }
 
@@ -1554,28 +1657,29 @@ input {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .tableWrap {
   overflow-x: auto;
-  padding: 14px;
+  padding: 10px;
+  border-radius: 20px;
 }
 
 table {
   width: 100%;
   min-width: 980px;
   border-collapse: collapse;
-  background: #020617;
+  background: #07111f;
   border-radius: 16px;
   overflow: hidden;
 }
 
 th {
-  background: #07111f;
+  background: #0d1b31;
   color: #60a5fa;
   text-align: left;
-  padding: 13px;
+  padding: 10px;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -1584,19 +1688,19 @@ th {
 }
 
 td {
-  padding: 8px;
+  padding: 6px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.08);
   border-right: 1px solid rgba(148, 163, 184, 0.06);
 }
 
 td input {
   width: 100%;
-  min-width: 150px;
-  background: rgba(15, 23, 42, 0.84);
+  min-width: 135px;
+  background: rgba(23, 37, 64, 0.96);
   color: #f8fafc;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: 10px;
-  padding: 11px;
+  padding: 9px;
   outline: none;
 }
 
@@ -1605,29 +1709,37 @@ td input:focus {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.16);
 }
 
+.sheetHint {
+  margin: 12px 4px 2px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
 .alertGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .alert {
   text-align: left;
   color: #f8fafc;
-  padding: 20px;
+  padding: 16px;
   cursor: pointer;
 }
 
 .alert.critical {
-  border-color: rgba(251, 113, 133, 0.45);
+  border-color: rgba(251, 113, 133, 0.55);
+  background: linear-gradient(180deg, rgba(100, 28, 45, 0.42), rgba(19, 27, 48, 0.94));
 }
 
 .alert.high {
-  border-color: rgba(251, 191, 36, 0.42);
+  border-color: rgba(251, 191, 36, 0.5);
+  background: linear-gradient(180deg, rgba(113, 74, 22, 0.34), rgba(19, 27, 48, 0.94));
 }
 
 .alert h2 {
-  margin: 14px 0;
+  margin: 10px 0;
 }
 
 .alert strong {
@@ -1636,7 +1748,7 @@ td input:focus {
 }
 
 .empty {
-  padding: 24px;
+  padding: 18px;
 }
 
 @media (max-width: 1200px) {
@@ -1651,271 +1763,6 @@ td input:focus {
   .moveGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
-
-@media (max-width: 760px) {
-  .topbar {
-    padding: 14px 18px;
-  }
-
-  .brand {
-    font-size: 20px;
-    letter-spacing: 6px;
-  }
-
-  .content {
-    padding: 16px;
-  }
-
-  .hero {
-    flex-direction: column;
-    padding: 22px;
-  }
-
-  .primary {
-    width: 100%;
-  }
-
-  .moveTop {
-    flex-direction: column;
-  }
-
-  .moveGrid,
-  .proof,
-  .cards,
-  .alertGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .hero h1,
-  .pageHeader h1 {
-    font-size: 38px;
-  }
-
-  .actions {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .secondary,
-  .primary {
-    width: 100%;
-  }
-}
-
-/* ===== VCC COMPACT DAILY MODE OVERRIDES ===== */
-
-.content {
-  padding: 18px;
-}
-
-.topbar {
-  min-height: 70px;
-  padding: 12px 22px;
-}
-
-.brand {
-  font-size: 21px;
-  letter-spacing: 6px;
-}
-
-.logo {
-  width: 42px;
-  height: 42px;
-  border-radius: 15px;
-}
-
-.menu {
-  top: 64px;
-}
-
-.hero {
-  padding: 20px;
-  margin-bottom: 14px;
-  border-radius: 22px;
-}
-
-.statusline {
-  margin-bottom: 12px;
-  font-size: 15px;
-  gap: 12px;
-}
-
-.online {
-  padding: 8px 12px;
-}
-
-.kicker {
-  margin-bottom: 8px;
-  font-size: 11px;
-  letter-spacing: 4px;
-}
-
-.hero h1,
-.pageHeader h1 {
-  font-size: clamp(30px, 4.8vw, 52px);
-  line-height: 1;
-}
-
-.heroText {
-  margin-top: 12px;
-  font-size: clamp(15px, 1.6vw, 18px);
-  line-height: 1.35;
-}
-
-.primary,
-.secondary,
-.back,
-.delete {
-  padding: 11px 15px;
-  border-radius: 13px;
-}
-
-.movePanel {
-  padding: 18px;
-  margin-bottom: 14px;
-  border-radius: 22px;
-}
-
-.moveTop {
-  margin-bottom: 14px;
-}
-
-.moveTop h2 {
-  font-size: clamp(25px, 3.3vw, 38px);
-}
-
-.moveGrid {
-  gap: 10px;
-}
-
-.moveGrid div {
-  padding: 12px;
-  border-radius: 14px;
-}
-
-.moveGrid p {
-  margin-bottom: 7px;
-  font-size: 10px;
-  letter-spacing: 3px;
-}
-
-.moveGrid h3 {
-  font-size: 14px;
-  line-height: 1.35;
-}
-
-.proof {
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.proofCard,
-.card {
-  padding: 14px;
-  border-radius: 16px;
-}
-
-.proofCard p,
-.card p,
-.alert p,
-.stackHead p {
-  font-size: 10px;
-  letter-spacing: 3px;
-}
-
-.proofCard h3,
-.card h2 {
-  margin: 8px 0 5px;
-  font-size: clamp(24px, 2.5vw, 31px);
-}
-
-.cards {
-  gap: 10px;
-}
-
-.card {
-  min-height: 135px;
-}
-
-.card small {
-  margin-top: 9px;
-}
-
-.stack {
-  padding: 14px;
-  margin-bottom: 14px;
-  border-radius: 22px;
-}
-
-.stackItem {
-  padding: 12px;
-  margin-bottom: 8px;
-  border-radius: 15px;
-}
-
-.stackItem > span {
-  width: 31px;
-  height: 31px;
-  border-radius: 10px;
-}
-
-.stackItem h3 {
-  margin: 4px 0;
-  font-size: 18px;
-}
-
-.stackItem small {
-  font-size: 13px;
-}
-
-.pageHeader {
-  padding: 20px;
-  margin-bottom: 14px;
-  border-radius: 22px;
-}
-
-.pageHeader > p:last-child {
-  font-size: 16px;
-}
-
-.actions {
-  margin-bottom: 14px;
-}
-
-.tableWrap {
-  padding: 10px;
-  border-radius: 20px;
-}
-
-th {
-  padding: 10px;
-}
-
-td {
-  padding: 6px;
-}
-
-td input {
-  padding: 9px;
-  min-width: 135px;
-}
-
-.alertGrid {
-  gap: 10px;
-}
-
-.alert {
-  padding: 16px;
-  border-radius: 20px;
-}
-
-.alert h2 {
-  margin: 10px 0;
-}
-
-.empty {
-  padding: 18px;
 }
 
 @media (max-width: 760px) {
@@ -1946,7 +1793,23 @@ td input {
   }
 
   .hero {
+    flex-direction: column;
     padding: 16px;
+  }
+
+  .primary {
+    width: 100%;
+  }
+
+  .moveTop {
+    flex-direction: column;
+  }
+
+  .moveGrid,
+  .proof,
+  .cards,
+  .alertGrid {
+    grid-template-columns: 1fr;
   }
 
   .hero h1,
@@ -1954,12 +1817,14 @@ td input {
     font-size: 32px;
   }
 
-  .movePanel {
-    padding: 15px;
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
-  .moveTop h2 {
-    font-size: 28px;
+  .secondary,
+  .primary {
+    width: 100%;
   }
 
   .proofCard,
@@ -1984,80 +1849,4 @@ td input {
     min-width: 850px;
   }
 }
-
-
-
-/* ===== VCC SOFT BRIGHTNESS PASS ===== */
-
-.vcc {
-  background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.22), transparent 28rem),
-    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.08), transparent 24rem),
-    linear-gradient(180deg, #07111f, #050b18);
-}
-
-.topbar {
-  background: rgba(7, 17, 31, 0.96);
-  border-bottom-color: rgba(148, 163, 184, 0.24);
-}
-
-.hero,
-.pageHeader,
-.tableWrap,
-.empty,
-.stack,
-.alert,
-.movePanel {
-  background: linear-gradient(180deg, rgba(20, 31, 54, 0.98), rgba(9, 17, 34, 0.98));
-  border-color: rgba(96, 165, 250, 0.38);
-}
-
-.proofCard,
-.card,
-.stackItem,
-.moveGrid div {
-  background: rgba(18, 30, 54, 0.92);
-  border-color: rgba(148, 163, 184, 0.24);
-}
-
-.proofCard.danger,
-.card.bad,
-.movePanel.danger,
-.alert.critical {
-  background: linear-gradient(180deg, rgba(100, 28, 45, 0.42), rgba(19, 27, 48, 0.94));
-  border-color: rgba(251, 113, 133, 0.55);
-}
-
-.card.warn,
-.movePanel.warning,
-.alert.high,
-.stackItem.high {
-  background: linear-gradient(180deg, rgba(113, 74, 22, 0.34), rgba(19, 27, 48, 0.94));
-  border-color: rgba(251, 191, 36, 0.5);
-}
-
-.card.good,
-.movePanel.stable {
-  background: linear-gradient(180deg, rgba(16, 82, 72, 0.25), rgba(19, 27, 48, 0.94));
-  border-color: rgba(52, 211, 153, 0.44);
-}
-
-td input {
-  background: rgba(23, 37, 64, 0.96);
-  border-color: rgba(148, 163, 184, 0.25);
-}
-
-table {
-  background: #07111f;
-}
-
-th {
-  background: #0d1b31;
-}
-
-.menu {
-  background: rgba(7, 17, 31, 0.99);
-  border-color: rgba(96, 165, 250, 0.42);
-}
-
 `;
