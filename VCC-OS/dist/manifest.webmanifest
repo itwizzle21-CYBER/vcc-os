@@ -1,0 +1,13 @@
+{
+  "name": "Vitality Command Center",
+  "short_name": "VCC_OS",
+  "description": "Offline-capable command center for money, goals, alerts, bills, debt, savings, and daily briefing.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "orientation": "portrait",
+  "categories": ["productivity", "finance", "utilities"],
+  "icons": []
+}
