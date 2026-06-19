@@ -4,13 +4,16 @@ import type { KeyboardEvent } from "react";
 type SectionKey =
   | "moneySnapshot"
   | "weeklyCash"
-  | "missions"
-  | "alerts"
-  | "buyNext"
-  | "goals"
+  | "income"
+  | "transactions"
   | "bills"
   | "debt"
-  | "savings";
+  | "savings"
+  | "inventory"
+  | "buyNext"
+  | "goals"
+  | "missions"
+  | "alerts";
 
 type PageView = "home" | SectionKey;
 type Row = Record<string, string>;
@@ -21,7 +24,7 @@ type Section = {
   title: string;
   subtitle: string;
   status: string;
-  group: "briefing" | "command" | "finance";
+  group: "briefing" | "money" | "operations" | "command";
   columns: string[];
   rows: Row[];
 };
@@ -47,16 +50,21 @@ type Metrics = {
   emergencySavings: number;
   remainingCash: number;
   snapshotPressure: number;
-  weeklyOutflow: number;
+  incomeTotal: number;
+  transactionInflow: number;
+  transactionOutflow: number;
+  transactionNet: number;
   weeklyNet: number;
-  openMissions: number;
-  criticalBuyNext: number;
-  avgGoalProgress: number;
   unpaidBills: number;
+  overdueBills: number;
   billTotal: number;
   activeDebt: number;
   debtTotal: number;
   savingsAmount: number;
+  inventoryCritical: number;
+  buyNextCritical: number;
+  avgGoalProgress: number;
+  openMissions: number;
 };
 
 type Briefing = {
@@ -68,14 +76,14 @@ type Briefing = {
   proof: { label: string; value: string; source: SectionKey }[];
 };
 
-const STORAGE_KEY = "vcc_os_briefing_objective_stack_v1";
+const STORAGE_KEY = "vcc_os_regular_functions_v1";
 
 const defaultSections: Section[] = [
   {
     key: "moneySnapshot",
     label: "Money Snapshot",
     title: "Money Snapshot",
-    subtitle: "Cash on hand, income, bills, survival needs, borrow pressure, and remaining cash.",
+    subtitle: "Cash, income, pressure, borrowed money, and survival needs.",
     status: "INPUT",
     group: "briefing",
     columns: ["Category", "Amount", "Status", "Priority", "Notes"],
@@ -97,12 +105,118 @@ const defaultSections: Section[] = [
     key: "weeklyCash",
     label: "Weekly Cash",
     title: "Weekly Cash Flow",
-    subtitle: "Weekly income, spending, borrows, rollover, and true cashflow.",
+    subtitle: "Weekly income, bills, spending, borrowed money, rollover, and net.",
     status: "TRACK",
     group: "briefing",
     columns: ["Week", "Income", "Bills", "Spending", "Borrowed", "Rollover", "Net", "Notes"],
     rows: [
       { Week: currentWeekLabel(), Income: "", Bills: "", Spending: "", Borrowed: "", Rollover: "", Net: "", Notes: "" },
+    ],
+  },
+  {
+    key: "income",
+    label: "Income",
+    title: "Income Tracker",
+    subtitle: "Paychecks, side money, trading payouts, and expected money.",
+    status: "TRACK",
+    group: "money",
+    columns: ["Source", "Expected", "Received", "Date", "Status", "Notes"],
+    rows: [
+      { Source: "Job check", Expected: "", Received: "", Date: "", Status: "Expected", Notes: "" },
+      { Source: "Trading payout", Expected: "", Received: "", Date: "", Status: "Pending", Notes: "" },
+    ],
+  },
+  {
+    key: "transactions",
+    label: "Transactions",
+    title: "Transactions",
+    subtitle: "Spending, deposits, cash moves, and money leaks.",
+    status: "LOG",
+    group: "money",
+    columns: ["Date", "Type", "Category", "Description", "Amount", "Account", "Notes"],
+    rows: [
+      { Date: today(), Type: "Expense", Category: "Food", Description: "", Amount: "", Account: "", Notes: "" },
+      { Date: today(), Type: "Expense", Category: "Gas", Description: "", Amount: "", Account: "", Notes: "" },
+    ],
+  },
+  {
+    key: "bills",
+    label: "Bills",
+    title: "Bills Due",
+    subtitle: "Upcoming, unpaid, paid, and overdue bills.",
+    status: "CHECK",
+    group: "money",
+    columns: ["Bill", "Due Date", "Amount", "Status", "Paid Date", "Priority", "Notes"],
+    rows: [
+      { Bill: "Car note", "Due Date": "", Amount: "", Status: "Unpaid", "Paid Date": "", Priority: "High", Notes: "" },
+      { Bill: "Phone", "Due Date": "", Amount: "", Status: "Unpaid", "Paid Date": "", Priority: "High", Notes: "" },
+      { Bill: "Insurance", "Due Date": "", Amount: "", Status: "Unpaid", "Paid Date": "", Priority: "High", Notes: "" },
+    ],
+  },
+  {
+    key: "debt",
+    label: "Debt",
+    title: "Debt Command",
+    subtitle: "Car balance, MyPay, SpotMe, and debt pressure.",
+    status: "TRACK",
+    group: "money",
+    columns: ["Debt", "Starting Balance", "Current Balance", "Payment", "Due Date", "Status", "Notes"],
+    rows: [
+      { Debt: "Car balance", "Starting Balance": "", "Current Balance": "", Payment: "", "Due Date": "", Status: "Active", Notes: "" },
+      { Debt: "MyPay", "Starting Balance": "", "Current Balance": "", Payment: "", "Due Date": "", Status: "Active", Notes: "" },
+      { Debt: "SpotMe", "Starting Balance": "", "Current Balance": "", Payment: "", "Due Date": "", Status: "Active", Notes: "" },
+    ],
+  },
+  {
+    key: "savings",
+    label: "Savings",
+    title: "Savings Vault",
+    subtitle: "Emergency money, move-out money, and future goals.",
+    status: "BUILD",
+    group: "money",
+    columns: ["Goal", "Target Amount", "Current Amount", "Needed", "Priority", "Deadline", "Notes"],
+    rows: [
+      { Goal: "Emergency fund", "Target Amount": "500", "Current Amount": "0", Needed: "500", Priority: "High", Deadline: "", Notes: "" },
+      { Goal: "Move-out fund", "Target Amount": "", "Current Amount": "0", Needed: "", Priority: "Medium", Deadline: "", Notes: "" },
+    ],
+  },
+  {
+    key: "inventory",
+    label: "Inventory",
+    title: "Inventory",
+    subtitle: "Food, home, car, hygiene, and daily survival items.",
+    status: "WATCH",
+    group: "operations",
+    columns: ["Item", "Category", "Current Level", "Needed", "Urgency", "Status", "Notes"],
+    rows: [
+      { Item: "Food", Category: "House", "Current Level": "Low", Needed: "", Urgency: "Critical", Status: "Needed", Notes: "" },
+      { Item: "Gas", Category: "Car", "Current Level": "Low", Needed: "", Urgency: "High", Status: "Needed", Notes: "" },
+    ],
+  },
+  {
+    key: "buyNext",
+    label: "Buy Next",
+    title: "Buy Next Queue",
+    subtitle: "Purchase priorities pulled from survival needs and inventory.",
+    status: "READY",
+    group: "operations",
+    columns: ["Item", "Category", "Current Level", "Urgency", "Estimated Cost", "Buy Status", "Notes"],
+    rows: [
+      { Item: "Food", Category: "House", "Current Level": "Low", Urgency: "Critical", "Estimated Cost": "", "Buy Status": "Needed", Notes: "" },
+      { Item: "Gas", Category: "Car", "Current Level": "Low", Urgency: "High", "Estimated Cost": "", "Buy Status": "Needed", Notes: "" },
+    ],
+  },
+  {
+    key: "goals",
+    label: "Goals",
+    title: "Goal Progress",
+    subtitle: "Progress tracking for the bigger mission.",
+    status: "BUILDING",
+    group: "command",
+    columns: ["Goal", "Category", "Target", "Current", "Progress %", "Priority", "Next Step", "Notes"],
+    rows: [
+      { Goal: "VCC recovery", Category: "System", Target: "Working app", Current: "Regular functions", "Progress %": "85", Priority: "High", "Next Step": "Restore full functions", Notes: "" },
+      { Goal: "Emergency fund", Category: "Money", Target: "500", Current: "0", "Progress %": "0", Priority: "High", "Next Step": "Save first small amount", Notes: "" },
     ],
   },
   {
@@ -122,78 +236,11 @@ const defaultSections: Section[] = [
     key: "alerts",
     label: "Priority Alerts",
     title: "Priority Alerts",
-    subtitle: "Auto-generated view of what can block financial freedom if ignored.",
+    subtitle: "Auto-generated read-only blockers from all sections.",
     status: "AUTO",
     group: "command",
     columns: [],
     rows: [],
-  },
-  {
-    key: "buyNext",
-    label: "Buy Next",
-    title: "Buy Next Queue",
-    subtitle: "Inventory and purchase priorities.",
-    status: "READY",
-    group: "command",
-    columns: ["Item", "Category", "Current Level", "Urgency", "Estimated Cost", "Buy Status", "Notes"],
-    rows: [
-      { Item: "Food", Category: "House", "Current Level": "Low", Urgency: "Critical", "Estimated Cost": "", "Buy Status": "Needed", Notes: "" },
-      { Item: "Gas", Category: "Car", "Current Level": "Low", Urgency: "High", "Estimated Cost": "", "Buy Status": "Needed", Notes: "" },
-    ],
-  },
-  {
-    key: "goals",
-    label: "Goal Progress",
-    title: "Goal Progress",
-    subtitle: "Progress tracking for the bigger mission.",
-    status: "BUILDING",
-    group: "command",
-    columns: ["Goal", "Category", "Target", "Current", "Progress %", "Priority", "Next Step", "Notes"],
-    rows: [
-      { Goal: "VCC recovery", Category: "System", Target: "Working app", Current: "Dashboard online", "Progress %": "80", Priority: "High", "Next Step": "Briefing objective stack", Notes: "" },
-      { Goal: "Emergency fund", Category: "Money", Target: "500", Current: "0", "Progress %": "0", Priority: "High", "Next Step": "Save first small amount", Notes: "" },
-    ],
-  },
-  {
-    key: "bills",
-    label: "Bills Due",
-    title: "Bills Due",
-    subtitle: "Upcoming, unpaid, paid, and overdue bills.",
-    status: "CHECK",
-    group: "finance",
-    columns: ["Bill", "Due Date", "Amount", "Status", "Paid Date", "Priority", "Notes"],
-    rows: [
-      { Bill: "Car note", "Due Date": "", Amount: "", Status: "Unpaid", "Paid Date": "", Priority: "High", Notes: "" },
-      { Bill: "Phone", "Due Date": "", Amount: "", Status: "Unpaid", "Paid Date": "", Priority: "High", Notes: "" },
-      { Bill: "Insurance", "Due Date": "", Amount: "", Status: "Unpaid", "Paid Date": "", Priority: "High", Notes: "" },
-    ],
-  },
-  {
-    key: "debt",
-    label: "Debt",
-    title: "Debt Command",
-    subtitle: "Car balance, MyPay, SpotMe, and debt pressure.",
-    status: "TRACK",
-    group: "finance",
-    columns: ["Debt", "Starting Balance", "Current Balance", "Payment", "Due Date", "Status", "Notes"],
-    rows: [
-      { Debt: "Car balance", "Starting Balance": "", "Current Balance": "", Payment: "", "Due Date": "", Status: "Active", Notes: "" },
-      { Debt: "MyPay", "Starting Balance": "", "Current Balance": "", Payment: "", "Due Date": "", Status: "Active", Notes: "" },
-      { Debt: "SpotMe", "Starting Balance": "", "Current Balance": "", Payment: "", "Due Date": "", Status: "Active", Notes: "" },
-    ],
-  },
-  {
-    key: "savings",
-    label: "Savings",
-    title: "Savings Vault",
-    subtitle: "Emergency money, move-out money, and future goals.",
-    status: "EMPTY",
-    group: "finance",
-    columns: ["Goal", "Target Amount", "Current Amount", "Needed", "Priority", "Deadline", "Notes"],
-    rows: [
-      { Goal: "Emergency fund", "Target Amount": "500", "Current Amount": "0", Needed: "500", Priority: "High", Deadline: "", Notes: "" },
-      { Goal: "Move-out fund", "Target Amount": "", "Current Amount": "0", Needed: "", Priority: "Medium", Deadline: "", Notes: "" },
-    ],
   },
 ];
 
@@ -214,7 +261,7 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    saveSections(sections);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sections));
   }, [sections]);
 
   const activeSection = useMemo(() => {
@@ -235,34 +282,30 @@ export default function Dashboard() {
   function updateCell(sectionKey: SectionKey, rowIndex: number, column: string, value: string) {
     if (sectionKey === "alerts") return;
 
-    setSections((current) => {
-      const nextSections = current.map((section) => {
+    setSections((current) =>
+      current.map((section) => {
         if (section.key !== sectionKey) return section;
 
-        const rows = section.rows.map((row, index) => {
-          if (index !== rowIndex) return row;
-          return { ...row, [column]: value };
-        });
-
-        return { ...section, rows };
-      });
-
-      saveSections(nextSections);
-      return nextSections;
-    });
+        return {
+          ...section,
+          rows: section.rows.map((row, index) =>
+            index === rowIndex ? { ...row, [column]: value } : row
+          ),
+        };
+      })
+    );
   }
 
   function commitInput(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key !== "Enter") return;
-    saveSections(sections);
     event.currentTarget.blur();
   }
 
   function addRow(sectionKey: SectionKey) {
     if (sectionKey === "alerts") return;
 
-    setSections((current) => {
-      const nextSections = current.map((section) => {
+    setSections((current) =>
+      current.map((section) => {
         if (section.key !== sectionKey) return section;
 
         const emptyRow = section.columns.reduce<Row>((row, column) => {
@@ -271,44 +314,34 @@ export default function Dashboard() {
         }, {});
 
         return { ...section, rows: [...section.rows, emptyRow] };
-      });
-
-      saveSections(nextSections);
-      return nextSections;
-    });
+      })
+    );
   }
 
   function deleteRow(sectionKey: SectionKey, rowIndex: number) {
     if (sectionKey === "alerts") return;
 
-    setSections((current) => {
-      const nextSections = current.map((section) => {
-        if (section.key !== sectionKey) return section;
-        return { ...section, rows: section.rows.filter((_, index) => index !== rowIndex) };
-      });
-
-      saveSections(nextSections);
-      return nextSections;
-    });
+    setSections((current) =>
+      current.map((section) =>
+        section.key === sectionKey
+          ? { ...section, rows: section.rows.filter((_, index) => index !== rowIndex) }
+          : section
+      )
+    );
   }
 
   function resetSection(sectionKey: SectionKey) {
     if (sectionKey === "alerts") return;
 
-    const confirmed = window.confirm("Reset this page to the recommended starter rows?");
+    const confirmed = window.confirm("Reset this page to starter rows?");
     if (!confirmed) return;
 
     const original = defaultSections.find((section) => section.key === sectionKey);
     if (!original) return;
 
-    setSections((current) => {
-      const nextSections = current.map((section) =>
-        section.key === sectionKey ? cloneSection(original) : section
-      );
-
-      saveSections(nextSections);
-      return nextSections;
-    });
+    setSections((current) =>
+      current.map((section) => (section.key === sectionKey ? cloneSection(original) : section))
+    );
   }
 
   return (
@@ -330,34 +363,12 @@ export default function Dashboard() {
                 Dashboard
               </button>
 
-              <p className="vcc-dropdown-group">Briefing Sources</p>
-              {sections.filter((section) => section.group === "briefing").map((section) => (
-                <button key={section.key} className={`vcc-dropdown-item ${view === section.key ? "active" : ""}`} onClick={() => openPage(section.key)}>
-                  <span>{sectionIcon(section.key)}</span>
-                  {section.label}
-                </button>
-              ))}
+              <NavGroup title="Briefing Sources" group="briefing" sections={sections} view={view} openPage={openPage} />
+              <NavGroup title="Money" group="money" sections={sections} view={view} openPage={openPage} />
+              <NavGroup title="Operations" group="operations" sections={sections} view={view} openPage={openPage} />
+              <NavGroup title="Command" group="command" sections={sections} view={view} openPage={openPage} />
 
-              <p className="vcc-dropdown-group">Command</p>
-              {sections.filter((section) => section.group === "command").map((section) => (
-                <button key={section.key} className={`vcc-dropdown-item ${view === section.key ? "active" : ""}`} onClick={() => openPage(section.key)}>
-                  <span>{sectionIcon(section.key)}</span>
-                  {section.label}
-                </button>
-              ))}
-
-              <p className="vcc-dropdown-group">Finance</p>
-              {sections.filter((section) => section.group === "finance").map((section) => (
-                <button key={section.key} className={`vcc-dropdown-item ${view === section.key ? "active" : ""}`} onClick={() => openPage(section.key)}>
-                  <span>{sectionIcon(section.key)}</span>
-                  {section.label}
-                </button>
-              ))}
-
-              <div className="vcc-dropdown-online">
-                <span />
-                ONLINE
-              </div>
+              <div className="vcc-dropdown-online"><span /> ONLINE</div>
             </div>
           )}
         </div>
@@ -383,6 +394,32 @@ export default function Dashboard() {
         ) : null}
       </section>
     </main>
+  );
+}
+
+function NavGroup({
+  title,
+  group,
+  sections,
+  view,
+  openPage,
+}: {
+  title: string;
+  group: Section["group"];
+  sections: Section[];
+  view: PageView;
+  openPage: (view: PageView) => void;
+}) {
+  return (
+    <>
+      <p className="vcc-dropdown-group">{title}</p>
+      {sections.filter((section) => section.group === group).map((section) => (
+        <button key={section.key} className={`vcc-dropdown-item ${view === section.key ? "active" : ""}`} onClick={() => openPage(section.key)}>
+          <span>{sectionIcon(section.key)}</span>
+          {section.label}
+        </button>
+      ))}
+    </>
   );
 }
 
@@ -414,9 +451,7 @@ function HomePage({
             <p className="briefing-subtitle">{briefing.action}</p>
           </div>
 
-          <button className="investigate-btn" onClick={() => openPage(briefing.priority)}>
-            INVESTIGATE →
-          </button>
+          <button className="investigate-btn" onClick={() => openPage(briefing.priority)}>INVESTIGATE →</button>
         </div>
 
         <div className="briefing-why">
@@ -433,11 +468,7 @@ function HomePage({
 
             <div className="objective-list">
               {briefing.objectives.map((objective, index) => (
-                <button
-                  key={`${objective.alert}-${index}`}
-                  className={`objective-item ${objective.urgency.toLowerCase()}`}
-                  onClick={() => openPage(objective.source)}
-                >
+                <button key={`${objective.alert}-${index}`} className={`objective-item ${objective.urgency.toLowerCase()}`} onClick={() => openPage(objective.source)}>
                   <div className="objective-rank">{index + 1}</div>
 
                   <div>
@@ -502,15 +533,13 @@ function PriorityAlertsPage({
   return (
     <section className="section-page">
       <div className="section-header">
-        <button className="back-btn" onClick={backHome}>
-          ← DASHBOARD
-        </button>
+        <button className="back-btn" onClick={backHome}>← DASHBOARD</button>
 
         <div className="section-title-row">
           <div>
             <p className="section-kicker">AUTO_GENERATED_VIEW</p>
             <h1>Priority Alerts</h1>
-            <p>Read-only view of anything important or critical that can block financial freedom if ignored.</p>
+            <p>Read-only view of critical or important blockers across the whole VCC.</p>
           </div>
 
           <span className="section-status">AUTO</span>
@@ -526,7 +555,7 @@ function PriorityAlertsPage({
         {alerts.length === 0 ? (
           <div className="empty-alerts">
             <h2>No major blockers detected.</h2>
-            <p>Keep Money Snapshot, Weekly Cash, Bills, Debt, Savings, Goals, and Buy Next updated so VCC can keep watching.</p>
+            <p>Keep the sections updated so VCC can keep watching.</p>
           </div>
         ) : (
           <div className="alert-list">
@@ -569,9 +598,7 @@ function SectionPage({
   return (
     <section className="section-page">
       <div className="section-header">
-        <button className="back-btn" onClick={backHome}>
-          ← DASHBOARD
-        </button>
+        <button className="back-btn" onClick={backHome}>← DASHBOARD</button>
 
         <div className="section-title-row">
           <div>
@@ -584,12 +611,8 @@ function SectionPage({
         </div>
 
         <div className="section-actions">
-          <button className="secondary-btn" onClick={() => resetSection(section.key)}>
-            RESET
-          </button>
-          <button className="primary-btn" onClick={() => addRow(section.key)}>
-            + ADD_ROW
-          </button>
+          <button className="secondary-btn" onClick={() => resetSection(section.key)}>RESET</button>
+          <button className="primary-btn" onClick={() => addRow(section.key)}>+ ADD_ROW</button>
         </div>
       </div>
 
@@ -603,9 +626,7 @@ function SectionPage({
           <table>
             <thead>
               <tr>
-                {section.columns.map((column) => (
-                  <th key={column}>{column}</th>
-                ))}
+                {section.columns.map((column) => <th key={column}>{column}</th>)}
                 <th>Action</th>
               </tr>
             </thead>
@@ -625,9 +646,7 @@ function SectionPage({
                   ))}
 
                   <td>
-                    <button className="delete-btn" onClick={() => deleteRow(section.key, rowIndex)}>
-                      DELETE
-                    </button>
+                    <button className="delete-btn" onClick={() => deleteRow(section.key, rowIndex)}>DELETE</button>
                   </td>
                 </tr>
               ))}
@@ -642,20 +661,23 @@ function SectionPage({
 }
 
 function getMetrics(sections: Section[]): Metrics {
-  const moneySnapshot = sections.find((section) => section.key === "moneySnapshot");
-  const weeklyCash = sections.find((section) => section.key === "weeklyCash");
-  const missions = sections.find((section) => section.key === "missions");
-  const buyNext = sections.find((section) => section.key === "buyNext");
-  const goals = sections.find((section) => section.key === "goals");
-  const bills = sections.find((section) => section.key === "bills");
-  const debt = sections.find((section) => section.key === "debt");
-  const savings = sections.find((section) => section.key === "savings");
+  const moneySnapshot = findSection(sections, "moneySnapshot");
+  const weeklyCash = findSection(sections, "weeklyCash");
+  const income = findSection(sections, "income");
+  const transactions = findSection(sections, "transactions");
+  const bills = findSection(sections, "bills");
+  const debt = findSection(sections, "debt");
+  const savings = findSection(sections, "savings");
+  const inventory = findSection(sections, "inventory");
+  const buyNext = findSection(sections, "buyNext");
+  const goals = findSection(sections, "goals");
+  const missions = findSection(sections, "missions");
 
   const cashOnHand = getMoneySnapshotAmount(moneySnapshot, "Cash On Hand");
   const monthlyIncome = getMoneySnapshotAmount(moneySnapshot, "Monthly Income");
   const monthlyBills = getMoneySnapshotAmount(moneySnapshot, "Monthly Bills");
   const snapshotWeeklyIncome = getMoneySnapshotAmount(moneySnapshot, "Weekly Income");
-  const snapshotWeeklyBills = getMoneySnapshotAmount(moneySnapshot, "Weekly Bills");
+  const weeklyBills = getMoneySnapshotAmount(moneySnapshot, "Weekly Bills");
   const foodNeeded = getMoneySnapshotAmount(moneySnapshot, "Food Needed");
   const gasNeeded = getMoneySnapshotAmount(moneySnapshot, "Gas Needed");
   const myPayOwed = getMoneySnapshotAmount(moneySnapshot, "MyPay Owed");
@@ -663,45 +685,59 @@ function getMetrics(sections: Section[]): Metrics {
   const emergencySavings = getMoneySnapshotAmount(moneySnapshot, "Emergency Savings");
   const manualRemainingCash = getMoneySnapshotAmount(moneySnapshot, "Remaining Cash");
 
-  const weeklyIncomeFromSheet = weeklyCash?.rows.reduce((sum, row) => sum + toNumber(row.Income), 0) ?? 0;
-  const weeklyIncome = weeklyIncomeFromSheet || snapshotWeeklyIncome;
+  const incomeTotal = income.rows.reduce((sum, row) => sum + toNumber(row.Received), 0);
 
-  const weeklyBillsFromSheet = weeklyCash?.rows.reduce((sum, row) => sum + toNumber(row.Bills), 0) ?? 0;
-  const weeklyBills = weeklyBillsFromSheet || snapshotWeeklyBills;
+  const transactionInflow = transactions.rows
+    .filter((row) => (row.Type ?? "").toLowerCase() === "income")
+    .reduce((sum, row) => sum + toNumber(row.Amount), 0);
 
-  const weeklyOutflow =
-    weeklyCash?.rows.reduce((sum, row) => sum + toNumber(row.Bills) + toNumber(row.Spending) + toNumber(row.Borrowed), 0) ?? 0;
+  const transactionOutflow = transactions.rows
+    .filter((row) => (row.Type ?? "").toLowerCase() !== "income")
+    .reduce((sum, row) => sum + toNumber(row.Amount), 0);
 
-  const weeklyNetFromSheet =
-    weeklyCash?.rows.reduce((sum, row) => {
-      const enteredNet = toNumber(row.Net);
-      if (enteredNet !== 0) return sum + enteredNet;
-      return sum + toNumber(row.Income) + toNumber(row.Rollover) - toNumber(row.Bills) - toNumber(row.Spending) - toNumber(row.Borrowed);
-    }, 0) ?? 0;
+  const transactionNet = transactionInflow - transactionOutflow;
+
+  const weeklyIncomeFromSheet = weeklyCash.rows.reduce((sum, row) => sum + toNumber(row.Income), 0);
+  const weeklyIncome = weeklyIncomeFromSheet || snapshotWeeklyIncome || incomeTotal;
+
+  const weeklyNetFromSheet = weeklyCash.rows.reduce((sum, row) => {
+    const enteredNet = toNumber(row.Net);
+    if (enteredNet !== 0) return sum + enteredNet;
+
+    return sum + toNumber(row.Income) + toNumber(row.Rollover) - toNumber(row.Bills) - toNumber(row.Spending) - toNumber(row.Borrowed);
+  }, 0);
 
   const snapshotPressure = weeklyBills + foodNeeded + gasNeeded + myPayOwed + spotMeOwed;
-  const remainingCash = manualRemainingCash || cashOnHand + weeklyIncome - snapshotPressure;
-  const weeklyNet = weeklyNetFromSheet || weeklyIncome - snapshotPressure;
+  const remainingCash = manualRemainingCash || cashOnHand + weeklyIncome - snapshotPressure + transactionNet;
+  const weeklyNet = weeklyNetFromSheet || weeklyIncome - snapshotPressure + transactionNet;
 
-  const openMissions =
-    missions?.rows.filter((row) => !["done", "closed", "complete"].includes((row.Status ?? "").toLowerCase())).length ?? 0;
+  const unpaidBillRows = bills.rows.filter((row) => (row.Status ?? "").toLowerCase() !== "paid");
+  const overdueBills = bills.rows.filter((row) => (row.Status ?? "").toLowerCase() === "overdue").length;
+  const billTotal = unpaidBillRows.reduce((sum, row) => sum + toNumber(row.Amount), 0);
 
-  const criticalBuyNext =
-    buyNext?.rows.filter((row) => ["high", "critical"].includes((row.Urgency ?? "").toLowerCase())).length ?? 0;
+  const activeDebtRows = debt.rows.filter((row) => !["paid", "closed", "done"].includes((row.Status ?? "").toLowerCase()));
+  const debtTotal = activeDebtRows.reduce((sum, row) => sum + toNumber(row["Current Balance"]), 0);
 
-  const goalRows = goals?.rows ?? [];
+  const savingsAmountFromSavings = savings.rows.reduce((sum, row) => sum + toNumber(row["Current Amount"]), 0);
+  const savingsAmount = savingsAmountFromSavings || emergencySavings;
+
+  const inventoryCritical = inventory.rows.filter((row) =>
+    ["critical", "high"].includes((row.Urgency ?? "").toLowerCase()) &&
+    !["done", "handled", "bought", "stocked"].includes((row.Status ?? "").toLowerCase())
+  ).length;
+
+  const buyNextCritical = buyNext.rows.filter((row) =>
+    ["critical", "high"].includes((row.Urgency ?? "").toLowerCase()) &&
+    !["done", "handled", "bought"].includes((row["Buy Status"] ?? "").toLowerCase())
+  ).length;
+
+  const goalRows = goals.rows;
   const avgGoalProgress =
     goalRows.length === 0 ? 0 : Math.round(goalRows.reduce((sum, row) => sum + toNumber(row["Progress %"]), 0) / goalRows.length);
 
-  const unpaidBillRows = bills?.rows.filter((row) => (row.Status ?? "").toLowerCase() !== "paid") ?? [];
-  const billTotal = unpaidBillRows.reduce((sum, row) => sum + toNumber(row.Amount), 0);
-
-  const activeDebtRows =
-    debt?.rows.filter((row) => !["paid", "closed", "done"].includes((row.Status ?? "").toLowerCase())) ?? [];
-  const debtTotal = activeDebtRows.reduce((sum, row) => sum + toNumber(row["Current Balance"]), 0);
-
-  const savingsAmountFromSavings = savings?.rows.reduce((sum, row) => sum + toNumber(row["Current Amount"]), 0) ?? 0;
-  const savingsAmount = savingsAmountFromSavings || emergencySavings;
+  const openMissions = missions.rows.filter((row) =>
+    !["done", "closed", "complete"].includes((row.Status ?? "").toLowerCase())
+  ).length;
 
   return {
     cashOnHand,
@@ -716,23 +752,29 @@ function getMetrics(sections: Section[]): Metrics {
     emergencySavings,
     remainingCash,
     snapshotPressure,
-    weeklyOutflow,
+    incomeTotal,
+    transactionInflow,
+    transactionOutflow,
+    transactionNet,
     weeklyNet,
-    openMissions,
-    criticalBuyNext,
-    avgGoalProgress,
     unpaidBills: unpaidBillRows.length,
+    overdueBills,
     billTotal,
     activeDebt: activeDebtRows.length,
     debtTotal,
     savingsAmount,
+    inventoryCritical,
+    buyNextCritical,
+    avgGoalProgress,
+    openMissions,
   };
 }
 
 function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
   const alerts: AlertItem[] = [];
-  const buyNext = sections.find((section) => section.key === "buyNext");
-  const goals = sections.find((section) => section.key === "goals");
+  const inventory = findSection(sections, "inventory");
+  const buyNext = findSection(sections, "buyNext");
+  const goals = findSection(sections, "goals");
 
   if (metrics.cashOnHand === 0 && metrics.weeklyIncome === 0 && metrics.monthlyIncome === 0) {
     alerts.push({
@@ -749,8 +791,8 @@ function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
       alert: "Remaining cash is negative",
       source: "moneySnapshot",
       urgency: "Critical",
-      proof: `Remaining Cash is estimated at ${formatMoney(metrics.remainingCash)} after snapshot pressure.`,
-      action: "Review cash, weekly income, food, gas, MyPay, SpotMe, and weekly bills.",
+      proof: `Remaining Cash is estimated at ${formatMoney(metrics.remainingCash)}.`,
+      action: "Review cash, income, weekly bills, food, gas, MyPay, SpotMe, and transactions.",
     });
   }
 
@@ -759,8 +801,8 @@ function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
       alert: "Pressure is higher than available money",
       source: "moneySnapshot",
       urgency: "Critical",
-      proof: `Snapshot pressure is ${formatMoney(metrics.snapshotPressure)} while cash + weekly income is ${formatMoney(metrics.cashOnHand + metrics.weeklyIncome)}.`,
-      action: "Decide what must be paid now, what can wait, and what needs a new income move.",
+      proof: `Pressure is ${formatMoney(metrics.snapshotPressure)} while cash + weekly income is ${formatMoney(metrics.cashOnHand + metrics.weeklyIncome)}.`,
+      action: "Decide what must be paid now, what can wait, and what needs an income move.",
     });
   }
 
@@ -770,7 +812,17 @@ function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
       source: "weeklyCash",
       urgency: "Critical",
       proof: `Weekly Net is ${formatMoney(metrics.weeklyNet)}.`,
-      action: "Review weekly bills, spending, borrowed money, and rollover.",
+      action: "Review weekly bills, spending, borrowed money, rollover, and transactions.",
+    });
+  }
+
+  if (metrics.overdueBills > 0) {
+    alerts.push({
+      alert: "Overdue bills need action",
+      source: "bills",
+      urgency: "Critical",
+      proof: `${metrics.overdueBills} bill(s) are marked overdue.`,
+      action: "Handle overdue bills before lower-priority spending.",
     });
   }
 
@@ -779,7 +831,7 @@ function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
       alert: "Unpaid bills can block progress",
       source: "bills",
       urgency: metrics.unpaidBills >= 3 ? "Critical" : "High",
-      proof: `${metrics.unpaidBills} bill(s) are marked unpaid. Bill pressure entered: ${formatMoney(metrics.billTotal)}.`,
+      proof: `${metrics.unpaidBills} bill(s) are unpaid. Bill pressure: ${formatMoney(metrics.billTotal)}.`,
       action: "Decide what must be paid, delayed, or watched.",
     });
   }
@@ -799,7 +851,7 @@ function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
       alert: "Active debt is creating pressure",
       source: "debt",
       urgency: metrics.debtTotal > 0 ? "Critical" : "High",
-      proof: `${metrics.activeDebt} debt item(s) are active. Debt balance entered: ${formatMoney(metrics.debtTotal)}.`,
+      proof: `${metrics.activeDebt} debt item(s) active. Debt balance: ${formatMoney(metrics.debtTotal)}.`,
       action: "Update balances and identify the most urgent debt.",
     });
   }
@@ -814,17 +866,22 @@ function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
     });
   }
 
-  if (metrics.foodNeeded > 0 || metrics.gasNeeded > 0) {
-    alerts.push({
-      alert: "Survival needs are active",
-      source: "moneySnapshot",
-      urgency: "High",
-      proof: `Food needed: ${formatMoney(metrics.foodNeeded)}. Gas needed: ${formatMoney(metrics.gasNeeded)}.`,
-      action: "Handle food and gas before lower-priority spending.",
-    });
-  }
+  inventory.rows.forEach((row) => {
+    const urgency = (row.Urgency ?? "").toLowerCase();
+    const status = (row.Status ?? "").toLowerCase();
 
-  buyNext?.rows.forEach((row) => {
+    if (["critical", "high"].includes(urgency) && !["done", "handled", "bought", "stocked"].includes(status)) {
+      alerts.push({
+        alert: `${row.Item || "Inventory item"} is low`,
+        source: "inventory",
+        urgency: urgency === "critical" ? "Critical" : "High",
+        proof: `${row.Item || "Item"} is marked ${row.Urgency || "urgent"} and status is ${row.Status || "not handled"}.`,
+        action: "Update or handle this before it disrupts daily stability.",
+      });
+    }
+  });
+
+  buyNext.rows.forEach((row) => {
     const urgency = (row.Urgency ?? "").toLowerCase();
     const status = (row["Buy Status"] ?? "").toLowerCase();
 
@@ -839,7 +896,7 @@ function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
     }
   });
 
-  goals?.rows.forEach((row) => {
+  goals.rows.forEach((row) => {
     const progress = toNumber(row["Progress %"]);
     const priority = (row.Priority ?? "").toLowerCase();
 
@@ -860,7 +917,7 @@ function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
 function getBriefing(metrics: Metrics, alerts: AlertItem[]): Briefing {
   if (alerts.length > 0) {
     const top = alerts[0];
-    const objectives = alerts.slice(0, 6);
+    const objectives = alerts.slice(0, 7);
 
     return {
       title: top.alert,
@@ -872,8 +929,8 @@ function getBriefing(metrics: Metrics, alerts: AlertItem[]): Briefing {
       objectives,
       proof: [
         { label: "Auto Alerts", value: String(alerts.length), source: "alerts" },
-        { label: "Cash On Hand", value: formatMoney(metrics.cashOnHand), source: "moneySnapshot" },
         { label: "Remaining Cash", value: formatMoney(metrics.remainingCash), source: "moneySnapshot" },
+        { label: "Bills Pressure", value: formatMoney(metrics.billTotal), source: "bills" },
         { label: "Savings", value: formatMoney(metrics.savingsAmount), source: "savings" },
       ],
     };
@@ -882,7 +939,7 @@ function getBriefing(metrics: Metrics, alerts: AlertItem[]): Briefing {
   return {
     title: "No major blockers detected",
     action: "Keep numbers updated and execute the next mission.",
-    why: "The system is not detecting critical pressure from Money Snapshot, Weekly Cash, Bills, Debt, Buy Next, Goals, or Savings.",
+    why: "The system is not detecting critical pressure from the main VCC functions.",
     priority: "missions",
     objectives: [],
     proof: [
@@ -897,78 +954,34 @@ function getBriefing(metrics: Metrics, alerts: AlertItem[]): Briefing {
 function getGlanceCard(section: Section, metrics: Metrics, alerts: AlertItem[]) {
   switch (section.key) {
     case "moneySnapshot":
-      return {
-        value: formatMoney(metrics.remainingCash),
-        label: "Remaining cash",
-        detailOne: `Cash: ${formatMoney(metrics.cashOnHand)}`,
-        detailTwo: `Pressure: ${formatMoney(metrics.snapshotPressure)}`,
-        tone: metrics.remainingCash < 0 ? "red" : "blue",
-      };
+      return { value: formatMoney(metrics.remainingCash), label: "Remaining cash", detailOne: `Cash: ${formatMoney(metrics.cashOnHand)}`, detailTwo: `Pressure: ${formatMoney(metrics.snapshotPressure)}`, tone: metrics.remainingCash < 0 ? "red" : "blue" };
     case "weeklyCash":
-      return {
-        value: formatMoney(metrics.weeklyNet),
-        label: "Weekly net",
-        detailOne: `Income: ${formatMoney(metrics.weeklyIncome)}`,
-        detailTwo: `Outflow: ${formatMoney(metrics.weeklyOutflow || metrics.snapshotPressure)}`,
-        tone: metrics.weeklyNet < 0 ? "red" : "green",
-      };
-    case "missions":
-      return {
-        value: String(metrics.openMissions),
-        label: "Open missions",
-        detailOne: "Daily execution",
-        detailTwo: "Tap to manage",
-        tone: "blue",
-      };
-    case "alerts":
-      return {
-        value: String(alerts.length),
-        label: "Auto blockers",
-        detailOne: alerts.length > 1 ? "Objective stack active" : "Read-only view",
-        detailTwo: "Feeds briefing",
-        tone: alerts.length > 0 ? "red" : "green",
-      };
-    case "buyNext":
-      return {
-        value: String(metrics.criticalBuyNext),
-        label: "Urgent buy items",
-        detailOne: "Food · Gas · Basics",
-        detailTwo: "Tap to update",
-        tone: metrics.criticalBuyNext > 0 ? "gold" : "green",
-      };
-    case "goals":
-      return {
-        value: `${metrics.avgGoalProgress}%`,
-        label: "Average progress",
-        detailOne: "Long-term build",
-        detailTwo: "Tap to track",
-        tone: "blue",
-      };
+      return { value: formatMoney(metrics.weeklyNet), label: "Weekly net", detailOne: `Income: ${formatMoney(metrics.weeklyIncome)}`, detailTwo: `Bills: ${formatMoney(metrics.weeklyBills)}`, tone: metrics.weeklyNet < 0 ? "red" : "green" };
+    case "income":
+      return { value: formatMoney(metrics.incomeTotal), label: "Received income", detailOne: `Monthly: ${formatMoney(metrics.monthlyIncome)}`, detailTwo: "Paychecks + payouts", tone: "green" };
+    case "transactions":
+      return { value: formatMoney(metrics.transactionNet), label: "Transaction net", detailOne: `In: ${formatMoney(metrics.transactionInflow)}`, detailTwo: `Out: ${formatMoney(metrics.transactionOutflow)}`, tone: metrics.transactionNet < 0 ? "red" : "blue" };
     case "bills":
-      return {
-        value: formatMoney(metrics.billTotal),
-        label: `${metrics.unpaidBills} unpaid bills`,
-        detailOne: "Bills due",
-        detailTwo: "Tap to review",
-        tone: metrics.unpaidBills > 0 ? "red" : "green",
-      };
+      return { value: formatMoney(metrics.billTotal), label: `${metrics.unpaidBills} unpaid bills`, detailOne: `${metrics.overdueBills} overdue`, detailTwo: "Tap to review", tone: metrics.unpaidBills > 0 ? "red" : "green" };
     case "debt":
-      return {
-        value: metrics.debtTotal > 0 ? formatMoney(metrics.debtTotal) : String(metrics.activeDebt),
-        label: metrics.debtTotal > 0 ? "Debt balance" : "Active debt items",
-        detailOne: "Car · MyPay · SpotMe",
-        detailTwo: "Tap to update",
-        tone: metrics.activeDebt > 0 ? "red" : "green",
-      };
+      return { value: metrics.debtTotal > 0 ? formatMoney(metrics.debtTotal) : String(metrics.activeDebt), label: metrics.debtTotal > 0 ? "Debt balance" : "Active debts", detailOne: "Car · MyPay · SpotMe", detailTwo: "Tap to update", tone: metrics.activeDebt > 0 ? "red" : "green" };
     case "savings":
-      return {
-        value: formatMoney(metrics.savingsAmount),
-        label: "Saved total",
-        detailOne: "Emergency · Move-out",
-        detailTwo: "Tap to grow",
-        tone: metrics.savingsAmount > 0 ? "green" : "blue",
-      };
+      return { value: formatMoney(metrics.savingsAmount), label: "Saved total", detailOne: "Emergency · Move-out", detailTwo: "Tap to grow", tone: metrics.savingsAmount > 0 ? "green" : "blue" };
+    case "inventory":
+      return { value: String(metrics.inventoryCritical), label: "Critical inventory", detailOne: "Food · Gas · Home", detailTwo: "Tap to update", tone: metrics.inventoryCritical > 0 ? "gold" : "green" };
+    case "buyNext":
+      return { value: String(metrics.buyNextCritical), label: "Urgent buys", detailOne: "Purchase queue", detailTwo: "Tap to update", tone: metrics.buyNextCritical > 0 ? "gold" : "green" };
+    case "goals":
+      return { value: `${metrics.avgGoalProgress}%`, label: "Average progress", detailOne: "Long-term build", detailTwo: "Tap to track", tone: "blue" };
+    case "missions":
+      return { value: String(metrics.openMissions), label: "Open missions", detailOne: "Daily execution", detailTwo: "Tap to manage", tone: "blue" };
+    case "alerts":
+      return { value: String(alerts.length), label: "Auto blockers", detailOne: alerts.length > 1 ? "Objective stack active" : "Read-only view", detailTwo: "Feeds briefing", tone: alerts.length > 0 ? "red" : "green" };
   }
+}
+
+function findSection(sections: Section[], key: SectionKey) {
+  return sections.find((section) => section.key === key) ?? cloneSection(defaultSections.find((section) => section.key === key)!);
 }
 
 function urgencyWeight(urgency: AlertItem["urgency"]) {
@@ -989,10 +1002,6 @@ function mergeSections(defaultList: Section[], savedList: Section[]) {
   });
 }
 
-function saveSections(sections: Section[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sections));
-}
-
 function cloneSection(section: Section): Section {
   return JSON.parse(JSON.stringify(section));
 }
@@ -1001,13 +1010,16 @@ function sectionIcon(key: SectionKey) {
   const icons: Record<SectionKey, string> = {
     moneySnapshot: "▣",
     weeklyCash: "▤",
-    missions: "⊕",
-    alerts: "⌾",
-    buyNext: "□",
-    goals: "◎",
+    income: "+",
+    transactions: "⇄",
     bills: "▥",
     debt: "▦",
     savings: "$",
+    inventory: "▧",
+    buyNext: "□",
+    goals: "◎",
+    missions: "⊕",
+    alerts: "⌾",
   };
 
   return icons[key];
@@ -1017,13 +1029,16 @@ function getSectionLabel(key: SectionKey) {
   const labels: Record<SectionKey, string> = {
     moneySnapshot: "Money Snapshot",
     weeklyCash: "Weekly Cash",
-    missions: "Missions",
-    alerts: "Priority Alerts",
-    buyNext: "Buy Next",
-    goals: "Goal Progress",
-    bills: "Bills Due",
+    income: "Income",
+    transactions: "Transactions",
+    bills: "Bills",
     debt: "Debt",
     savings: "Savings",
+    inventory: "Inventory",
+    buyNext: "Buy Next",
+    goals: "Goals",
+    missions: "Missions",
+    alerts: "Priority Alerts",
   };
 
   return labels[key];
@@ -1203,7 +1218,7 @@ button, input { font: inherit; }
 .vcc-content {
   width: 100%;
   padding: 28px;
-  max-width: 1360px;
+  max-width: 1440px;
   margin: 0 auto;
 }
 
@@ -1370,13 +1385,8 @@ button, input { font: inherit; }
   text-align: left;
 }
 
-.objective-item.critical {
-  border-color: rgba(251, 113, 133, 0.45);
-}
-
-.objective-item.high {
-  border-color: rgba(251, 191, 36, 0.45);
-}
+.objective-item.critical { border-color: rgba(251, 113, 133, 0.45); }
+.objective-item.high { border-color: rgba(251, 191, 36, 0.45); }
 
 .objective-rank {
   width: 34px;
@@ -1459,7 +1469,7 @@ button, input { font: inherit; }
 
 .glance-grid {
   display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -1617,9 +1627,7 @@ button, input { font: inherit; }
   font-weight: 900;
 }
 
-.sheet-topline p {
-  margin: 0;
-}
+.sheet-topline p { margin: 0; }
 
 .table-wrap {
   overflow-x: auto;
@@ -1707,9 +1715,7 @@ td input:focus {
   background: linear-gradient(180deg, rgba(120, 53, 15, 0.2), rgba(15, 23, 42, 0.82));
 }
 
-.alert-card h2 {
-  margin: 20px 0 10px;
-}
+.alert-card h2 { margin: 20px 0 10px; }
 
 .alert-action {
   color: #f8fafc;
