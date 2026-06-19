@@ -1703,7 +1703,6 @@ td input:focus {
   }
 }
 
-
 /* ===== VCC COMPACT DAILY MODE OVERRIDES ===== */
 
 .content {
