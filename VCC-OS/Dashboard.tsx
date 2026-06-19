@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { KeyboardEvent } from "react";
 
 type SectionKey =
   | "moneySnapshot"
@@ -63,10 +64,11 @@ type Briefing = {
   action: string;
   why: string;
   priority: SectionKey;
+  objectives: AlertItem[];
   proof: { label: string; value: string; source: SectionKey }[];
 };
 
-const STORAGE_KEY = "vcc_os_money_snapshot_upgrade_v1";
+const STORAGE_KEY = "vcc_os_briefing_objective_stack_v1";
 
 const defaultSections: Section[] = [
   {
@@ -148,7 +150,7 @@ const defaultSections: Section[] = [
     group: "command",
     columns: ["Goal", "Category", "Target", "Current", "Progress %", "Priority", "Next Step", "Notes"],
     rows: [
-      { Goal: "VCC recovery", Category: "System", Target: "Working app", Current: "Dashboard online", "Progress %": "75", Priority: "High", "Next Step": "Improve Money Snapshot", Notes: "" },
+      { Goal: "VCC recovery", Category: "System", Target: "Working app", Current: "Dashboard online", "Progress %": "80", Priority: "High", "Next Step": "Briefing objective stack", Notes: "" },
       { Goal: "Emergency fund", Category: "Money", Target: "500", Current: "0", "Progress %": "0", Priority: "High", "Next Step": "Save first small amount", Notes: "" },
     ],
   },
@@ -250,7 +252,7 @@ export default function Dashboard() {
     });
   }
 
-  function commitInput(event: React.KeyboardEvent<HTMLInputElement>) {
+  function commitInput(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key !== "Enter") return;
     saveSections(sections);
     event.currentTarget.blur();
@@ -422,6 +424,33 @@ function HomePage({
           <h2>{briefing.why}</h2>
         </div>
 
+        {briefing.objectives.length > 1 && (
+          <div className={`objective-window ${briefing.objectives.length > 4 ? "scroll" : ""}`}>
+            <div className="objective-head">
+              <p>OBJECTIVE_STACK</p>
+              <span>{briefing.objectives.length} THINGS NEED ATTENTION</span>
+            </div>
+
+            <div className="objective-list">
+              {briefing.objectives.map((objective, index) => (
+                <button
+                  key={`${objective.alert}-${index}`}
+                  className={`objective-item ${objective.urgency.toLowerCase()}`}
+                  onClick={() => openPage(objective.source)}
+                >
+                  <div className="objective-rank">{index + 1}</div>
+
+                  <div>
+                    <p>{objective.urgency} · {getSectionLabel(objective.source)}</p>
+                    <h3>{objective.alert}</h3>
+                    <span>{objective.action}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="proof-grid">
           {briefing.proof.map((item) => (
             <button key={`${item.source}-${item.label}`} className="proof-box" onClick={() => openPage(item.source)}>
@@ -531,7 +560,7 @@ function SectionPage({
 }: {
   section: Section;
   updateCell: (sectionKey: SectionKey, rowIndex: number, column: string, value: string) => void;
-  commitInput: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+  commitInput: (event: KeyboardEvent<HTMLInputElement>) => void;
   addRow: (sectionKey: SectionKey) => void;
   deleteRow: (sectionKey: SectionKey, rowIndex: number) => void;
   resetSection: (sectionKey: SectionKey) => void;
@@ -831,12 +860,16 @@ function getAutoAlerts(sections: Section[], metrics: Metrics): AlertItem[] {
 function getBriefing(metrics: Metrics, alerts: AlertItem[]): Briefing {
   if (alerts.length > 0) {
     const top = alerts[0];
+    const objectives = alerts.slice(0, 6);
 
     return {
       title: top.alert,
       action: top.action,
-      why: top.proof,
+      why: alerts.length === 1
+        ? top.proof
+        : `${alerts.length} blockers are active. The first objective is listed above, and the objective stack shows what else needs attention.`,
       priority: top.source,
+      objectives,
       proof: [
         { label: "Auto Alerts", value: String(alerts.length), source: "alerts" },
         { label: "Cash On Hand", value: formatMoney(metrics.cashOnHand), source: "moneySnapshot" },
@@ -851,6 +884,7 @@ function getBriefing(metrics: Metrics, alerts: AlertItem[]): Briefing {
     action: "Keep numbers updated and execute the next mission.",
     why: "The system is not detecting critical pressure from Money Snapshot, Weekly Cash, Bills, Debt, Buy Next, Goals, or Savings.",
     priority: "missions",
+    objectives: [],
     proof: [
       { label: "Open Missions", value: String(metrics.openMissions), source: "missions" },
       { label: "Savings", value: formatMoney(metrics.savingsAmount), source: "savings" },
@@ -890,7 +924,7 @@ function getGlanceCard(section: Section, metrics: Metrics, alerts: AlertItem[]) 
       return {
         value: String(alerts.length),
         label: "Auto blockers",
-        detailOne: "Read-only view",
+        detailOne: alerts.length > 1 ? "Objective stack active" : "Read-only view",
         detailTwo: "Feeds briefing",
         tone: alerts.length > 0 ? "red" : "green",
       };
@@ -1279,6 +1313,102 @@ button, input { font: inherit; }
   line-height: 1.25;
 }
 
+.objective-window {
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  background: rgba(120, 53, 15, 0.1);
+  border-radius: 22px;
+  padding: 16px;
+  margin-bottom: 18px;
+}
+
+.objective-window.scroll {
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 12px;
+}
+
+.objective-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.objective-head p {
+  margin: 0;
+  color: #fbbf24;
+  font-size: 12px;
+  letter-spacing: 3px;
+  font-weight: 900;
+}
+
+.objective-head span {
+  color: #94a3b8;
+  font-size: 12px;
+  letter-spacing: 2px;
+  font-weight: 900;
+}
+
+.objective-list {
+  display: grid;
+  gap: 10px;
+}
+
+.objective-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: flex-start;
+  width: 100%;
+  background: rgba(15, 23, 42, 0.74);
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  padding: 14px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.objective-item.critical {
+  border-color: rgba(251, 113, 133, 0.45);
+}
+
+.objective-item.high {
+  border-color: rgba(251, 191, 36, 0.45);
+}
+
+.objective-rank {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(96, 165, 250, 0.4);
+  color: #60a5fa;
+  font-weight: 900;
+}
+
+.objective-item p {
+  margin: 0 0 5px;
+  color: #94a3b8;
+  font-size: 12px;
+  letter-spacing: 2px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.objective-item h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.objective-item span {
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
 .proof-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1302,7 +1432,8 @@ button, input { font: inherit; }
 
 .proof-box:hover,
 .glance-card:hover,
-.alert-card:hover {
+.alert-card:hover,
+.objective-item:hover {
   border-color: rgba(96, 165, 250, 0.75);
 }
 
@@ -1634,6 +1765,7 @@ td input:focus {
   .vcc-content { padding: 16px; }
   .briefing-panel, .section-header, .sheet-card, .alert-panel { border-radius: 22px; }
   .briefing-panel { padding: 22px; }
+  .objective-head { flex-direction: column; align-items: flex-start; }
   .glance-grid { grid-template-columns: 1fr; }
   .glance-card { min-height: 165px; padding: 19px; }
   .section-actions { grid-template-columns: 1fr; }
