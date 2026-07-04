@@ -2024,7 +2024,7 @@ button {
 /* Sprint 4 layout baseline refinements */
 .shellSidebar {
   display: flex;
-  gap: 18px;
+  gap: 10px;
 }
 
 .sideLogo {
@@ -2032,12 +2032,11 @@ button {
 }
 
 .shellSidebar nav {
-  padding: 4px 0;
+  padding: 0;
 }
 
 .shellSidebar button:not(.sideLogo) {
   gap: 12px;
-  min-height: 48px;
   transition:
     color 140ms ease,
     background 140ms ease,
@@ -2065,6 +2064,48 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (min-width: 861px) {
+  .shellSidebar {
+    padding: 14px 0;
+  }
+
+  .sideLogo {
+    min-height: 44px;
+    margin: 0 16px 10px;
+  }
+
+  .shellSidebar nav {
+    gap: 1px;
+  }
+
+  .shellSidebar button:not(.sideLogo) {
+    min-height: 40px;
+    padding: 0 16px 0 28px;
+    font-size: 13px;
+  }
+
+  .sideIcon {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (min-width: 861px) and (max-height: 760px) {
+  .shellSidebar {
+    padding: 10px 0;
+  }
+
+  .sideLogo {
+    min-height: 40px;
+    margin-bottom: 6px;
+  }
+
+  .shellSidebar button:not(.sideLogo) {
+    min-height: 36px;
+    font-size: 12.5px;
+  }
 }
 
 .content {

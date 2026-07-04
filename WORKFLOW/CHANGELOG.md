@@ -13,6 +13,8 @@ Track production-impacting changes and deployments here.
 - Lead QA Sprint: fixed Settings import/restore feedback staying hidden after navigation, hardened malformed imported row handling, and restored the ESLint flat config so `npm run lint` works.
 - Lead QA Sprint: expanded TypeScript app coverage so root `App.tsx` and `Dashboard.tsx` are checked by `npm run build`.
 - Sprint 6: aligned Settings labels with release-candidate requirements, ignored local installed-skill artifacts, and removed obsolete fallback workflow memory files from the release set.
+- Added Playwright production smoke workflow for post-deploy checks of production loading, dashboard, navigation, Settings controls, main pages, and console errors.
+- Sprint 7: restored Settings as a hash-routed page, aligned Settings controls/cards to the required labels, and tightened desktop sidebar spacing so all nav tabs fit while preserving mobile bottom nav.
 - No production deployment performed.
 
 ## Deployment Template

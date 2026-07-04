@@ -22,10 +22,26 @@ import { BACKUP_KEY, defaultSections, loadSections, normalizeSections, saveSecti
 import type { Alert, AppView, Metrics, RecommendedMove, Row, Section, SectionKey } from "./src/lib/types/vcc";
 import "./src/styles/vccSkin.css";
 
+const routeViews = new Set<AppView>([
+  "dashboard",
+  "settings",
+  ...defaultSections.map((section) => section.key),
+]);
+
 export default function Dashboard() {
-  const [view, setView] = useState<AppView>("dashboard");
+  const [view, setView] = useState<AppView>(() => viewFromRoute());
   const [menuOpen, setMenuOpen] = useState(false);
   const [sections, setSections] = useState<Section[]>(() => loadSections());
+
+  useEffect(() => {
+    function syncRoute() {
+      setView(viewFromRoute());
+      setMenuOpen(false);
+    }
+
+    window.addEventListener("hashchange", syncRoute);
+    return () => window.removeEventListener("hashchange", syncRoute);
+  }, []);
 
   useEffect(() => {
     saveSections(sections);
@@ -40,6 +56,10 @@ export default function Dashboard() {
   function open(nextView: AppView) {
     setView(nextView);
     setMenuOpen(false);
+    const nextHash = hashForView(nextView);
+    if (window.location.hash !== nextHash) {
+      window.location.hash = nextHash;
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -112,7 +132,7 @@ export default function Dashboard() {
       console.error("Unable to clear primary VCC data.", error);
     }
     setSections(structuredClone(defaultSections));
-    setView("dashboard");
+    open("dashboard");
     setMenuOpen(false);
   }
 
@@ -618,12 +638,12 @@ function SettingsPage({
 
   const settingsCards = [
     {
-      title: "Local Storage Status",
+      title: "Storage Status",
       status: storageStatus,
       detail: `${savedPayload ? "Primary data saved" : "Starter setup"} / ${backupPayload ? "Backup present" : "No backup"} / ${totalRows} rows across ${editablePages} editable pages.`,
     },
     {
-      title: "App Version",
+      title: "Version",
       status: "0.0.0",
       detail: "VCC OS runs as a local-first Vite React app deployed to the production Vercel project.",
     },
@@ -714,9 +734,9 @@ function SettingsPage({
         <div className="settingsActions">
           <button type="button" className="primary" onClick={exportData}>Export Backup</button>
           <button type="button" className="secondary" onClick={() => importInputRef.current?.click()}>Import Backup</button>
-          <button type="button" className="secondary" onClick={saveBackup}>Backup data</button>
-          <button type="button" className="secondary" onClick={restoreBackup}>Restore backup</button>
-          <button type="button" className="secondary" onClick={clearCache}>Clear cache</button>
+          <button type="button" className="secondary" onClick={saveBackup}>Save Browser Backup</button>
+          <button type="button" className="secondary" onClick={restoreBackup}>Restore Backup</button>
+          <button type="button" className="secondary" onClick={clearCache}>Clear Cache</button>
         </div>
         <input
           ref={importInputRef}
@@ -737,7 +757,7 @@ function SettingsPage({
           It now lives inside Settings instead of the main dropdown so it is harder to hit by accident.
         </p>
         <button type="button" className="dangerButton" onClick={resetAllData}>
-          Reset all data
+          Reset All Data
         </button>
         <small>Protection: you must type RESET exactly before anything is erased.</small>
       </div>
@@ -793,6 +813,16 @@ function getStorageStatus() {
   } catch {
     return "Unavailable";
   }
+}
+
+function viewFromRoute(): AppView {
+  const route = window.location.hash.replace(/^#\/?/, "");
+  if (!route) return "dashboard";
+  return routeViews.has(route as AppView) ? (route as AppView) : "dashboard";
+}
+
+function hashForView(view: AppView) {
+  return view === "dashboard" ? "#/" : `#/${view}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

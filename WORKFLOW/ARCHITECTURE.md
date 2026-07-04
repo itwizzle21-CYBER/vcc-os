@@ -46,7 +46,8 @@ VCC_OS is currently a Vite React single-page app. It does not use file-system ro
 - `App.tsx` renders `Dashboard`.
 - `Dashboard.tsx` owns the active view through `view: AppView`.
 - `AppView` is either `dashboard`, `settings`, or a `SectionKey`.
-- Navigation uses the local `open(nextView)` function, not URL routes.
+- Navigation uses the local `open(nextView)` function and syncs the active screen to hash routes such as `#/settings`, `#/money`, and `#/dashboard`.
+- Direct hash routes load the matching screen on startup; invalid hashes fall back to Dashboard.
 - Sidebar and mobile topbar call `open(view)` to switch screens.
 
 Current screen map:

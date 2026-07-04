@@ -2,6 +2,28 @@
 
 Read this file before fixing errors or revisiting previously fixed areas. Never repeat a fixed mistake without checking workflow memory first.
 
+## 2026-07-04 - Sprint 7 Settings Route And Sidebar Fit
+
+- Error/problem: Settings could only behave like an internal screen and the desktop sidebar had too much vertical spacing for the full tab set.
+- Root cause: The app used local `view` state without a URL route sync layer, and earlier sidebar refinements increased logo margins, nav gaps, and button height after more tabs were added.
+- Fix applied: Added bounded hash-route syncing for `AppView` routes including `#/settings`; aligned Settings labels and controls with Reset All Data, Export Backup, Import Backup, Clear Cache, App Information, Version, Diagnostics, Data Validation, Storage Status, and future placeholders; tightened desktop-only sidebar spacing while preserving mobile bottom navigation.
+- Files touched: `Dashboard.tsx`, `src/styles/vccSkin.css`, `tests/smoke/vcc-os-smoke.spec.ts`, `WORKFLOW/CHANGELOG.md`, `WORKFLOW/DECISIONS.md`, `WORKFLOW/ARCHITECTURE.md`, `WORKFLOW/VCC_WORKFLOW_MEMORY.md`.
+- Commands that worked: `npm.cmd run build`; `npm.cmd run lint`; `git diff --check`; local preview smoke with `SMOKE_BASE_URL=http://127.0.0.1:4173 npm.cmd run smoke`.
+- Commands that failed: `git add -- Dashboard.tsx src/styles/vccSkin.css tests/smoke/vcc-os-smoke.spec.ts WORKFLOW/CHANGELOG.md WORKFLOW/DECISIONS.md WORKFLOW/ARCHITECTURE.md WORKFLOW/VCC_WORKFLOW_MEMORY.md` failed with `.git/index.lock: Permission denied`.
+- Prevention rule: When adding or restoring pages, wire the view into the hash route model and update smoke checks for routeability and exact Settings control labels; keep desktop nav density separate from the mobile bottom nav media query.
+- Relevant skill used: `grill-with-docs`, `playwright-best-practices`, `requesting-code-review`, `vercel-react-best-practices`.
+
+## 2026-07-04 - Playwright Smoke Workflow Added
+
+- Error/problem: The release pipeline required a Smoke Test step, but the repo had no repeatable smoke workflow.
+- Root cause: Playwright had not been installed or configured in VCC_OS before this sprint.
+- Fix applied: Added Playwright config, a production smoke spec, `smoke` and `smoke:prod` scripts, and workflow docs requiring `npm.cmd run smoke:prod` after deploy.
+- Files touched: `package.json`, `package-lock.json`, `playwright.config.ts`, `tests/smoke/vcc-os-smoke.spec.ts`, `WORKFLOW/SKILL.md`, `WORKFLOW/DECISIONS.md`, `WORKFLOW/CHANGELOG.md`, `WORKFLOW/VCC_WORKFLOW_MEMORY.md`.
+- Commands that worked: `npm.cmd install -D @playwright/test`; `npx.cmd playwright install chromium`; local smoke workflow validation with `SMOKE_BASE_URL`.
+- Commands that failed: None yet for the smoke workflow.
+- Prevention rule: Every production deploy must be followed by `npm.cmd run smoke:prod`; never claim smoke success unless Playwright completes.
+- Relevant skill used: `playwright-best-practices`, `vercel-react-best-practices`.
+
 ## 2026-07-04 - Sprint 6 Commit Blocked By Git Index Permission
 
 - Error/problem: `git add .` failed during the Release Candidate pipeline with `Unable to create 'C:/Users/itwiz/Documents/Projects/VCC_OS/.git/index.lock': Permission denied`.

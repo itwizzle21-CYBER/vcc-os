@@ -51,6 +51,27 @@ Record UI, architecture, workflow, and deployment decisions here.
 - Consequences: If any step is blocked, stop at the blocker, explain the exact blocker, avoid repeated retries, and do not pretend the sprint completed. When user action is required, provide exact local commands such as `git status`, `git add .`, `git commit -m "Sprint X: description"`, `git push origin main`, and `vercel --prod`. Never report commit, push, deploy, smoke test, or production verification success unless it actually completed.
 - Relevant skill used: `grill-with-docs`, `requesting-code-review`, `playwright-best-practices`, `vercel-react-best-practices`.
 
+## 2026-07-04 - Playwright Production Smoke Test Is Required After Deploy
+
+- Decision: Use the repo Playwright smoke workflow as the required Smoke Test step after every production deploy.
+- Reason: VCC_OS needs a repeatable post-deploy check for production URL loading, dashboard loading, navigation, Settings, reset/export/import controls, main pages, and console errors.
+- Consequences: Run `npm.cmd run smoke:prod` after `vercel --prod`. The smoke workflow defaults to `https://vcc-os.vercel.app` and can target local or preview URLs with `SMOKE_BASE_URL`.
+- Relevant skill used: `playwright-best-practices`, `vercel-react-best-practices`.
+
+## 2026-07-04 - Settings Uses Hash Routing
+
+- Decision: Keep VCC_OS as a Vite single-page app, but map screens to hash routes such as `#/settings`.
+- Reason: Sprint 7 required Settings to be a real routed page without redesigning the layout or introducing a larger router.
+- Consequences: Navigation updates the hash, direct Settings URLs load the Settings page, invalid hashes fall back to Dashboard, and future views should be added to the existing `AppView`/section route model.
+- Relevant skill used: `grill-with-docs`, `playwright-best-practices`, `vercel-react-best-practices`.
+
+## 2026-07-04 - Sidebar Fit Tightening Preserves Mobile Bottom Nav
+
+- Decision: Reduce desktop sidebar top/bottom padding, logo margin, nav gaps, and button height while leaving the mobile bottom navigation sizing in its media query.
+- Reason: Sprint 7 required all nav tabs to fit without removing tabs or redesigning the shell.
+- Consequences: Desktop nav uses denser but usable targets; mobile continues using horizontal bottom tabs.
+- Relevant skill used: `vercel-react-best-practices`.
+
 ## Decision Template
 
 ```markdown
