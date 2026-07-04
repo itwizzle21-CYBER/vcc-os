@@ -169,6 +169,7 @@ function DashboardHome({
   return (
     <section className="content dashboardShell">
       <DashboardTopRow alerts={alerts} />
+      <BriefingCard topAlert={topAlert} open={open} />
 
       <div className="dashboardBoard">
         <div className="dashboardPrimary">
@@ -193,7 +194,6 @@ function DashboardHome({
       </div>
 
       <ModuleDock sections={sections} metrics={metrics} alerts={alerts} open={open} />
-      <BriefingCard topAlert={topAlert} open={open} />
       <ObjectiveStack alerts={alerts} open={open} />
     </section>
   );

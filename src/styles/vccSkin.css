@@ -1967,3 +1967,56 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+/* Production dashboard layout repair */
+.dashboardShell {
+  grid-template-columns: 1fr;
+  align-content: start;
+}
+
+.dashboardShell > .dashboardTopRow,
+.dashboardShell > .hero,
+.dashboardShell > .dashboardBoard,
+.dashboardShell > .moduleDock,
+.dashboardShell > .stack {
+  grid-column: 1 / -1;
+}
+
+.dashboardShell > .hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  min-height: 214px;
+}
+
+.dashboardBoard,
+.dashboardPrimary,
+.dashboardRightRail {
+  min-width: 0;
+}
+
+.topMetricCards .moneyHeroCard,
+.topMetricCards .proofCard {
+  grid-column: auto;
+}
+
+@media (max-width: 1240px) {
+  .dashboardRightRail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .dashboardShell > .hero,
+  .dashboardRightRail,
+  .topMetricCards,
+  .moduleDock {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardShell > .hero {
+    display: grid;
+  }
+}
