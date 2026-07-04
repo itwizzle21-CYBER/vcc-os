@@ -2,10 +2,13 @@ export type SectionKey =
   | "money"
   | "bills"
   | "income"
+  | "budget"
   | "transactions"
   | "debt"
   | "savings"
   | "inventory"
+  | "buyNext"
+  | "activity"
   | "goals"
   | "missions"
   | "alerts";
@@ -35,6 +38,9 @@ export type Metrics = {
   weeklyIncome: number;
   otherIncome: number;
   transactionNet: number;
+  budgetPlanned: number;
+  budgetActual: number;
+  budgetRemaining: number;
   operatingCash: number;
   billsPressure: number;
   foodNeeded: number;
@@ -56,6 +62,7 @@ export type Metrics = {
   netPosition: number;
   criticalInventory: number;
   buyNext: string;
+  activityCount: number;
   openMissions: number;
   avgGoalProgress: number;
 };

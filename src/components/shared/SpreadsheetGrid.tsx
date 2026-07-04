@@ -86,7 +86,14 @@ export function SpreadsheetGrid({
                 </td>
               ))}
               <td className="rowActionCell">
-                <button className="delete" onClick={() => deleteRow(section.key, rowIndex)}>DELETE</button>
+                <button
+                  type="button"
+                  className="delete"
+                  aria-label={`Delete ${section.label} row ${rowIndex + 1}`}
+                  onClick={() => deleteRow(section.key, rowIndex)}
+                >
+                  Delete
+                </button>
               </td>
             </tr>
           ))}

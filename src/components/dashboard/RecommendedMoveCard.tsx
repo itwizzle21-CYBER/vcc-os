@@ -14,7 +14,7 @@ export function RecommendedMoveCard({
           <p className="kicker">TODAY_RECOMMENDED_MOVE</p>
           <h2>{move.title}</h2>
         </div>
-        <span>OPEN SOURCE â†’</span>
+        <span>Open source</span>
       </div>
 
       <div className="moveGrid">

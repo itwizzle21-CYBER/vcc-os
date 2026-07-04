@@ -6,3 +6,6 @@ dist
 .DS_Store
 *.log
 .vercel
+.agents
+skills
+skills-lock.json

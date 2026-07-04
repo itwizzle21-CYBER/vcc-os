@@ -2020,3 +2020,327 @@ button {
     display: grid;
   }
 }
+
+/* Sprint 4 layout baseline refinements */
+.shellSidebar {
+  display: flex;
+  gap: 18px;
+}
+
+.sideLogo {
+  letter-spacing: -0.01em;
+}
+
+.shellSidebar nav {
+  padding: 4px 0;
+}
+
+.shellSidebar button:not(.sideLogo) {
+  gap: 12px;
+  min-height: 48px;
+  transition:
+    color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.shellSidebar button:not(.sideLogo):hover {
+  transform: translateX(1px);
+}
+
+.shellSidebar button.active {
+  color: var(--text);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 84%, transparent), transparent 120%),
+    color-mix(in srgb, var(--panel-muted) 72%, transparent);
+}
+
+.shellSidebar button.active .sideIcon {
+  color: #141414;
+  background: var(--accent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.sideLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.content {
+  display: grid;
+  align-content: start;
+  gap: 22px;
+}
+
+.dashboardShell {
+  gap: 24px;
+}
+
+.pageHeader {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 16px;
+  padding: 22px;
+}
+
+.pageHeader .kicker {
+  margin: 0;
+  color: var(--accent);
+}
+
+.pageHeader h1 {
+  max-width: 980px;
+}
+
+.decisionStrip {
+  min-height: 58px;
+  padding: 14px 18px;
+}
+
+.summaryCards {
+  gap: 14px;
+}
+
+.summaryCard {
+  min-height: 108px;
+  padding: 18px;
+}
+
+.primary,
+.secondary,
+.back,
+.delete,
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border-radius: 12px;
+  padding: 10px 14px;
+  line-height: 1;
+  text-transform: none;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.primary:hover,
+.secondary:hover,
+.back:hover,
+.delete:hover,
+.dangerButton:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.back:focus-visible,
+.delete:focus-visible,
+.dangerButton:focus-visible,
+.shellSidebar button:focus-visible,
+.menu button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.actions.spreadsheetToolbar {
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+}
+
+.tableWrap {
+  border-radius: 16px;
+}
+
+.spreadsheetGrid {
+  min-width: 960px;
+}
+
+.spreadsheetGrid thead th {
+  padding: 13px 12px;
+  white-space: nowrap;
+}
+
+.spreadsheetGrid tbody td {
+  padding: 8px 10px;
+}
+
+.spreadsheetInput {
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.rowActionCell,
+.actionHead {
+  width: 112px;
+}
+
+.settingsGrid {
+  gap: 14px;
+}
+
+.settingsCard,
+.dangerZone {
+  padding: 20px;
+}
+
+.settingsCard h2,
+.dangerZone h2 {
+  line-height: 1.15;
+}
+
+.settingsActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.settingsActions button {
+  min-height: 42px;
+}
+
+.dataZone {
+  margin-top: 18px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1240px) {
+  .content {
+    padding: 30px;
+  }
+}
+
+@media (max-width: 860px) {
+  .topbar {
+    min-height: var(--topbar);
+  }
+
+  .menu {
+    left: 12px;
+    top: calc(var(--topbar) + 8px);
+    width: calc(100vw - 24px);
+  }
+
+  .shellSidebar {
+    gap: 8px;
+    height: 72px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    border-radius: 18px 18px 0 0;
+  }
+
+  .shellSidebar nav {
+    width: 100%;
+    padding: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .shellSidebar nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sideLogo,
+  .shellSidebar button:not(.sideLogo) {
+    width: 50px;
+    min-width: 50px;
+    height: 50px;
+    border-radius: 14px;
+  }
+
+  .shellSidebar button:not(.sideLogo) {
+    padding: 0;
+  }
+
+  .shellSidebar button:not(.sideLogo)::before {
+    inset: auto 12px 4px;
+    width: auto;
+    height: 3px;
+    border-radius: 999px;
+  }
+
+  .shellSidebar button:not(.sideLogo):hover {
+    transform: none;
+  }
+
+  .sideIcon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .content {
+    gap: 16px;
+    padding: 16px 14px calc(94px + env(safe-area-inset-bottom));
+  }
+
+  .dashboardShell {
+    gap: 16px;
+  }
+
+  .dashboardTopRow {
+    gap: 12px;
+  }
+
+  .dashboardUtilities {
+    gap: 10px;
+  }
+
+  .notificationPill,
+  .userPill,
+  .dashboardSearch {
+    min-height: 44px;
+  }
+
+  .pageHeader {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .pageHeader h1 {
+    font-size: 28px;
+  }
+
+  .decisionStrip {
+    align-items: flex-start;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .summaryCard {
+    min-height: 92px;
+  }
+
+  .actions.spreadsheetToolbar {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .actions.spreadsheetToolbar button {
+    width: 100%;
+  }
+
+  .tableWrap {
+    margin-inline: -2px;
+  }
+
+  .spreadsheetGrid {
+    min-width: 820px;
+  }
+}

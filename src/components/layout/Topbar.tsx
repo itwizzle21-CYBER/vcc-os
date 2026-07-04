@@ -23,12 +23,13 @@ export function Topbar({
   return (
     <header className="topbar">
       <button
+        type="button"
         className="brand logoOnly"
         aria-label="Open navigation menu"
         title="Open navigation menu"
         onClick={() => setMenuOpen((current) => !current)}
       >
-        <span className="logo">âŒ</span>
+        <span className="logo">V</span>
       </button>
 
       <div className="commandTitle">
@@ -37,22 +38,34 @@ export function Topbar({
       </div>
 
       {menuOpen && (
-        <nav className="menu">
-          <button className={view === "dashboard" ? "active" : ""} onClick={() => open("dashboard")}>
+        <nav className="menu" aria-label="Mobile navigation">
+          <button
+            type="button"
+            className={view === "dashboard" ? "active" : ""}
+            aria-current={view === "dashboard" ? "page" : undefined}
+            onClick={() => open("dashboard")}
+          >
             Dashboard
           </button>
 
           {sections.map((section) => (
             <button
+              type="button"
               key={section.key}
               className={view === section.key ? "active" : ""}
+              aria-current={view === section.key ? "page" : undefined}
               onClick={() => open(section.key)}
             >
               {section.label}
             </button>
           ))}
 
-          <button className={view === "settings" ? "active" : ""} onClick={() => open("settings")}>
+          <button
+            type="button"
+            className={view === "settings" ? "active" : ""}
+            aria-current={view === "settings" ? "page" : undefined}
+            onClick={() => open("settings")}
+          >
             Settings
           </button>
         </nav>

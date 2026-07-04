@@ -46,10 +46,13 @@ export function labelFor(key: SectionKey) {
     money: "Money Snapshot",
     bills: "Bills",
     income: "Income",
+    budget: "Budget",
     transactions: "Transactions",
     debt: "Debt",
     savings: "Protected Savings Vault",
     inventory: "Inventory",
+    buyNext: "Buy Next",
+    activity: "Activity",
     goals: "Goals",
     missions: "Missions",
     alerts: "Priority Alerts",
@@ -260,6 +263,9 @@ const CURRENCY_COLUMNS = new Set([
   "Current Amount",
   "Allowed Withdrawal",
   "Cost",
+  "Planned",
+  "Actual",
+  "Estimated Cost",
 ]);
 
 export function isCurrencyColumn(column: string) {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { BriefingCard } from "./src/components/dashboard/BriefingCard";
 import { MetricsGrid } from "./src/components/dashboard/MetricsGrid";
 import { ObjectiveStack } from "./src/components/dashboard/ObjectiveStack";
@@ -10,7 +10,7 @@ import { DebtModule } from "./src/components/modules/DebtModule";
 import { GoalsModule } from "./src/components/modules/GoalsModule";
 import { IncomeModule } from "./src/components/modules/IncomeModule";
 import { InventoryModule } from "./src/components/modules/InventoryModule";
-import type { ModulePageProps } from "./src/components/modules/ModulePage";
+import { ModulePage, type ModulePageProps } from "./src/components/modules/ModulePage";
 import { MissionsModule } from "./src/components/modules/MissionsModule";
 import { MoneySnapshotModule } from "./src/components/modules/MoneySnapshotModule";
 import { SavingsModule } from "./src/components/modules/SavingsModule";
@@ -18,7 +18,7 @@ import { TransactionsModule } from "./src/components/modules/TransactionsModule"
 import { PageHeader } from "./src/components/shared/PageHeader";
 import { applyDerivedRow, money } from "./src/lib/calculations/helpers";
 import { computeDecisionEngine, computeFinancialState } from "./src/lib/engine";
-import { defaultSections, loadSections, saveSections, STORAGE_KEY } from "./src/lib/storage/vccStorage";
+import { BACKUP_KEY, defaultSections, loadSections, normalizeSections, saveSections, STORAGE_KEY } from "./src/lib/storage/vccStorage";
 import type { Alert, AppView, Metrics, RecommendedMove, Row, Section, SectionKey } from "./src/lib/types/vcc";
 import "./src/styles/vccSkin.css";
 
@@ -106,9 +106,18 @@ export default function Dashboard() {
     const confirmedText = window.prompt("Type RESET to erase all VCC data and restore the starter setup.");
     if (confirmedText !== "RESET") return;
 
-    localStorage.removeItem(STORAGE_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.error("Unable to clear primary VCC data.", error);
+    }
     setSections(structuredClone(defaultSections));
     setView("dashboard");
+    setMenuOpen(false);
+  }
+
+  function replaceAllData(nextSections: Section[]) {
+    setSections(nextSections);
     setMenuOpen(false);
   }
 
@@ -129,7 +138,13 @@ export default function Dashboard() {
       )}
 
       {view === "settings" && (
-        <SettingsPage resetAllData={resetAllData} back={() => open("dashboard")} />
+        <SettingsPage
+          sections={sections}
+          metrics={metrics}
+          resetAllData={resetAllData}
+          replaceAllData={replaceAllData}
+          back={() => open("dashboard")}
+        />
       )}
 
       {activeSection?.key === "alerts" && (
@@ -366,7 +381,7 @@ function ModuleDock({
 }) {
   return (
     <div className="moduleDock">
-      {["bills", "debt", "savings", "inventory", "goals", "transactions"].map((key) => {
+      {["bills", "budget", "debt", "savings", "inventory", "buyNext", "activity", "goals", "transactions"].map((key) => {
         const section = sections.find((item) => item.key === key);
         if (!section) return null;
         const card = cardFor(section.key, metrics, alerts);
@@ -422,19 +437,30 @@ function ShellSidebar({
 
   return (
     <aside className="shellSidebar" aria-label="VCC navigation">
-      <button className="sideLogo" aria-label="Dashboard" onClick={() => open("dashboard")}>
+      <button type="button" className="sideLogo" aria-label="Dashboard" onClick={() => open("dashboard")}>
         <span className="logo">V</span>
         <span>VCC OS</span>
       </button>
       <nav>
         {primaryItems.map((item) => (
-          <button key={item.view} className={view === item.view ? "active" : ""} onClick={() => open(item.view)}>
+          <button
+            type="button"
+            key={item.view}
+            className={view === item.view ? "active" : ""}
+            aria-current={view === item.view ? "page" : undefined}
+            onClick={() => open(item.view)}
+          >
             <span className="sideIcon">{sideIcon(item.view)}</span>
             <span className="sideLabel">{item.label}</span>
           </button>
         ))}
       </nav>
-      <button className={view === "settings" ? "active sideSettings" : "sideSettings"} onClick={() => open("settings")}>
+      <button
+        type="button"
+        className={view === "settings" ? "active sideSettings" : "sideSettings"}
+        aria-current={view === "settings" ? "page" : undefined}
+        onClick={() => open("settings")}
+      >
         <span className="sideIcon">S</span>
         <span className="sideLabel">Settings</span>
       </button>
@@ -452,6 +478,8 @@ function sideIcon(view: AppView) {
       return "B";
     case "income":
       return "+";
+    case "budget":
+      return "%";
     case "transactions":
       return "T";
     case "debt":
@@ -460,6 +488,10 @@ function sideIcon(view: AppView) {
       return "S";
     case "inventory":
       return "I";
+    case "buyNext":
+      return "N";
+    case "activity":
+      return "A";
     case "goals":
       return "G";
     case "missions":
@@ -487,13 +519,129 @@ function AlertsPage({
   );
 }
 function SettingsPage({
+  sections,
+  metrics,
   resetAllData,
+  replaceAllData,
   back,
 }: {
+  sections: Section[];
+  metrics: Metrics;
   resetAllData: () => void;
+  replaceAllData: (sections: Section[]) => void;
   back: () => void;
 }) {
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [settingsMessage, setSettingsMessage] = useState("Settings ready.");
+  const savedPayload = safeGetStorageItem(STORAGE_KEY);
+  const backupPayload = safeGetStorageItem(BACKUP_KEY);
+  const storageStatus = getStorageStatus();
+  const totalRows = sections.reduce((sum, section) => sum + section.rows.length, 0);
+  const editablePages = sections.filter((section) => section.key !== "alerts").length;
+  const exportName = `vcc-os-backup-${new Date().toISOString().slice(0, 10)}.json`;
+
+  function exportData() {
+    const payload = {
+      app: "VCC_OS",
+      version: "0.0.0",
+      exportedAt: new Date().toISOString(),
+      storageKey: STORAGE_KEY,
+      sections,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = exportName;
+    link.click();
+    URL.revokeObjectURL(url);
+    setSettingsMessage(`Export prepared: ${exportName}`);
+  }
+
+  function importData(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result ?? ""));
+        const importedSections = normalizeSections(isRecord(parsed) && "sections" in parsed ? parsed.sections : parsed);
+        replaceAllData(importedSections);
+        setSettingsMessage(`Imported ${file.name}.`);
+      } catch (error) {
+        console.error("Unable to import VCC data.", error);
+        setSettingsMessage("Import failed. Use a valid VCC JSON export.");
+      }
+    };
+    reader.onerror = () => setSettingsMessage("Import failed. The file could not be read.");
+    reader.readAsText(file);
+  }
+
+  function saveBackup() {
+    try {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(sections));
+      setSettingsMessage("Backup saved in this browser.");
+    } catch (error) {
+      console.error("Unable to save backup.", error);
+      setSettingsMessage("Backup failed. Browser storage may be full or unavailable.");
+    }
+  }
+
+  function restoreBackup() {
+    const backup = safeGetStorageItem(BACKUP_KEY);
+    if (!backup) {
+      setSettingsMessage("No browser backup found.");
+      return;
+    }
+
+    try {
+      replaceAllData(normalizeSections(JSON.parse(backup)));
+      setSettingsMessage("Backup restored.");
+    } catch (error) {
+      console.error("Unable to restore backup.", error);
+      setSettingsMessage("Restore failed. Backup data is not valid.");
+    }
+  }
+
+  function clearCache() {
+    try {
+      sessionStorage.clear();
+      localStorage.removeItem(BACKUP_KEY);
+      setSettingsMessage("Cache cleared. Primary VCC data was kept.");
+    } catch (error) {
+      console.error("Unable to clear cache.", error);
+      setSettingsMessage("Clear cache failed. Browser storage may be unavailable.");
+    }
+  }
+
   const settingsCards = [
+    {
+      title: "Local Storage Status",
+      status: storageStatus,
+      detail: `${savedPayload ? "Primary data saved" : "Starter setup"} / ${backupPayload ? "Backup present" : "No backup"} / ${totalRows} rows across ${editablePages} editable pages.`,
+    },
+    {
+      title: "App Version",
+      status: "0.0.0",
+      detail: "VCC OS runs as a local-first Vite React app deployed to the production Vercel project.",
+    },
+    {
+      title: "App Information",
+      status: "Vite React",
+      detail: "Production target is https://vcc-os.vercel.app. Dashboard stays read-only; dedicated pages handle edits.",
+    },
+    {
+      title: "Data Management",
+      status: "Active",
+      detail: `Spendable ${money(metrics.spendableCash)}. Reset controls restore clean starter rows with blank or zero-safe numbers.`,
+    },
+    {
+      title: "Data Validation",
+      status: "Active",
+      detail: "Import and restore data are normalized against the current VCC section model before saving.",
+    },
     {
       title: "Accounts",
       status: "Foundation ready",
@@ -505,9 +653,24 @@ function SettingsPage({
       detail: "Future authentication. No login is active yet, so VCC stays fast and local for now.",
     },
     {
-      title: "Theme Customization",
+      title: "Theme",
       status: "Planned",
-      detail: "Future controls for colors, contrast, card styles, glow strength, and command-center themes.",
+      detail: "Current theme is the default VCC command-center skin. Theme switching is not active yet.",
+    },
+    {
+      title: "Backup / Restore",
+      status: backupPayload ? "Backup present" : "Ready",
+      detail: "Use the Backup data and Restore backup controls below for browser-local recovery.",
+    },
+    {
+      title: "Clear Cache",
+      status: "Available",
+      detail: "Clears temporary browser cache data and the local backup without erasing primary VCC data.",
+    },
+    {
+      title: "Diagnostics",
+      status: "Available",
+      detail: `Storage key: ${STORAGE_KEY}. Backup key: ${BACKUP_KEY}. Build target: Vite React.`,
     },
     {
       title: "Layout / Style Modes",
@@ -530,7 +693,7 @@ function SettingsPage({
     <section className="content">
       <PageHeader
         title="Settings"
-        subtitle="Control center for accounts, login, themes, layouts, QR codes, quick access, and dangerous reset actions."
+        subtitle="Control center for storage, app status, data management, themes, layouts, and reset actions."
         back={back}
       />
 
@@ -544,15 +707,37 @@ function SettingsPage({
         ))}
       </div>
 
+      <div className="dangerZone dataZone">
+        <p className="kicker">DATA_MANAGEMENT</p>
+        <h2>Export / Import / Backup</h2>
+        <p>{settingsMessage}</p>
+        <div className="settingsActions">
+          <button type="button" className="primary" onClick={exportData}>Export Backup</button>
+          <button type="button" className="secondary" onClick={() => importInputRef.current?.click()}>Import Backup</button>
+          <button type="button" className="secondary" onClick={saveBackup}>Backup data</button>
+          <button type="button" className="secondary" onClick={restoreBackup}>Restore backup</button>
+          <button type="button" className="secondary" onClick={clearCache}>Clear cache</button>
+        </div>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="srOnly"
+          aria-label="Import VCC JSON data"
+          onChange={importData}
+        />
+        <small>Import and restore reuse the same section validation as app startup.</small>
+      </div>
+
       <div className="dangerZone">
         <p className="kicker">DANGER_ZONE</p>
         <h2>Reset All Data</h2>
         <p>
-          This erases saved VCC data from this browser and restores the starter setup.
+          This erases saved VCC data from this browser and restores the clean starter setup.
           It now lives inside Settings instead of the main dropdown so it is harder to hit by accident.
         </p>
-        <button className="dangerButton" onClick={resetAllData}>
-          RESET ALL DATA
+        <button type="button" className="dangerButton" onClick={resetAllData}>
+          Reset all data
         </button>
         <small>Protection: you must type RESET exactly before anything is erased.</small>
       </div>
@@ -568,6 +753,8 @@ function ModuleRoute(props: ModulePageProps) {
       return <BillsModule {...props} />;
     case "income":
       return <IncomeModule {...props} />;
+    case "budget":
+      return <ModulePage {...props} />;
     case "transactions":
       return <TransactionsModule {...props} />;
     case "debt":
@@ -576,6 +763,10 @@ function ModuleRoute(props: ModulePageProps) {
       return <SavingsModule {...props} />;
     case "inventory":
       return <InventoryModule {...props} />;
+    case "buyNext":
+      return <ModulePage {...props} />;
+    case "activity":
+      return <ModulePage {...props} />;
     case "goals":
       return <GoalsModule {...props} />;
     case "missions":
@@ -584,13 +775,37 @@ function ModuleRoute(props: ModulePageProps) {
       return null;
   }
 }
+
+function safeGetStorageItem(key: string) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function getStorageStatus() {
+  try {
+    const testKey = "vcc_os_storage_test";
+    localStorage.setItem(testKey, "ok");
+    localStorage.removeItem(testKey);
+    return "Available";
+  } catch {
+    return "Unavailable";
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function cardFor(key: SectionKey, metrics: Metrics, alerts: Alert[]) {
   switch (key) {
     case "money":
       return {
         value: money(metrics.spendableCash),
         label: "Spendable Cash",
-        detail: `Operating ${money(metrics.operatingCash)} · Pressure ${money(metrics.totalPressure)}`,
+        detail: `Operating ${money(metrics.operatingCash)} / Pressure ${money(metrics.totalPressure)}`,
         tone: metrics.spendableCash < 0 ? "bad" : "good",
       };
     case "bills":
@@ -606,6 +821,13 @@ function cardFor(key: SectionKey, metrics: Metrics, alerts: Alert[]) {
         label: "Live income",
         detail: `Weekly ${money(metrics.weeklyIncome)} plus other ${money(metrics.otherIncome)}`,
         tone: "good",
+      };
+    case "budget":
+      return {
+        value: money(metrics.budgetRemaining),
+        label: "Budget remaining",
+        detail: `Planned ${money(metrics.budgetPlanned)} / Actual ${money(metrics.budgetActual)}`,
+        tone: metrics.budgetRemaining < 0 ? "bad" : "neutral",
       };
     case "transactions":
       return {
@@ -634,6 +856,20 @@ function cardFor(key: SectionKey, metrics: Metrics, alerts: Alert[]) {
         label: "Buy Next",
         detail: metrics.buyNext ? `Buy next: ${metrics.buyNext}` : "Food, gas, home, car",
         tone: metrics.criticalInventory > 0 ? "warn" : "good",
+      };
+    case "buyNext":
+      return {
+        value: String(metrics.criticalInventory),
+        label: "Open next actions",
+        detail: metrics.buyNext || "No open buy-next items",
+        tone: metrics.criticalInventory > 0 ? "warn" : "good",
+      };
+    case "activity":
+      return {
+        value: String(metrics.activityCount),
+        label: "Open activity",
+        detail: "Manual action log",
+        tone: metrics.activityCount > 0 ? "neutral" : "good",
       };
     case "goals":
       return {

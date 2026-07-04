@@ -11,7 +11,7 @@ export function BriefingCard({
     <div className="hero">
       <div>
         <div className="statusline">
-          <span className="online">â— ONLINE</span>
+          <span className="online">ONLINE</span>
           <span>{new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>
         </div>
 
@@ -25,7 +25,7 @@ export function BriefingCard({
       </div>
 
       <button className="primary" onClick={() => open(topAlert?.source ?? "missions")}>
-        INVESTIGATE â†’
+        Investigate
       </button>
     </div>
   );

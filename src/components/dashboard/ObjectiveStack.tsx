@@ -21,7 +21,7 @@ export function ObjectiveStack({
         <button key={`${alert.title}-${index}`} className={`stackItem ${alert.level.toLowerCase()}`} onClick={() => open(alert.source)}>
           <span>{index + 1}</span>
           <div>
-            <p>{alert.level} Â· {labelFor(alert.source)}</p>
+            <p>{alert.level} / {labelFor(alert.source)}</p>
             <h3>{alert.title}</h3>
             <small>{alert.proof}</small>
           </div>

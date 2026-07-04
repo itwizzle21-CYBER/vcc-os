@@ -43,8 +43,8 @@ export function ModulePage({
       </div>
 
       <div className="actions spreadsheetToolbar">
-        <button className="secondary" onClick={() => resetSection(section.key)}>RESET</button>
-        <button className="primary" onClick={() => addRow(section.key)}>+ ADD ROW</button>
+        <button type="button" className="secondary" onClick={() => resetSection(section.key)}>Reset page</button>
+        <button type="button" className="primary" onClick={() => addRow(section.key)}>Add row</button>
       </div>
 
       <SpreadsheetGrid section={section} metrics={metrics} updateCell={updateCell} deleteRow={deleteRow} />
@@ -72,6 +72,12 @@ function getModuleSummaryItems(sectionKey: SectionKey, metrics: Metrics) {
         { label: "Other", value: money(metrics.otherIncome) },
         { label: "Combined", value: money(metrics.weeklyIncome + metrics.otherIncome) },
       ];
+    case "budget":
+      return [
+        { label: "Planned", value: money(metrics.budgetPlanned) },
+        { label: "Actual", value: money(metrics.budgetActual) },
+        { label: "Remaining", value: money(metrics.budgetRemaining) },
+      ];
     case "transactions":
       return [
         { label: "Net", value: money(metrics.transactionNet) },
@@ -95,6 +101,18 @@ function getModuleSummaryItems(sectionKey: SectionKey, metrics: Metrics) {
         { label: "Critical", value: String(metrics.criticalInventory) },
         { label: "Buy Next", value: metrics.buyNext || "Clear" },
         { label: "Cash", value: money(metrics.spendableCash) },
+      ];
+    case "buyNext":
+      return [
+        { label: "Open", value: String(metrics.criticalInventory) },
+        { label: "Next", value: metrics.buyNext || "Clear" },
+        { label: "Spendable", value: money(metrics.spendableCash) },
+      ];
+    case "activity":
+      return [
+        { label: "Open", value: String(metrics.activityCount) },
+        { label: "Alerts", value: String(metrics.criticalInventory + metrics.overdueBills) },
+        { label: "Net", value: money(metrics.netPosition) },
       ];
     case "goals":
       return [

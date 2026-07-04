@@ -2,6 +2,7 @@ import { applyDerivedRow, today } from "../calculations/helpers";
 import type { Row, Section, SectionKey } from "../types/vcc";
 
 export const STORAGE_KEY = "vcc_os_protected_vault_v2";
+export const BACKUP_KEY = "vcc_os_backup_v1";
 
 export const defaultSections: Section[] = [
   {
@@ -30,9 +31,9 @@ export const defaultSections: Section[] = [
     subtitle: "Bills due, paid, unpaid, and overdue.",
     columns: ["Bill", "Due Date", "Amount", "Status", "Priority", "Auto Alert", "Notes"],
     rows: [
-      { Bill: "Car note", "Due Date": "", Amount: "", Status: "Unpaid", Priority: "Low", "Auto Alert": "Clear", Notes: "" },
-      { Bill: "Phone", "Due Date": "", Amount: "", Status: "Unpaid", Priority: "Low", "Auto Alert": "Clear", Notes: "" },
-      { Bill: "Insurance", "Due Date": "", Amount: "", Status: "Unpaid", Priority: "Low", "Auto Alert": "Clear", Notes: "" },
+      { Bill: "", "Due Date": "", Amount: "", Status: "", Priority: "Low", "Auto Alert": "Clear", Notes: "" },
+      { Bill: "", "Due Date": "", Amount: "", Status: "", Priority: "Low", "Auto Alert": "Clear", Notes: "" },
+      { Bill: "", "Due Date": "", Amount: "", Status: "", Priority: "Low", "Auto Alert": "Clear", Notes: "" },
     ],
   },
   {
@@ -59,14 +60,27 @@ export const defaultSections: Section[] = [
     ],
   },
   {
+    key: "budget",
+    label: "Budget",
+    subtitle: "Plan operating cash before spending. Keep planned and actual numbers clean.",
+    columns: ["Category", "Planned", "Actual", "Status", "Notes"],
+    rows: [
+      { Category: "Food", Planned: "", Actual: "", Status: "Planned", Notes: "" },
+      { Category: "Gas", Planned: "", Actual: "", Status: "Planned", Notes: "" },
+      { Category: "Bills", Planned: "", Actual: "", Status: "Planned", Notes: "" },
+      { Category: "Debt", Planned: "", Actual: "", Status: "Planned", Notes: "" },
+      { Category: "Savings", Planned: "", Actual: "", Status: "Planned", Notes: "" },
+    ],
+  },
+  {
     key: "debt",
     label: "Debt",
     subtitle: "Debt balances and payments eating future cash.",
     columns: ["Debt", "Current Balance", "Payment Due", "Due Date", "Status", "Blocks Cash", "Notes"],
     rows: [
-      { Debt: "Car balance", "Current Balance": "", "Payment Due": "", "Due Date": "", Status: "Active", "Blocks Cash": "Yes", Notes: "" },
-      { Debt: "MyPay", "Current Balance": "", "Payment Due": "", "Due Date": "", Status: "Active", "Blocks Cash": "Yes", Notes: "" },
-      { Debt: "SpotMe", "Current Balance": "", "Payment Due": "", "Due Date": "", Status: "Active", "Blocks Cash": "Yes", Notes: "" },
+      { Debt: "", "Current Balance": "", "Payment Due": "", "Due Date": "", Status: "", "Blocks Cash": "", Notes: "" },
+      { Debt: "", "Current Balance": "", "Payment Due": "", "Due Date": "", Status: "", "Blocks Cash": "", Notes: "" },
+      { Debt: "", "Current Balance": "", "Payment Due": "", "Due Date": "", Status: "", "Blocks Cash": "", Notes: "" },
     ],
   },
   {
@@ -78,11 +92,11 @@ export const defaultSections: Section[] = [
       {
         Goal: "Emergency Fund",
         "Vault Type": "Emergency",
-        "Target Amount": "500",
-        "Current Amount": "0",
+        "Target Amount": "",
+        "Current Amount": "",
         Protected: "Yes",
         "Access Rule": "Food, gas, shelter, car, shutoff, or true emergency only",
-        "Allowed Withdrawal": "0",
+        "Allowed Withdrawal": "",
         "Withdrawal Reason": "",
         Status: "Locked",
         Notes: "Protected. Do not count as spendable cash.",
@@ -91,10 +105,10 @@ export const defaultSections: Section[] = [
         Goal: "Move-Out Fund",
         "Vault Type": "Future",
         "Target Amount": "",
-        "Current Amount": "0",
+        "Current Amount": "",
         Protected: "Yes",
         "Access Rule": "Do not touch unless move-out mission requires it",
-        "Allowed Withdrawal": "0",
+        "Allowed Withdrawal": "",
         "Withdrawal Reason": "",
         Status: "Locked",
         Notes: "Future stability money.",
@@ -103,10 +117,10 @@ export const defaultSections: Section[] = [
         Goal: "Investment Fund",
         "Vault Type": "Growth",
         "Target Amount": "",
-        "Current Amount": "0",
+        "Current Amount": "",
         Protected: "Flexible",
         "Access Rule": "Approved investment only. No emotional spending.",
-        "Allowed Withdrawal": "0",
+        "Allowed Withdrawal": "",
         "Withdrawal Reason": "",
         Status: "Watch",
         Notes: "Only use when upside is clear and risk is controlled.",
@@ -121,13 +135,35 @@ export const defaultSections: Section[] = [
     rows: createBlankInventoryRows(20),
   },
   {
+    key: "buyNext",
+    label: "Buy Next",
+    subtitle: "Focused list of next items to buy or handle. Dashboard intelligence also reads Inventory.",
+    columns: ["Item", "Source", "Estimated Cost", "Priority", "Status", "Notes"],
+    rows: [
+      { Item: "", Source: "Inventory", "Estimated Cost": "", Priority: "", Status: "Open", Notes: "" },
+      { Item: "", Source: "Bills", "Estimated Cost": "", Priority: "", Status: "Open", Notes: "" },
+      { Item: "", Source: "Debt", "Estimated Cost": "", Priority: "", Status: "Open", Notes: "" },
+    ],
+  },
+  {
+    key: "activity",
+    label: "Activity",
+    subtitle: "Manual log of important VCC actions, updates, and checkpoints.",
+    columns: ["Date", "Area", "Action", "Status", "Notes"],
+    rows: [
+      { Date: today(), Area: "Money", Action: "", Status: "Open", Notes: "" },
+      { Date: today(), Area: "Bills", Action: "", Status: "Open", Notes: "" },
+      { Date: today(), Area: "Inventory", Action: "", Status: "Open", Notes: "" },
+    ],
+  },
+  {
     key: "goals",
     label: "Goals",
     subtitle: "Big-picture progress toward freedom, stability, and growth.",
     columns: ["Goal", "Category", "Target", "Current", "Progress %", "Priority", "Next Step", "Notes"],
     rows: [
-      { Goal: "Emergency Fund", Category: "Money", Target: "500", Current: "0", "Progress %": "0", Priority: "High", "Next Step": "Save first amount", Notes: "" },
-      { Goal: "VCC System", Category: "System", Target: "Clean app", Current: "Working", "Progress %": "90", Priority: "High", "Next Step": "Recommended Move logic", Notes: "" },
+      { Goal: "Emergency Fund", Category: "Money", Target: "", Current: "", "Progress %": "", Priority: "High", "Next Step": "", Notes: "" },
+      { Goal: "", Category: "", Target: "", Current: "", "Progress %": "", Priority: "", "Next Step": "", Notes: "" },
     ],
   },
   {
@@ -136,8 +172,8 @@ export const defaultSections: Section[] = [
     subtitle: "Daily moves that protect stability and build momentum.",
     columns: ["Mission", "Priority", "Status", "Due Date", "Next Action", "Notes"],
     rows: [
-      { Mission: "Update money numbers", Priority: "High", Status: "Open", "Due Date": today(), "Next Action": "Enter cash, income, bills, food, gas, and debt", Notes: "" },
-      { Mission: "Protect savings", Priority: "High", Status: "Open", "Due Date": today(), "Next Action": "Use operating cash before touching savings", Notes: "" },
+      { Mission: "", Priority: "", Status: "", "Due Date": "", "Next Action": "", Notes: "" },
+      { Mission: "", Priority: "", Status: "", "Due Date": "", "Next Action": "", Notes: "" },
     ],
   },
   {
@@ -150,31 +186,48 @@ export const defaultSections: Section[] = [
 ];
 
 export function saveSections(sections: Section[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sections));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sections));
+  } catch (error) {
+    console.error("Unable to save VCC data.", error);
+  }
 }
 
 export function loadSections() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  let saved: string | null = null;
+
+  try {
+    saved = localStorage.getItem(STORAGE_KEY);
+  } catch (error) {
+    console.error("Unable to read VCC data.", error);
+  }
+
   if (!saved) return structuredClone(defaultSections);
 
   try {
-    const parsed = JSON.parse(saved) as Section[];
-    if (!Array.isArray(parsed)) return structuredClone(defaultSections);
-
-    return defaultSections.map((defaultSection) => {
-      const savedSection = parsed.find((section) => section.key === defaultSection.key);
-      if (!savedSection) return structuredClone(defaultSection);
-
-      return {
-        ...defaultSection,
-        rows: Array.isArray(savedSection.rows)
-          ? mergeSavedRows(defaultSection, savedSection.rows)
-          : defaultSection.rows.map((row) => applyDerivedRow(defaultSection.key, row)),
-      };
-    });
+    return normalizeSections(JSON.parse(saved));
   } catch {
     return structuredClone(defaultSections);
   }
+}
+
+export function normalizeSections(raw: unknown) {
+  if (!Array.isArray(raw)) return structuredClone(defaultSections);
+
+  return defaultSections.map((defaultSection) => {
+    const savedSection = raw.find((section): section is Section => {
+      if (!section || typeof section !== "object") return false;
+      return "key" in section && section.key === defaultSection.key;
+    });
+    if (!savedSection) return structuredClone(defaultSection);
+
+    return {
+      ...defaultSection,
+      rows: Array.isArray(savedSection.rows)
+        ? mergeSavedRows(defaultSection, savedSection.rows)
+        : defaultSection.rows.map((row) => applyDerivedRow(defaultSection.key, row)),
+    };
+  });
 }
 
 function mergeSavedRows(defaultSection: Section, savedRows: Row[]) {
@@ -196,18 +249,25 @@ function mergeSavedRows(defaultSection: Section, savedRows: Row[]) {
 }
 
 function normalizeRow(section: Section, row: Row) {
-  const migratedRow = section.key === "inventory" ? migrateInventoryRow(row) : row;
+  const sourceRow = isRowRecord(row) ? row : {};
+  const migratedRow = section.key === "inventory" ? migrateInventoryRow(sourceRow) : sourceRow;
   const normalized = section.columns.reduce<Row>((nextRow, column) => {
-    nextRow[column] = migratedRow[column] ?? "";
+    const value = migratedRow[column];
+    nextRow[column] = value == null ? "" : String(value);
     return nextRow;
   }, {});
 
   return applyDerivedRow(section.key, normalized);
 }
 
+function isRowRecord(row: unknown): row is Row {
+  return typeof row === "object" && row !== null && !Array.isArray(row);
+}
+
 function getIdentityColumn(sectionKey: SectionKey) {
   if (sectionKey === "money") return "Category";
   if (sectionKey === "savings") return "Goal";
+  if (sectionKey === "budget") return "Category";
   return "";
 }
 

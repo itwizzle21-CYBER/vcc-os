@@ -21,7 +21,7 @@ export function PriorityAlerts({
     <div className="alertGrid">
       {alerts.map((alert, index) => (
         <button key={`${alert.title}-${index}`} className={`alert ${alert.level.toLowerCase()}`} onClick={() => open(alert.source)}>
-          <p>{alert.level} Â· {labelFor(alert.source)}</p>
+          <p>{alert.level} / {labelFor(alert.source)}</p>
           <h2>{alert.title}</h2>
           <span>{alert.proof}</span>
           <strong>{alert.action}</strong>

@@ -14,10 +14,13 @@ export function computeFinancialState(data: Section[]): FinancialState {
   const moneySection = getSection(data, "money");
   const billsSection = getSection(data, "bills");
   const incomeSection = getSection(data, "income");
+  const budgetSection = getSection(data, "budget");
   const transactionsSection = getSection(data, "transactions");
   const debtSection = getSection(data, "debt");
   const savingsSection = getSection(data, "savings");
   const inventorySection = getSection(data, "inventory");
+  const buyNextSection = getSection(data, "buyNext");
+  const activitySection = getSection(data, "activity");
   const goalsSection = getSection(data, "goals");
   const missionsSection = getSection(data, "missions");
 
@@ -52,14 +55,28 @@ export function computeFinancialState(data: Section[]): FinancialState {
     return type === "income" || type === "deposit" ? sum + amount : sum - amount;
   }, 0);
 
-  const normalizedBills = billsSection.rows.map((row) => applyDerivedRow("bills", row));
+  const activeBudgetRows = budgetSection.rows.filter((row) => {
+    const status = (row.Status ?? "").toLowerCase();
+    return !["closed", "done", "cancelled", "canceled"].includes(status);
+  });
+  const budgetPlanned = activeBudgetRows.reduce((sum, row) => sum + number(row.Planned), 0);
+  const budgetActual = activeBudgetRows.reduce((sum, row) => sum + number(row.Actual), 0);
+  const budgetRemaining = budgetPlanned - budgetActual;
+
+  const normalizedBills = billsSection.rows
+    .filter((row) => hasAnyValue(row, ["Bill", "Due Date", "Amount", "Status"]))
+    .map((row) => applyDerivedRow("bills", row));
   const unpaidBills = normalizedBills.filter((row) => !isPaid(row.Status));
   const paidBills = normalizedBills.filter((row) => isPaid(row.Status));
   const billsPressure = unpaidBills.reduce((sum, row) => sum + number(row.Amount), 0);
   const overdueBills = unpaidBills.filter((row) => isOverdue(row["Due Date"]) || (row.Status ?? "").toLowerCase() === "overdue").length;
   const billsDueThisWeek = unpaidBills.filter((row) => isDueWithinDays(row["Due Date"], 7)).length;
 
-  const activeDebtRows = debtSection.rows.filter((row) => !["paid", "closed", "done"].includes((row.Status ?? "").toLowerCase()));
+  const activeDebtRows = debtSection.rows.filter(
+    (row) =>
+      hasAnyValue(row, ["Debt", "Current Balance", "Payment Due", "Due Date", "Status"]) &&
+      !["paid", "closed", "done"].includes((row.Status ?? "").toLowerCase())
+  );
   const totalDebtBalance = activeDebtRows.reduce((sum, row) => sum + number(row["Current Balance"]), 0);
   const debtPressure = activeDebtRows.reduce((sum, row) => sum + number(row["Payment Due"]), 0);
   const debtBlocksCash = activeDebtRows
@@ -102,17 +119,30 @@ export function computeFinancialState(data: Section[]): FinancialState {
 
   const normalizedInventoryRows = inventorySection.rows.map((row) => applyDerivedRow("inventory", row));
   const buyNextRows = getInventoryBuyNextRows(normalizedInventoryRows);
+  const manualBuyNextRows = buyNextSection.rows.filter((row) => {
+    const status = (row.Status ?? "").toLowerCase();
+    return (row.Item ?? "").trim() && !["done", "closed", "bought", "handled"].includes(status);
+  });
   const criticalInventory = normalizedInventoryRows.filter((row) => (row.Alert ?? "").toLowerCase() === "critical").length;
-  const buyNextCount = buyNextRows.length;
-  const buyNext = formatBuyNextItems(buyNextRows).join(", ");
+  const buyNextCount = buyNextRows.length + manualBuyNextRows.length;
+  const buyNext = [...formatBuyNextItems(buyNextRows), ...formatManualBuyNextItems(manualBuyNextRows)].join(", ");
+  const activityCount = activitySection.rows.filter((row) => {
+    const status = (row.Status ?? "").toLowerCase();
+    return (row.Action ?? "").trim() && !["done", "closed"].includes(status);
+  }).length;
 
-  const openMissions = missionsSection.rows.filter((row) => !["done", "closed", "complete"].includes((row.Status ?? "").toLowerCase())).length;
+  const openMissions = missionsSection.rows.filter(
+    (row) =>
+      hasAnyValue(row, ["Mission", "Next Action", "Due Date", "Status"]) &&
+      !["done", "closed", "complete"].includes((row.Status ?? "").toLowerCase())
+  ).length;
 
+  const activeGoalRows = goalsSection.rows.filter((row) => hasAnyValue(row, ["Goal", "Target", "Current", "Progress %", "Next Step"]));
   const avgGoalProgress =
-    goalsSection.rows.length === 0
+    activeGoalRows.length === 0
       ? 0
-      : Math.round(goalsSection.rows.reduce((sum, row) => sum + number(row["Progress %"]), 0) / goalsSection.rows.length);
-  const goalRemaining = goalsSection.rows.reduce((sum, row) => {
+      : Math.round(activeGoalRows.reduce((sum, row) => sum + number(row["Progress %"]), 0) / activeGoalRows.length);
+  const goalRemaining = activeGoalRows.reduce((sum, row) => {
     const target = number(row.Target);
     const current = number(row.Current);
     return sum + Math.max(target - current, 0);
@@ -124,6 +154,9 @@ export function computeFinancialState(data: Section[]): FinancialState {
     weeklyIncome,
     otherIncome,
     transactionNet,
+    budgetPlanned,
+    budgetActual,
+    budgetRemaining,
     operatingCash,
     billsPressure,
     foodNeeded,
@@ -145,6 +178,7 @@ export function computeFinancialState(data: Section[]): FinancialState {
     netPosition,
     criticalInventory: buyNextCount,
     buyNext,
+    activityCount,
     openMissions,
     avgGoalProgress,
   };
@@ -206,6 +240,13 @@ function formatBuyNextItems(rows: Array<Record<string, string>>) {
   });
 }
 
+function formatManualBuyNextItems(rows: Array<Record<string, string>>) {
+  return rows.map((row) => {
+    const cost = number(row["Estimated Cost"]);
+    return cost > 0 ? `${row.Item || "Buy Next item"} (${money(cost)})` : row.Item || "Buy Next item";
+  });
+}
+
 function getSection(sections: Section[], key: SectionKey) {
   return sections.find((section) => section.key === key) ?? defaultSections.find((section) => section.key === key)!;
 }
@@ -220,6 +261,10 @@ function isDueWithinDays(date: string | undefined, days: number) {
   due.setHours(0, 0, 0, 0);
   const diff = Math.ceil((due.getTime() - today.getTime()) / 86_400_000);
   return diff >= 0 && diff <= days;
+}
+
+function hasAnyValue(row: Record<string, string>, keys: string[]) {
+  return keys.some((key) => (row[key] ?? "").trim() !== "");
 }
 
 function getFinancialHealthScore({

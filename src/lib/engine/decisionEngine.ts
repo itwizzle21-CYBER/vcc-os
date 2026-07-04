@@ -23,9 +23,12 @@ export function computeDecisionEngine(financialState: FinancialState, data: Sect
   const alerts: Alert[] = [];
   const bills = getSection(data, "bills");
   const inventory = getSection(data, "inventory");
+  const buyNext = getSection(data, "buyNext");
   const goals = getSection(data, "goals");
 
-  const normalizedBills = bills.rows.map((row) => applyDerivedRow("bills", row));
+  const normalizedBills = bills.rows
+    .filter((row) => hasAnyValue(row, ["Bill", "Due Date", "Amount", "Status"]))
+    .map((row) => applyDerivedRow("bills", row));
   const unpaidBills = normalizedBills.filter((row) => !isPaid(row.Status));
   const overdueBills = unpaidBills.filter((row) => isOverdue(row["Due Date"]) || (row.Status ?? "").toLowerCase() === "overdue");
   const carOverdue = overdueBills.find((row) => /car|auto|vehicle|transport/i.test(row.Bill ?? ""));
@@ -125,7 +128,23 @@ export function computeDecisionEngine(financialState: FinancialState, data: Sect
     });
   });
 
-  goals.rows.forEach((row) => {
+  buyNext.rows
+    .filter((row) => {
+      const status = (row.Status ?? "").toLowerCase();
+      return (row.Item ?? "").trim() && !["done", "closed", "bought", "handled"].includes(status);
+    })
+    .forEach((row) => {
+      const priority = (row.Priority ?? "").toLowerCase();
+      alerts.push({
+        title: `${row.Item || "Buy Next item"} is open`,
+        source: "buyNext",
+        level: priority === "critical" ? "Critical" : priority === "low" ? "Medium" : "High",
+        proof: `${row.Item || "Item"} is listed in Buy Next${row["Estimated Cost"] ? ` for ${money(number(row["Estimated Cost"]))}` : ""}.`,
+        action: "Decide whether to buy, delay, or close this item before adding new spending.",
+      });
+    });
+
+  goals.rows.filter((row) => hasAnyValue(row, ["Goal", "Target", "Current", "Progress %", "Next Step"])).forEach((row) => {
     const priority = (row.Priority ?? "").toLowerCase();
     const progress = number(row["Progress %"]);
     if (priority === "high" && progress < 25) {
@@ -218,6 +237,18 @@ function getRecommendedMove(
       doNotDo: "Do not ignore small survival items until they become emergencies.",
       checkpoint: "Mark inventory items handled once covered.",
       source: "inventory",
+      tone: "warning",
+    };
+  }
+
+  if (metrics.buyNext) {
+    return {
+      title: `Review Buy Next: ${metrics.buyNext}`,
+      why: "There are open Buy Next items waiting for a decision.",
+      doFirst: "Open Buy Next and mark the item bought, delayed, or handled.",
+      doNotDo: "Do not add new purchases until the open Buy Next list is current.",
+      checkpoint: "Close or reprioritize the Buy Next row after action.",
+      source: "buyNext",
       tone: "warning",
     };
   }
@@ -332,4 +363,8 @@ function daysUntil(date: string | undefined) {
   const due = new Date(dueDate);
   due.setHours(0, 0, 0, 0);
   return Math.ceil((due.getTime() - today.getTime()) / 86_400_000);
+}
+
+function hasAnyValue(row: Record<string, string>, keys: string[]) {
+  return keys.some((key) => (row[key] ?? "").trim() !== "");
 }
