@@ -1,5 +1,4 @@
-import { CheckCircle2, Circle, Target, TrendingUp } from "lucide-react";
-import { useState } from "react";
+import { Circle, Target, TrendingUp } from "lucide-react";
 import type { TodayMission } from "./decisionEngine";
 
 interface Mission {
@@ -16,15 +15,10 @@ interface TodaysMissionProps {
 }
 
 export default function TodaysMissionCard({ data }: TodaysMissionProps) {
-  const [isCompleted, setIsCompleted] = useState(data?.completed || false);
-  const [tasks, setTasks] = useState<Mission[]>(data?.supportingTasks || []);
-
   if (!data) return null;
 
-  const toggleMission = (id: number) => {
-    setTasks(tasks.map((m) => (m.id === id ? { ...m, completed: !m.completed } : m)));
-  };
-
+  const tasks: Mission[] = data.supportingTasks || [];
+  const isCompleted = data.completed;
   const completed = tasks.filter((m) => m.completed).length + (isCompleted ? 1 : 0);
   const total = tasks.length + 1;
   const progress = Math.round((completed / total) * 100);
@@ -45,21 +39,15 @@ export default function TodaysMissionCard({ data }: TodaysMissionProps) {
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsCompleted(!isCompleted)}
+        <div
           className={`w-full rounded-xl border p-4 text-left transition-all duration-200 ${
             isCompleted
               ? "border-emerald-500/30 bg-emerald-500/10"
-              : "border-cyan-500/30 bg-cyan-500/10 hover:border-cyan-400/60"
+              : "border-cyan-500/30 bg-cyan-500/10"
           }`}
         >
           <div className="flex items-start gap-3">
-            {isCompleted ? (
-              <CheckCircle2 className="mt-1 h-5 w-5 flex-shrink-0 text-emerald-400" />
-            ) : (
-              <Target className="mt-1 h-5 w-5 flex-shrink-0 text-cyan-300" />
-            )}
+            <Target className="mt-1 h-5 w-5 flex-shrink-0 text-cyan-300" />
             <div className="min-w-0">
               <p className="text-base font-bold text-white">{data.title}</p>
               <p className="mt-1 text-sm text-slate-300">
@@ -68,7 +56,7 @@ export default function TodaysMissionCard({ data }: TodaysMissionProps) {
               <p className="mt-2 text-xs leading-relaxed text-slate-400">{data.reason}</p>
             </div>
           </div>
-        </button>
+        </div>
 
         <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
           <div className="flex items-center gap-2 text-emerald-300">
@@ -99,22 +87,16 @@ export default function TodaysMissionCard({ data }: TodaysMissionProps) {
 
       <div className="flex-1 space-y-2 overflow-y-auto">
         {tasks.map((mission) => (
-          <button
-            type="button"
+          <div
             key={mission.id}
-            onClick={() => toggleMission(mission.id)}
             className={`group w-full rounded-lg border p-3 text-left transition-all duration-200 ${
               mission.completed
                 ? "border-slate-700/30 bg-slate-700/20"
-                : "border-slate-600/50 bg-slate-700/40 hover:border-slate-500/50 hover:bg-slate-700/60"
+                : "border-slate-600/50 bg-slate-700/40"
             }`}
           >
             <div className="flex items-start gap-3">
-              {mission.completed ? (
-                <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-400" />
-              ) : (
-                <Circle className="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-500 group-hover:text-slate-400" />
-              )}
+              <Circle className="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-500" />
 
               <div className="min-w-0 flex-1">
                 <p
@@ -136,7 +118,7 @@ export default function TodaysMissionCard({ data }: TodaysMissionProps) {
                 </div>
               </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
     </div>
