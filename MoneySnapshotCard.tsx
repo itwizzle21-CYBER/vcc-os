@@ -1,4 +1,4 @@
-import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 
 interface Breakdown {
   label: string;
@@ -14,6 +14,9 @@ interface MoneySnapshotProps {
     monthlyIncome: string;
     monthlyExpenses: string;
     monthlyNet: string;
+    cashAfterDueBills: string;
+    dueBillsTotal: string;
+    savingsCoverage: string;
     breakdown: Breakdown[];
     liabilityBreakdown: Breakdown[];
   };
@@ -23,118 +26,106 @@ export default function MoneySnapshotCard({ data }: MoneySnapshotProps) {
   if (!data) return null;
 
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-slate-800/50 via-slate-800/30 to-slate-900/50 border border-slate-700/50 backdrop-blur-xl p-8 shadow-2xl">
-      {/* Net Worth Banner */}
-      <div className="mb-8 p-6 rounded-xl bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20">
-        <p className="text-slate-400 text-sm font-medium mb-2">Net Worth</p>
-        <p className="text-4xl font-bold text-white">{data.netWorth}</p>
-        <p className="text-emerald-400 text-sm mt-2">
-          ↑ $450 from last month
-        </p>
+    <div className="rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-800/50 via-slate-800/30 to-slate-900/50 p-5 shadow-2xl backdrop-blur-xl sm:p-8">
+      <div className="mb-6 rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 p-5 sm:mb-8 sm:p-6">
+        <p className="mb-2 text-sm font-medium text-slate-400">Net Worth</p>
+        <p className="break-words text-3xl font-bold text-white sm:text-4xl">{data.netWorth}</p>
+        <p className="mt-2 text-sm text-emerald-400">Assets minus known liabilities</p>
       </div>
 
-      {/* Key metrics grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        {/* Assets */}
-        <div className="p-4 rounded-lg bg-slate-700/20 border border-slate-600/30">
-          <p className="text-slate-400 text-xs font-medium mb-2">Total Assets</p>
-          <p className="text-xl font-bold text-white">{data.totalAssets}</p>
-        </div>
-
-        {/* Liabilities */}
-        <div className="p-4 rounded-lg bg-slate-700/20 border border-slate-600/30">
-          <p className="text-slate-400 text-xs font-medium mb-2">
-            Total Liabilities
-          </p>
-          <p className="text-xl font-bold text-red-400">{data.totalLiabilities}</p>
-        </div>
-
-        {/* Monthly Income */}
-        <div className="p-4 rounded-lg bg-slate-700/20 border border-slate-600/30">
-          <p className="text-slate-400 text-xs font-medium mb-2">
-            Monthly Income
-          </p>
-          <div className="flex items-center gap-2">
-            <p className="text-xl font-bold text-emerald-400">
-              {data.monthlyIncome}
-            </p>
-            <ArrowUpRight className="w-4 h-4 text-emerald-400" />
-          </div>
-        </div>
-
-        {/* Monthly Expenses */}
-        <div className="p-4 rounded-lg bg-slate-700/20 border border-slate-600/30">
-          <p className="text-slate-400 text-xs font-medium mb-2">
-            Monthly Expenses
-          </p>
-          <div className="flex items-center gap-2">
-            <p className="text-xl font-bold text-orange-400">
-              {data.monthlyExpenses}
-            </p>
-            <ArrowDownLeft className="w-4 h-4 text-orange-400" />
-          </div>
-        </div>
-
-        {/* Monthly Net */}
-        <div className="p-4 rounded-lg bg-slate-700/20 border border-slate-600/30">
-          <p className="text-slate-400 text-xs font-medium mb-2">Monthly Net</p>
-          <p className="text-xl font-bold text-cyan-400">{data.monthlyNet}</p>
-        </div>
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric label="Total Assets" value={data.totalAssets} tone="white" />
+        <Metric label="Total Liabilities" value={data.totalLiabilities} tone="red" />
+        <Metric label="Monthly Income" value={data.monthlyIncome} tone="emerald" icon="up" />
+        <Metric label="Monthly Expenses" value={data.monthlyExpenses} tone="orange" icon="down" />
+        <Metric label="Monthly Net" value={data.monthlyNet} tone="cyan" />
+        <Metric label="7-Day Bills" value={data.dueBillsTotal} tone="cyan" accent />
+        <Metric label="Cash After Bills" value={data.cashAfterDueBills} tone="emerald" accent />
+        <Metric label="Savings Coverage" value={data.savingsCoverage} tone="white" />
       </div>
 
-      {/* Breakdown sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Assets breakdown */}
-        <div>
-          <h4 className="text-sm font-semibold text-slate-300 mb-4">
-            Asset Allocation
-          </h4>
-          <div className="space-y-3">
-            {data.breakdown.map((item, idx) => (
-              <div key={idx}>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm text-slate-400">{item.label}</span>
-                  <span className="text-sm font-semibold text-white">
-                    {item.value}
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"
-                    style={{ width: `${item.percentage}%` }}
-                  />
-                </div>
-                <p className="text-xs text-slate-500 mt-1">{item.percentage}%</p>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2">
+        <BreakdownGroup
+          title="Asset Allocation"
+          items={data.breakdown}
+          barClassName="from-blue-500 to-cyan-500"
+        />
+        <BreakdownGroup
+          title="Liability Breakdown"
+          items={data.liabilityBreakdown}
+          barClassName="from-red-500 to-orange-500"
+        />
+      </div>
+    </div>
+  );
+}
 
-        {/* Liabilities breakdown */}
-        <div>
-          <h4 className="text-sm font-semibold text-slate-300 mb-4">
-            Liability Breakdown
-          </h4>
-          <div className="space-y-3">
-            {data.liabilityBreakdown.map((item, idx) => (
-              <div key={idx}>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm text-slate-400">{item.label}</span>
-                  <span className="text-sm font-semibold text-white">
-                    {item.value}
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full"
-                    style={{ width: `${item.percentage}%` }}
-                  />
-                </div>
-                <p className="text-xs text-slate-500 mt-1">{item.percentage}%</p>
-              </div>
-            ))}
+function Metric({
+  label,
+  value,
+  tone,
+  icon,
+  accent,
+}: {
+  label: string;
+  value: string;
+  tone: "white" | "red" | "emerald" | "orange" | "cyan";
+  icon?: "up" | "down";
+  accent?: boolean;
+}) {
+  const toneClass = {
+    white: "text-white",
+    red: "text-red-400",
+    emerald: "text-emerald-400",
+    orange: "text-orange-400",
+    cyan: "text-cyan-400",
+  }[tone];
+  const accentClass = accent
+    ? tone === "emerald"
+      ? "border-emerald-500/20 bg-emerald-500/10"
+      : "border-cyan-500/20 bg-cyan-500/10"
+    : "border-slate-600/30 bg-slate-700/20";
+
+  return (
+    <div className={`rounded-lg border p-4 ${accentClass}`}>
+      <p className="mb-2 text-xs font-medium text-slate-400">{label}</p>
+      <div className="flex items-center gap-2">
+        <p className={`break-words text-xl font-bold ${toneClass}`}>{value}</p>
+        {icon === "up" && <ArrowUpRight className={`h-4 w-4 ${toneClass}`} />}
+        {icon === "down" && <ArrowDownLeft className={`h-4 w-4 ${toneClass}`} />}
+      </div>
+    </div>
+  );
+}
+
+function BreakdownGroup({
+  title,
+  items,
+  barClassName,
+}: {
+  title: string;
+  items: Breakdown[];
+  barClassName: string;
+}) {
+  return (
+    <div>
+      <h4 className="mb-4 text-sm font-semibold text-slate-300">{title}</h4>
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div key={item.label}>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <span className="truncate text-sm text-slate-400">{item.label}</span>
+              <span className="text-sm font-semibold text-white">{item.value}</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-700/50">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r ${barClassName}`}
+                style={{ width: `${item.percentage}%` }}
+              />
+            </div>
+            <p className="mt-1 text-xs text-slate-500">{item.percentage}%</p>
           </div>
-        </div>
+        ))}
       </div>
     </div>
   );

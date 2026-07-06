@@ -1,137 +1,110 @@
-// Realistic sample data for CEO Dashboard
+import {
+  createMoneySnapshot,
+  createPriorityAlerts,
+  createTodayMission,
+  type DecisionBill,
+} from "./decisionEngine";
 
-export const sampleDailyBriefing = {
-  greeting: "Good morning, Alex",
-  date: new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  }),
-  summary: "You're on track with your financial goals. Focus on paying down the credit card this week.",
-  highlights: [
-    {
-      title: "Cash Position",
-      value: "$4,250.32",
-      change: "+$320 from yesterday",
-      trend: "up",
-    },
-    {
-      title: "Debt Status",
-      value: "$18,450",
-      change: "-$150 this week",
-      trend: "down",
-    },
-    {
-      title: "Savings Rate",
-      value: "32%",
-      change: "+2% vs last month",
-      trend: "up",
-    },
-  ],
+const today = new Date();
+
+const toDate = (daysFromToday: number) => {
+  const date = new Date(today);
+  date.setDate(today.getDate() + daysFromToday);
+  return date.toISOString().slice(0, 10);
 };
 
-export const sampleTodaysMission = [
+export const sampleBills: DecisionBill[] = [
   {
     id: 1,
-    title: "Pay electric bill",
-    dueDate: "Today",
-    priority: "high",
-    completed: false,
-    category: "Bills",
+    name: "Electric bill",
+    amount: 186.42,
+    dueDate: toDate(0),
+    status: "pending",
+    impact: "critical",
+    category: "Utilities",
   },
   {
     id: 2,
-    title: "Review credit card statement",
-    dueDate: "Today",
-    priority: "medium",
-    completed: false,
+    name: "Credit card minimum",
+    amount: 450,
+    dueDate: toDate(2),
+    status: "pending",
+    impact: "high",
     category: "Debt",
   },
   {
     id: 3,
-    title: "Transfer $500 to savings",
-    dueDate: "Today",
-    priority: "high",
-    completed: false,
-    category: "Savings",
+    name: "Car insurance",
+    amount: 214.8,
+    dueDate: toDate(5),
+    status: "pending",
+    impact: "high",
+    category: "Insurance",
   },
   {
     id: 4,
-    title: "Check inventory levels",
-    dueDate: "Today",
-    priority: "low",
-    completed: true,
-    category: "Inventory",
-  },
-  {
-    id: 5,
-    title: "Review trading performance",
-    dueDate: "Today",
-    priority: "medium",
-    completed: false,
-    category: "Trading",
+    name: "Streaming bundle",
+    amount: 34.99,
+    dueDate: toDate(9),
+    status: "pending",
+    impact: "low",
+    category: "Subscriptions",
   },
 ];
 
-export const sampleMoneySnapshot = {
-  totalAssets: "$24,580.50",
-  totalLiabilities: "$18,450.00",
-  netWorth: "$6,130.50",
-  monthlyIncome: "$5,200.00",
-  monthlyExpenses: "$3,150.00",
-  monthlyNet: "$2,050.00",
-  breakdown: [
-    { label: "Cash", value: "$4,250", percentage: 17 },
-    { label: "Savings", value: "$12,800", percentage: 52 },
-    { label: "Investments", value: "$7,530", percentage: 31 },
-  ],
-  liabilityBreakdown: [
-    { label: "Credit Card", value: "$8,450", percentage: 46 },
-    { label: "Personal Loan", value: "$10,000", percentage: 54 },
+export const sampleDailyBriefing = {
+  greeting: "Good morning, Alex",
+  date: today.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }),
+  summary: "Decision Engine v1 is prioritizing today's cash move by urgency, due date, and bill impact.",
+  highlights: [
+    {
+      title: "Cash Available",
+      value: "$4,250.32",
+      change: "$3,613.90 after 7-day bills",
+      trend: "up" as const,
+    },
+    {
+      title: "Due This Week",
+      value: "$851.22",
+      change: "3 obligations in window",
+      trend: "down" as const,
+    },
+    {
+      title: "Decision Focus",
+      value: "Electric",
+      change: "Highest urgency and impact",
+      trend: "up" as const,
+    },
   ],
 };
 
-export const samplePriorityAlerts = [
+export const sampleTodaysMission = createTodayMission(sampleBills, today);
+
+export const sampleMoneySnapshot = createMoneySnapshot(
   {
-    id: 1,
-    type: "warning",
-    title: "Credit Card Payment Due",
-    message: "Your credit card payment of $450 is due in 3 days",
-    actionUrl: "/bills",
-    actionLabel: "View Bill",
+    cash: 4250.32,
+    savings: 12800,
+    investments: 7530.18,
+    totalLiabilities: 18450,
+    monthlyIncome: 5200,
+    monthlyExpenses: 3150,
   },
-  {
-    id: 2,
-    type: "info",
-    title: "Savings Goal Progress",
-    message: "You're 68% toward your Emergency Fund goal. Keep it up!",
-    actionUrl: "/savings",
-    actionLabel: "View Goal",
-  },
-  {
-    id: 3,
-    type: "success",
-    title: "Debt Reduction Milestone",
-    message: "You've paid off $2,500 in debt this quarter",
-    actionUrl: "/debt",
-    actionLabel: "View Progress",
-  },
-  {
-    id: 4,
-    type: "warning",
-    title: "Inventory Alert",
-    message: "Groceries inventory is running low - 3 items critical",
-    actionUrl: "/inventory",
-    actionLabel: "View Inventory",
-  },
-];
+  sampleBills,
+  today
+);
+
+export const samplePriorityAlerts = createPriorityAlerts(sampleBills, today);
 
 export const sampleBuyNext = [
   {
     id: 1,
     name: "Milk",
     category: "Groceries",
-    status: "Critical",
+    status: "Critical" as const,
     lastPurchased: "2 days ago",
     estimatedCost: "$4.50",
     priority: 1,
@@ -140,7 +113,7 @@ export const sampleBuyNext = [
     id: 2,
     name: "Bread",
     category: "Groceries",
-    status: "Critical",
+    status: "Critical" as const,
     lastPurchased: "3 days ago",
     estimatedCost: "$3.25",
     priority: 2,
@@ -149,7 +122,7 @@ export const sampleBuyNext = [
     id: 3,
     name: "Eggs",
     category: "Groceries",
-    status: "Low",
+    status: "Low" as const,
     lastPurchased: "5 days ago",
     estimatedCost: "$5.99",
     priority: 3,
@@ -158,7 +131,7 @@ export const sampleBuyNext = [
     id: 4,
     name: "Toilet Paper",
     category: "Household Essentials",
-    status: "Low",
+    status: "Low" as const,
     lastPurchased: "1 week ago",
     estimatedCost: "$12.99",
     priority: 4,
@@ -167,7 +140,7 @@ export const sampleBuyNext = [
     id: 5,
     name: "Shampoo",
     category: "Hygiene",
-    status: "Good",
+    status: "Good" as const,
     lastPurchased: "2 weeks ago",
     estimatedCost: "$8.50",
     priority: 5,

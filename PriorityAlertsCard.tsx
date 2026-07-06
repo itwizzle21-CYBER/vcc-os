@@ -1,4 +1,4 @@
-import { AlertCircle, Info, CheckCircle, AlertTriangle } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info } from "lucide-react";
 
 interface Alert {
   id: number;
@@ -7,6 +7,7 @@ interface Alert {
   message: string;
   actionUrl: string;
   actionLabel: string;
+  score?: number;
 }
 
 interface PriorityAlertsProps {
@@ -19,12 +20,12 @@ export default function PriorityAlertsCard({ data }: PriorityAlertsProps) {
   const getAlertIcon = (type: string) => {
     switch (type) {
       case "warning":
-        return <AlertTriangle className="w-5 h-5 text-amber-400" />;
+        return <AlertTriangle className="h-5 w-5 text-amber-400" />;
       case "success":
-        return <CheckCircle className="w-5 h-5 text-emerald-400" />;
+        return <CheckCircle className="h-5 w-5 text-emerald-400" />;
       case "info":
       default:
-        return <Info className="w-5 h-5 text-blue-400" />;
+        return <Info className="h-5 w-5 text-blue-400" />;
     }
   };
 
@@ -41,32 +42,40 @@ export default function PriorityAlertsCard({ data }: PriorityAlertsProps) {
   };
 
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-slate-800/50 via-slate-800/30 to-slate-900/50 border border-slate-700/50 backdrop-blur-xl p-6 shadow-2xl h-full flex flex-col">
-      <h3 className="text-lg font-bold text-white mb-4">Priority Alerts</h3>
+    <div className="flex h-full flex-col rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-800/50 via-slate-800/30 to-slate-900/50 p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 className="text-lg font-bold text-white">Priority Alerts</h3>
+        <span className="rounded-full border border-slate-600/50 px-3 py-1 text-xs font-semibold text-slate-300">
+          Ranked
+        </span>
+      </div>
 
-      <div className="space-y-3 flex-1 overflow-y-auto">
+      <div className="flex-1 space-y-3 overflow-y-auto">
         {data.map((alert) => (
           <div
             key={alert.id}
-            className={`p-4 rounded-lg border ${getAlertColor(alert.type)} hover:border-opacity-100 transition-all duration-200 cursor-pointer group`}
+            className={`group rounded-lg border p-4 transition-all duration-200 hover:border-opacity-100 ${getAlertColor(
+              alert.type
+            )}`}
           >
             <div className="flex gap-3">
-              <div className="flex-shrink-0 mt-0.5">
-                {getAlertIcon(alert.type)}
-              </div>
+              <div className="mt-0.5 flex-shrink-0">{getAlertIcon(alert.type)}</div>
 
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-white text-sm mb-1">
-                  {alert.title}
-                </h4>
-                <p className="text-slate-400 text-xs leading-relaxed mb-2">
-                  {alert.message}
-                </p>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex items-start justify-between gap-2">
+                  <h4 className="text-sm font-semibold text-white">{alert.title}</h4>
+                  {typeof alert.score === "number" && (
+                    <span className="rounded-full bg-slate-950/40 px-2 py-0.5 text-[11px] font-bold text-slate-300">
+                      {alert.score}
+                    </span>
+                  )}
+                </div>
+                <p className="mb-2 text-xs leading-relaxed text-slate-400">{alert.message}</p>
                 <a
                   href={alert.actionUrl}
-                  className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                  className="text-xs font-medium text-blue-400 transition-colors hover:text-blue-300"
                 >
-                  {alert.actionLabel} →
+                  {alert.actionLabel} -&gt;
                 </a>
               </div>
             </div>

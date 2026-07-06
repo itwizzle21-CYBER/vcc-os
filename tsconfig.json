@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "App.tsx",
+    "Dashboard.tsx",
+    "DailyBriefingCard.tsx",
+    "TodaysMissionCard.tsx",
+    "MoneySnapshotCard.tsx",
+    "PriorityAlertsCard.tsx",
+    "BuyNextCard.tsx",
+    "GoalProgressCard.tsx",
+    "BillsCard.tsx",
+    "DebtCard.tsx",
+    "SavingsCard.tsx",
+    "data.ts",
+    "decisionEngine.ts",
+    "decisionEngine.test.ts",
+    "main.tsx",
+    "vite.config.ts"
+  ]
+}

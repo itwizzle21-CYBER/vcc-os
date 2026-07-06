@@ -1,0 +1,32 @@
+{
+  "name": "vcc-os",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "lint": "eslint App.tsx Dashboard.tsx DailyBriefingCard.tsx TodaysMissionCard.tsx MoneySnapshotCard.tsx PriorityAlertsCard.tsx BuyNextCard.tsx GoalProgressCard.tsx BillsCard.tsx DebtCard.tsx SavingsCard.tsx data.ts decisionEngine.ts decisionEngine.test.ts main.tsx vite.config.ts --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run decisionEngine.test.ts"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.6.3",
+    "vite": "^8.1.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "vitest": "^4.1.10"
+  }
+}
