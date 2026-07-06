@@ -19,7 +19,7 @@ export default function DebtCard({ data }: DebtCardProps) {
 
   return (
     <a
-      href="/debt"
+      href="/debts"
       className="group flex h-full cursor-pointer flex-col rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-800/50 via-slate-800/30 to-slate-900/50 p-6 shadow-2xl backdrop-blur-xl transition-all duration-300 hover:border-slate-600/50"
     >
       <div className="mb-4 flex items-center justify-between">
