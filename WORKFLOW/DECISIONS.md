@@ -72,6 +72,20 @@ Record UI, architecture, workflow, and deployment decisions here.
 - Consequences: Desktop nav uses denser but usable targets; mobile continues using horizontal bottom tabs.
 - Relevant skill used: `vercel-react-best-practices`.
 
+## 2026-07-04 - Docs Folder Is Canonical GitHub Documentation
+
+- Decision: Use `/docs` as the canonical durable GitHub Markdown documentation source while keeping `WORKFLOW/` as active sprint memory.
+- Reason: Sprint 0 requires repository governance, architecture, health, standards, roadmap, and release documentation as a professional source of truth.
+- Consequences: Future durable documentation updates belong in `/docs`; operational lessons, active blockers, and sprint-memory entries remain in `WORKFLOW/`.
+- Relevant skill used: `grill-with-docs`, `requesting-code-review`, `supabase-postgres-best-practices`, `vercel-react-best-practices`.
+
+## 2026-07-04 - Verified App Root Is Documents Project
+
+- Decision: Treat `C:\Users\itwiz\Documents\Projects\VCC_OS` as the active app root.
+- Reason: It contains `package.json`, `src/`, `public/`, `.git`, `.vercel`, and the build/test tooling. `C:\Users\itwiz\Downloads\VCC-OS` is an export snapshot and is not the buildable app.
+- Consequences: Every future sprint must verify the root before work and avoid making release claims from the export snapshot.
+- Relevant skill used: `grill-with-docs`.
+
 ## Decision Template
 
 ```markdown

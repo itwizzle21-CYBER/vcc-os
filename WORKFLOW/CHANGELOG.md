@@ -15,6 +15,9 @@ Track production-impacting changes and deployments here.
 - Sprint 6: aligned Settings labels with release-candidate requirements, ignored local installed-skill artifacts, and removed obsolete fallback workflow memory files from the release set.
 - Added Playwright production smoke workflow for post-deploy checks of production loading, dashboard, navigation, Settings controls, main pages, and console errors.
 - Sprint 7: restored Settings as a hash-routed page, aligned Settings controls/cards to the required labels, and tightened desktop sidebar spacing so all nav tabs fit while preserving mobile bottom nav.
+- Sprint 0: verified the real app root, added `/docs` as the canonical GitHub Markdown documentation source, and added governance, audit, health, architecture, security, financial, QA, UI, roadmap, and sprint-history documentation.
+- Sprint 0.5: validated the foundation docs with build, lint, TypeScript check, and production smoke; created `docs/Baseline_Report.md`; baseline tag remains pending because Git staging is blocked by `.git/index.lock` permission denial.
+- Sprint 1.1: completed dashboard intelligence audit documentation, including dashboard inventory, architecture review, QA checklist, risk assessment, and prioritized backlog; no application code changed.
 - No production deployment performed.
 
 ## Deployment Template

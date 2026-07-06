@@ -2,6 +2,39 @@
 
 Read this file before fixing errors or revisiting previously fixed areas. Never repeat a fixed mistake without checking workflow memory first.
 
+## 2026-07-04 - Sprint 1.1 Dashboard Intelligence Audit
+
+- Error/problem: The dashboard needed architecture/product review before implementation so future work does not redesign, duplicate calculations, or turn the dashboard into an editing surface.
+- Root cause: Dashboard intelligence spans `Dashboard.tsx`, extracted dashboard components, financial engine, decision engine, storage defaults, and module summaries; several values are repeated across widgets.
+- Fix applied: Created dashboard audit, backlog, architecture review, QA checklist, and risk assessment docs; updated roadmap, PRD, and project health report with Sprint 1.1 findings; did not modify application code.
+- Files touched: `docs/Dashboard_Audit.md`, `docs/Dashboard_Backlog.md`, `docs/Dashboard_Architecture_Review.md`, `docs/Dashboard_QA_Checklist.md`, `docs/Dashboard_Risk_Assessment.md`, `docs/Roadmap.md`, `docs/Master_PRD.md`, `docs/Project_Health_Report.md`, `WORKFLOW/CHANGELOG.md`, `WORKFLOW/VCC_WORKFLOW_MEMORY.md`.
+- Commands that worked: Source reads for `Dashboard.tsx`, dashboard components, storage, helpers, financial engine, decision engine, and docs.
+- Commands that failed: None during Sprint 1.1 audit creation.
+- Prevention rule: Before implementing dashboard changes, add dashboard/module consistency tests and consolidate duplicated derivation logic before changing UI.
+- Relevant skill used: `vcc-os-workflow`, `vercel-react-best-practices`, `playwright-best-practices`, `supabase-postgres-best-practices`.
+
+## 2026-07-04 - Sprint 0.5 Foundation Baseline Blocked By Git Index
+
+- Error/problem: Sprint 0.5 needed to commit Sprint 0 documentation, create `v0.1.0-foundation`, push, deploy, and smoke-test the new baseline, but Git staging failed.
+- Root cause: The sandbox cannot create `.git/index.lock` in `C:\Users\itwiz\Documents\Projects\VCC_OS\.git`, even though no stale lock file exists.
+- Fix applied: Verified docs are present, ran build/lint/typecheck/production smoke successfully, updated Sprint 0.5 docs, created `docs/Baseline_Report.md`, and stopped before commit/tag/push/deploy.
+- Files touched: `docs/Baseline_Report.md`, `docs/Sprint_History.md`, `docs/Changelog.md`, `docs/Master_PRD.md`, `docs/Project_Health_Report.md`, `WORKFLOW/CHANGELOG.md`, `WORKFLOW/VCC_WORKFLOW_MEMORY.md`.
+- Commands that worked: `npm.cmd run build`; `npm.cmd run lint`; `npx.cmd tsc --noEmit`; `npm.cmd run smoke:prod`; `git diff --check`; `git status --short --branch`; `.git/index.lock` check.
+- Commands that failed: Git staging remains blocked by `.git/index.lock: Permission denied`.
+- Prevention rule: Do not attempt baseline tags, pushes, or deploys from this sandbox until Git index write permissions are fixed; run the provided commands from an unrestricted shell.
+- Relevant skill used: `vcc-os-workflow`, `playwright-best-practices`, `requesting-code-review`, `vercel-react-best-practices`.
+
+## 2026-07-04 - Sprint 0 Repository Recovery And Docs Foundation
+
+- Error/problem: The Sprint 0 request was initially attached while the session was in `C:\Users\itwiz\Downloads\VCC-OS`, an export snapshot without `package.json`, `src/`, `public/`, or build tooling.
+- Root cause: There are two similarly named folders; only `C:\Users\itwiz\Documents\Projects\VCC_OS` is the real buildable app root.
+- Fix applied: Ran root verification commands, confirmed the real app root, verified `.git/index.lock` was absent, documented Vercel project config, added `/docs` canonical documentation and governance files, and recorded the root decision in workflow decisions.
+- Files touched: `docs/README.md`, `docs/Master_PRD.md`, `docs/Engineering_Standards.md`, `docs/Architecture.md`, `docs/Roadmap.md`, `docs/Sprint_History.md`, `docs/Changelog.md`, `docs/QA_Standards.md`, `docs/Security_Standards.md`, `docs/Financial_Standards.md`, `docs/UI_Guidelines.md`, `docs/Repository_Audit.md`, `docs/Project_Health_Report.md`, `docs/Governance/Technical_Leadership_Charter.md`, `docs/Governance/Decision_Log.md`, `docs/Governance/Risk_Register.md`, `WORKFLOW/CHANGELOG.md`, `WORKFLOW/DECISIONS.md`, `WORKFLOW/VCC_WORKFLOW_MEMORY.md`.
+- Commands that worked: `Get-Location`; `Get-ChildItem -Force`; package root search; `git status --short --branch`; `git rev-parse --show-toplevel`; `.git/index.lock` check.
+- Commands that failed: Reading some paths in a broad parallel scan hit a sandbox ACL denial; `git add -- docs WORKFLOW/ARCHITECTURE.md WORKFLOW/CHANGELOG.md WORKFLOW/DECISIONS.md WORKFLOW/VCC_WORKFLOW_MEMORY.md; git commit -m "docs: complete Sprint 0 governance and documentation foundation"` failed with `.git/index.lock: Permission denied`.
+- Prevention rule: Before any VCC_OS sprint, verify the active root has `package.json`, `src/`, `public/`, `.git`, and `.vercel`; never continue in `Downloads\VCC-OS` if build tooling is missing.
+- Relevant skill used: `grill-with-docs`, `playwright-best-practices`, `requesting-code-review`, `supabase-postgres-best-practices`, `vercel-react-best-practices`.
+
 ## 2026-07-04 - Sprint 7 Settings Route And Sidebar Fit
 
 - Error/problem: Settings could only behave like an internal screen and the desktop sidebar had too much vertical spacing for the full tab set.

@@ -129,6 +129,9 @@ Required validation steps include:
 - `git diff --check`
 - Local server or route check when applicable.
 - Any targeted QA needed for touched pages, settings, calculations, storage, or decision-engine behavior.
+- After deploy, run the Playwright smoke workflow against production:
+  - `npm.cmd run smoke:prod`
+  - This checks production loading, dashboard, navigation, Settings, reset/export/import/clear-cache controls, main pages, and console/page errors.
 
 If validation passes, commit, push, and deploy automatically when Git and Vercel permissions allow.
 

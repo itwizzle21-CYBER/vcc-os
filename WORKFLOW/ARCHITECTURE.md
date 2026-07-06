@@ -27,6 +27,8 @@ VCC_OS/
       types/
     styles/
       vccSkin.css
+  docs/
+    Governance/
   WORKFLOW/
     ARCHITECTURE.md
     CHANGELOG.md
