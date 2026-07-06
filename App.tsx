@@ -285,6 +285,7 @@ function SettingsPage() {
         title="Settings"
         subtitle="Control center for app status, storage, account readiness, diagnostics, and future recovery tools."
       />
+      <h2 className="mb-4 text-2xl font-bold text-white">Application Settings</h2>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {settingsCards.map((card) => (
           <div
