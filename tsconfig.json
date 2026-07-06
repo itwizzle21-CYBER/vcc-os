@@ -17,6 +17,8 @@
     "jsx": "react-jsx"
   },
   "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
     "App.tsx",
     "CommandCenterCard.tsx",
     "Dashboard.tsx",
