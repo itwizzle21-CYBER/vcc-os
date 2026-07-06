@@ -18,6 +18,7 @@
   },
   "include": [
     "App.tsx",
+    "CommandCenterCard.tsx",
     "Dashboard.tsx",
     "DailyBriefingCard.tsx",
     "TodaysMissionCard.tsx",
@@ -28,9 +29,11 @@
     "BillsCard.tsx",
     "DebtCard.tsx",
     "SavingsCard.tsx",
+    "TransactionsPage.tsx",
     "data.ts",
     "decisionEngine.ts",
     "decisionEngine.test.ts",
+    "transactionEngine.ts",
     "main.tsx",
     "vite.config.ts"
   ]

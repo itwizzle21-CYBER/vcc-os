@@ -50,6 +50,7 @@ export interface MoneySnapshotInput {
   totalLiabilities: number;
   monthlyIncome: number;
   monthlyExpenses: number;
+  accounts?: Array<{ label?: string; name?: string; balance: number }>;
 }
 
 export interface MoneySnapshotOutput {
@@ -64,6 +65,7 @@ export interface MoneySnapshotOutput {
   savingsCoverage: string;
   breakdown: Array<{ label: string; value: string; percentage: number }>;
   liabilityBreakdown: Array<{ label: string; value: string; percentage: number }>;
+  accounts: Array<{ label: string; value: string; percentage: number }>;
 }
 
 export interface PriorityAlert {
@@ -216,10 +218,11 @@ export function createMoneySnapshot(
   const netWorth = totalAssets - input.totalLiabilities;
   const monthlyNet = input.monthlyIncome - input.monthlyExpenses;
   const assetBreakdown = [
-    { label: "Cash", amount: input.cash },
-    { label: "Savings", amount: input.savings },
+    { label: "Operating and cash accounts", amount: input.cash },
+    { label: "Protected Savings", amount: input.savings },
     { label: "Investments", amount: input.investments },
   ];
+  const accountTotal = input.accounts?.reduce((sum, account) => sum + account.balance, 0) || 0;
 
   return {
     totalAssets: formatCurrency(totalAssets),
@@ -235,6 +238,11 @@ export function createMoneySnapshot(
       label: item.label,
       value: formatCurrency(item.amount),
       percentage: totalAssets > 0 ? Math.round((item.amount / totalAssets) * 100) : 0,
+    })),
+    accounts: (input.accounts || []).map((account) => ({
+      label: account.label || account.name || "Account",
+      value: formatCurrency(account.balance),
+      percentage: accountTotal > 0 ? Math.round((account.balance / accountTotal) * 100) : 0,
     })),
     liabilityBreakdown: [
       {

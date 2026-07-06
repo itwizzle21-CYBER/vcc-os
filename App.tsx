@@ -1,5 +1,17 @@
-import { ChevronDown, CreditCard, Home, Menu, Package, PiggyBank, ReceiptText, Settings, Wallet, X } from "lucide-react";
-import { useState } from "react";
+import {
+  Activity,
+  ChevronDown,
+  CreditCard,
+  Home,
+  Menu,
+  Package,
+  PiggyBank,
+  ReceiptText,
+  Settings,
+  Wallet,
+  X,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import BillsCard from "./BillsCard";
 import BuyNextCard from "./BuyNextCard";
 import Dashboard from "./Dashboard";
@@ -7,35 +19,55 @@ import DebtCard from "./DebtCard";
 import GoalProgressCard from "./GoalProgressCard";
 import MoneySnapshotCard from "./MoneySnapshotCard";
 import SavingsCard from "./SavingsCard";
+import TransactionsPage from "./TransactionsPage";
 import {
   sampleBills,
   sampleBuyNext,
   sampleGoalProgress,
-  sampleMoneySnapshot,
   sampleTodaysMission,
 } from "./data";
+import { formatCurrency } from "./decisionEngine";
+import {
+  deriveFinancialState,
+  initialFinancialState,
+  updateMoneySource,
+  type DerivedFinancialState,
+  type FinancialState,
+} from "./transactionEngine";
 
 const routes = [
   { path: "/", label: "Dashboard", icon: Home },
   { path: "/money", label: "Money", icon: Wallet },
+  { path: "/transactions", label: "Transactions", icon: Activity },
   { path: "/bills", label: "Bills", icon: ReceiptText },
   { path: "/inventory", label: "Inventory", icon: Package },
   { path: "/debts", label: "Debts", icon: CreditCard },
   { path: "/savings", label: "Savings", icon: PiggyBank },
+  { path: "/activity", label: "Activity", icon: Activity },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
 function App() {
   const path = normalizePath(window.location.pathname);
+  const [financialState, setFinancialState] = useState(initialFinancialState);
+  const financials = useMemo(() => deriveFinancialState(financialState, sampleBills), [financialState]);
 
   return (
     <AppShell currentPath={path}>
-      {path === "/" && <Dashboard />}
-      {path === "/money" && <MoneyPage />}
-      {path === "/bills" && <BillsPage />}
+      {path === "/" && <Dashboard financials={financials} />}
+      {path === "/money" && (
+        <MoneyPage
+          financialState={financialState}
+          financials={financials}
+          onUpdateMoney={(updates) => setFinancialState((state) => updateMoneySource(state, updates))}
+        />
+      )}
+      {path === "/transactions" && <TransactionsPage transactions={financials.transactions} />}
+      {path === "/bills" && <BillsPage financials={financials} />}
       {path === "/inventory" && <InventoryPage />}
-      {path === "/savings" && <SavingsPage />}
+      {path === "/savings" && <SavingsPage financials={financials} />}
       {(path === "/debts" || path === "/debt") && <DebtsPage />}
+      {path === "/activity" && <ActivityPage financials={financials} />}
       {path === "/settings" && <SettingsPage />}
       {!isKnownRoute(path) && <NotFoundPage />}
     </AppShell>
@@ -56,7 +88,7 @@ function AppShell({ children, currentPath }: { children: React.ReactNode; curren
   const activePath = currentPath === "/debt" ? "/debts" : currentPath;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-24 md:pb-0">
       <header className="sticky top-0 z-40 border-b border-slate-800/70 bg-slate-950/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <details className="group relative hidden md:block">
@@ -82,7 +114,7 @@ function AppShell({ children, currentPath }: { children: React.ReactNode; curren
             </div>
           </details>
 
-          <a className="flex items-center gap-3 md:hidden" href="/">
+          <a className="flex min-h-11 items-center gap-3 md:hidden" href="/">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-cyan-500 text-sm font-black text-slate-950">
               V
             </span>
@@ -97,7 +129,7 @@ function AppShell({ children, currentPath }: { children: React.ReactNode; curren
 
           <button
             type="button"
-            className="grid h-10 w-10 place-items-center rounded-lg border border-slate-700/60 bg-slate-900/70 text-slate-200 md:hidden"
+            className="grid h-11 w-11 place-items-center rounded-lg border border-slate-700/60 bg-slate-900/70 text-slate-200 md:hidden"
             aria-label={menuOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
@@ -117,9 +149,18 @@ function AppShell({ children, currentPath }: { children: React.ReactNode; curren
         )}
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        {children}
-      </div>
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">{children}</div>
+
+      <nav
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-800/80 bg-slate-950/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-2xl backdrop-blur-xl md:hidden"
+        aria-label="Sticky mobile navigation"
+      >
+        <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+          {routes.slice(0, 5).map((route) => (
+            <MobileNavLink key={route.path} route={route} active={activePath === route.path} />
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
@@ -139,49 +180,128 @@ function NavLink({
     <a
       href={route.path}
       aria-current={active ? "page" : undefined}
-      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+      className={`flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
         active
           ? "border border-cyan-400/30 bg-cyan-500/15 text-cyan-200"
           : "border border-transparent text-slate-300 hover:border-slate-700/80 hover:bg-slate-900/70 hover:text-white"
       } ${compact ? "px-2 lg:px-3" : ""}`}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-4 w-4 flex-shrink-0" />
       <span>{route.label}</span>
+    </a>
+  );
+}
+
+function MobileNavLink({ route, active }: { route: (typeof routes)[number]; active: boolean }) {
+  const Icon = route.icon;
+
+  return (
+    <a
+      href={route.path}
+      aria-current={active ? "page" : undefined}
+      className={`grid min-h-14 place-items-center rounded-xl text-[11px] font-semibold ${
+        active ? "bg-cyan-500/15 text-cyan-200" : "text-slate-400"
+      }`}
+    >
+      <Icon className="mb-1 h-5 w-5" />
+      <span className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap px-1">{route.label}</span>
     </a>
   );
 }
 
 function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="mb-6 sm:mb-8">
+    <div className="mb-5 sm:mb-8">
       <h1 className="mb-2 text-3xl font-bold text-white sm:text-4xl">{title}</h1>
-      <p className="max-w-3xl text-lg text-slate-400">{subtitle}</p>
+      <p className="max-w-3xl text-base leading-relaxed text-slate-400 sm:text-lg">{subtitle}</p>
     </div>
   );
 }
 
-function MoneyPage() {
+function MoneyPage({
+  financialState,
+  financials,
+  onUpdateMoney,
+}: {
+  financialState: FinancialState;
+  financials: DerivedFinancialState;
+  onUpdateMoney: Parameters<typeof updateMoneySource>[1] extends infer Updates
+    ? (updates: Updates) => void
+    : never;
+}) {
+  const [form, setForm] = useState({
+    operatingCash: financials.operatingCash,
+    protectedSavings: financials.protectedSavings,
+    monthlyIncome: financials.monthlyIncome,
+    borrowedMoney: financialState.accounts.find((account) => account.name === "Borrowed Money / Advances")?.balance || 0,
+    fees: Math.abs(financialState.transactions.find((transaction) => transaction.sourceKey === "fees")?.amount || 0),
+  });
+
+  function updateField(field: keyof typeof form, value: string) {
+    setForm((current) => ({ ...current, [field]: Number(value) || 0 }));
+  }
+
   return (
     <>
       <PageHeader
         title="Money"
         subtitle="Current assets, liabilities, monthly flow, and cash after near-term bills."
       />
-      <MoneySnapshotCard data={sampleMoneySnapshot} />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <MoneySnapshotCard data={financials.moneySnapshot} />
+        <form
+          className="rounded-2xl border border-slate-700/50 bg-slate-800/40 p-5 shadow-2xl backdrop-blur-xl"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onUpdateMoney(form);
+          }}
+        >
+          <h2 className="mb-4 text-xl font-bold text-white">Edit Money Sources</h2>
+          <div className="space-y-4">
+            <MoneyInput label="Operating Cash" value={form.operatingCash} onChange={(value) => updateField("operatingCash", value)} />
+            <MoneyInput label="Protected Savings" value={form.protectedSavings} onChange={(value) => updateField("protectedSavings", value)} />
+            <MoneyInput label="Monthly Income" value={form.monthlyIncome} onChange={(value) => updateField("monthlyIncome", value)} />
+            <MoneyInput label="Borrowed Money / Advances" value={form.borrowedMoney} onChange={(value) => updateField("borrowedMoney", value)} />
+            <MoneyInput label="Fees" value={form.fees} onChange={(value) => updateField("fees", value)} />
+          </div>
+          <button className="mt-5 min-h-11 w-full rounded-lg border border-cyan-500/30 bg-cyan-500/15 px-4 text-sm font-bold text-cyan-200">
+            Save and Sync
+          </button>
+          <p className="mt-3 text-xs leading-relaxed text-slate-500">
+            Income, protected savings, advances, and fees update Transactions from this one action.
+          </p>
+        </form>
+      </div>
     </>
   );
 }
 
-function BillsPage() {
+function MoneyInput({ label, value, onChange }: { label: string; value: number; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-semibold text-slate-300">{label}</span>
+      <input
+        value={value}
+        type="number"
+        min="0"
+        step="0.01"
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-11 w-full rounded-lg border border-slate-700/70 bg-slate-950/60 px-3 text-base text-white outline-none focus:border-cyan-400/60"
+      />
+    </label>
+  );
+}
+
+function BillsPage({ financials }: { financials: DerivedFinancialState }) {
   return (
     <>
       <PageHeader
         title="Bills"
         subtitle="Decision Engine bill priorities and the next obligations that need attention."
       />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <BillsCard />
-        <div className="rounded-2xl border border-slate-700/50 bg-slate-800/40 p-6 shadow-2xl backdrop-blur-xl">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <BillsCard data={financials.billsCard} />
+        <div className="rounded-2xl border border-slate-700/50 bg-slate-800/40 p-5 shadow-2xl backdrop-blur-xl sm:p-6">
           <h2 className="mb-4 text-xl font-bold text-white">Tracked Bills</h2>
           <div className="space-y-3">
             {sampleBills.map((bill) => (
@@ -194,7 +314,7 @@ function BillsPage() {
                   <p className="text-sm text-slate-400">{bill.category}</p>
                 </div>
                 <div className="text-left sm:text-right">
-                  <p className="font-bold text-cyan-400">${bill.amount.toFixed(2)}</p>
+                  <p className="font-bold text-cyan-400">{formatCurrency(bill.amount)}</p>
                   <p className="text-sm text-slate-400">{bill.dueDate}</p>
                 </div>
               </div>
@@ -207,26 +327,72 @@ function BillsPage() {
 }
 
 function InventoryPage() {
+  const [showAdd, setShowAdd] = useState(false);
+  const [items, setItems] = useState(sampleBuyNext);
+  const [itemName, setItemName] = useState("");
+
   return (
     <>
       <PageHeader
         title="Inventory"
         subtitle="Restock priorities from the active Buy Next inventory workflow."
       />
-      <BuyNextCard data={sampleBuyNext} />
+      <div className="mb-4 rounded-2xl border border-slate-700/50 bg-slate-800/40 p-4">
+        <button
+          type="button"
+          className="min-h-11 w-full rounded-lg border border-cyan-500/30 bg-cyan-500/15 px-4 text-sm font-bold text-cyan-200"
+          onClick={() => setShowAdd((open) => !open)}
+        >
+          {showAdd ? "Close Add Item" : "Add Item"}
+        </button>
+        {showAdd && (
+          <form
+            className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!itemName.trim()) return;
+              setItems((current) => [
+                {
+                  id: Date.now(),
+                  name: itemName.trim(),
+                  category: "Inventory",
+                  status: "Low",
+                  lastPurchased: "New",
+                  estimatedCost: "$0.00",
+                  priority: current.length + 1,
+                },
+                ...current,
+              ]);
+              setItemName("");
+              setShowAdd(false);
+            }}
+          >
+            <input
+              value={itemName}
+              onChange={(event) => setItemName(event.target.value)}
+              className="min-h-11 rounded-lg border border-slate-700/70 bg-slate-950/60 px-3 text-base text-white outline-none focus:border-cyan-400/60"
+              placeholder="Item name"
+            />
+            <button className="min-h-11 rounded-lg border border-emerald-500/30 bg-emerald-500/15 px-4 text-sm font-bold text-emerald-200">
+              Save
+            </button>
+          </form>
+        )}
+      </div>
+      <BuyNextCard data={items} />
     </>
   );
 }
 
-function SavingsPage() {
+function SavingsPage({ financials }: { financials: DerivedFinancialState }) {
   return (
     <>
       <PageHeader
         title="Savings"
         subtitle="Savings goals, contribution targets, and progress toward core life milestones."
       />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <SavingsCard />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <SavingsCard data={financials.savingsCard} />
         <GoalProgressCard data={sampleGoalProgress} />
       </div>
     </>
@@ -234,13 +400,61 @@ function SavingsPage() {
 }
 
 function DebtsPage() {
+  const history = [
+    { label: "Minimum payment posted", amount: "$450.00", date: "2026-07-06" },
+    { label: "Extra payoff planned", amount: "$150.00", date: "2026-07-12" },
+    { label: "Interest review", amount: "10.3% avg", date: "2026-07-15" },
+  ];
+
   return (
     <>
       <PageHeader
         title="Debts"
         subtitle="Debt snapshot and payoff focus from the active financial command center."
       />
-      <DebtCard />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <DebtCard />
+        <div className="rounded-2xl border border-slate-700/50 bg-slate-800/40 p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+          <h2 className="mb-4 text-xl font-bold text-white">Payment History</h2>
+          <div className="space-y-3">
+            {history.map((row) => (
+              <div key={row.label} className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-white">{row.label}</p>
+                    <p className="mt-1 text-sm text-slate-400">{row.date}</p>
+                  </div>
+                  <p className="font-bold text-red-300">{row.amount}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ActivityPage({ financials }: { financials: DerivedFinancialState }) {
+  return (
+    <>
+      <PageHeader
+        title="Activity"
+        subtitle="Adds, edits, transfers, bill payments, debt payments, and savings transfers without duplicate history."
+      />
+      <div className="space-y-3">
+        {financials.activity.map((event) => (
+          <div key={event.id} className="rounded-xl border border-slate-700/50 bg-slate-800/40 p-4">
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <p className="font-bold text-white">{event.title}</p>
+              <span className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-200">
+                {event.action}
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed text-slate-400">{event.detail}</p>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
@@ -254,8 +468,8 @@ function SettingsPage() {
     },
     {
       label: "Version",
-      value: "Cleanup recovery",
-      detail: "Branch contains the repository cleanup plus restored route shell.",
+      value: "Sprint 3",
+      detail: "Mobile polish plus shared Money Snapshot and Transactions engine.",
     },
     {
       label: "Login",
@@ -265,12 +479,12 @@ function SettingsPage() {
     {
       label: "Theme",
       value: "Command dark",
-      detail: "Keeps the newer redesign skin while restoring VCC navigation and route coverage.",
+      detail: "Desktop visual structure is preserved while mobile controls were tightened.",
     },
     {
       label: "Backup / Restore",
       value: "Planned",
-      detail: "Last-good Settings supported exports; data controls should return with persistent pages.",
+      detail: "Dedicated data controls can return with persistence in a future sprint.",
     },
     {
       label: "Diagnostics",
@@ -300,24 +514,7 @@ function SettingsPage() {
           </div>
         ))}
       </div>
-      <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-6 shadow-2xl backdrop-blur-xl">
-        <h2 className="mb-2 text-xl font-bold text-white">Recovery Notes</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <StatusItem label="Routes" value="Dashboard, Money, Bills, Inventory, Debts, Savings, Settings" />
-          <StatusItem label="Dashboard" value="Read-only intelligence surface" />
-          <StatusItem label="Dedicated pages" value="Card clicks route into focused work areas" />
-        </div>
-      </div>
     </>
-  );
-}
-
-function StatusItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-700/50 bg-slate-900/40 p-4">
-      <p className="mb-1 text-xs font-medium text-slate-400">{label}</p>
-      <p className="font-semibold text-white">{value}</p>
-    </div>
   );
 }
 

@@ -19,6 +19,7 @@ interface MoneySnapshotProps {
     savingsCoverage: string;
     breakdown: Breakdown[];
     liabilityBreakdown: Breakdown[];
+    accounts: Breakdown[];
   };
 }
 
@@ -56,6 +57,12 @@ export default function MoneySnapshotCard({ data }: MoneySnapshotProps) {
           barClassName="from-red-500 to-orange-500"
         />
       </div>
+
+      {data.accounts.length > 0 && (
+        <div className="mt-6 border-t border-slate-700/50 pt-6 sm:mt-8 sm:pt-8">
+          <BreakdownGroup title="Accounts" items={data.accounts} barClassName="from-cyan-500 to-emerald-500" />
+        </div>
+      )}
     </div>
   );
 }
@@ -87,7 +94,7 @@ function Metric({
     : "border-slate-600/30 bg-slate-700/20";
 
   return (
-    <div className={`rounded-lg border p-4 ${accentClass}`}>
+    <div className={`min-h-24 rounded-lg border p-4 ${accentClass}`}>
       <p className="mb-2 text-xs font-medium text-slate-400">{label}</p>
       <div className="flex items-center gap-2">
         <p className={`break-words text-xl font-bold ${toneClass}`}>{value}</p>
@@ -114,8 +121,8 @@ function BreakdownGroup({
         {items.map((item) => (
           <div key={item.label}>
             <div className="mb-1 flex items-center justify-between gap-3">
-              <span className="truncate text-sm text-slate-400">{item.label}</span>
-              <span className="text-sm font-semibold text-white">{item.value}</span>
+              <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-slate-400">{item.label}</span>
+              <span className="flex-shrink-0 text-sm font-semibold text-white">{item.value}</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-slate-700/50">
               <div
