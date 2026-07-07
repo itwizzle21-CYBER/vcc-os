@@ -47,6 +47,16 @@ export function computeFinancialState(data: AppData): FinancialState {
   const monthlySpending = expenseRows.filter((row) => isWithinDays(row.cells.date, today, 31)).reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
   const largest = [...expenseRows].sort((a, b) => Math.abs(toNumber(b.cells.amount)) - Math.abs(toNumber(a.cells.amount)))[0];
   const last = [...transactions].sort((a, b) => (b.cells.date || "").localeCompare(a.cells.date || ""))[0];
+  const categorySummary = Object.entries(
+    expenseRows.reduce<Record<string, number>>((acc, row) => {
+      const category = row.cells.category || "Other";
+      acc[category] = (acc[category] || 0) + Math.abs(toNumber(row.cells.amount));
+      return acc;
+    }, {})
+  )
+    .map(([label, amount]) => ({ label, amount }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5);
 
   const totalDebt = debt.reduce((sum, row) => sum + toNumber(row.cells.balance), 0);
   const minimumPayments = debt.reduce((sum, row) => sum + toNumber(row.cells.minimum), 0);
@@ -110,6 +120,7 @@ export function computeFinancialState(data: AppData): FinancialState {
       { label: "Month", income: monthlyIncome, spending: monthlySpending },
       { label: "Safe", income: safeToSpend, spending: billsPressure },
     ],
+    categorySummary,
   };
 }
 

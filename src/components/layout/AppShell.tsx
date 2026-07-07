@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bell,
   Boxes,
   CheckCircle2,
   CreditCard,
@@ -9,6 +10,7 @@ import {
   Search,
   Settings,
   Target,
+  UserCircle,
   Wallet,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -63,7 +65,7 @@ export default function AppShell({
       <main className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Mission Control</p>
+            <p className="eyebrow">{currentPath === "/" ? "VCC Local Mode" : "Mission Control"}</p>
             <h1>{titleForPath(currentPath)}</h1>
           </div>
           <div className="top-actions">
@@ -71,7 +73,14 @@ export default function AppShell({
               <Search size={16} />
               <span>Search finance workspace</span>
             </div>
-            <div className="status-pill">Local data protected</div>
+            <button className="icon-pill" aria-label="Notifications">
+              <Bell size={17} />
+              <span>3</span>
+            </button>
+            <a className="profile-pill" href="/settings">
+              <UserCircle size={18} />
+              <span>Account Profile</span>
+            </a>
           </div>
         </header>
         {children}
@@ -100,5 +109,5 @@ function normalize(path: string) {
 function titleForPath(path: string) {
   const normalized = normalize(path);
   const label = nav.find((item) => item.path === normalized)?.label || "Dashboard";
-  return label === "Dashboard" ? "Dashboard" : label;
+  return label === "Dashboard" ? "Good evening, Alex" : label;
 }

@@ -101,6 +101,7 @@ export interface FinancialState {
   estimatedRefillCost: number;
   buyNextRows: SpreadsheetRow[];
   cashFlow: Array<{ label: string; income: number; spending: number }>;
+  categorySummary: Array<{ label: string; amount: number }>;
 }
 
 export interface DecisionState {
