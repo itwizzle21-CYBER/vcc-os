@@ -1,6 +1,6 @@
 import type { AppData, SectionKey, SpreadsheetRow } from "../types/app";
 import { normalizeInventoryRow } from "../engine/inventoryEngine";
-import { blankRows, createStarterData, sectionConfigs } from "./defaultData";
+import { blankRows, createStarterData, createZeroData, sectionConfigs } from "./defaultData";
 
 const STORAGE_KEY = "vcc-os:data:v2";
 const LEGACY_KEYS = ["vcc-os:data", "vcc_os_data", "vccData", "vcc-os-financial-state"];
@@ -40,7 +40,7 @@ export function resetSection(data: AppData, section: SectionKey): AppData {
 }
 
 export function resetAllData(): AppData {
-  return createStarterData();
+  return createZeroData();
 }
 
 function migrateAppData(raw: unknown): AppData {

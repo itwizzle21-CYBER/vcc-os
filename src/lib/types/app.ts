@@ -50,6 +50,11 @@ export interface UserSettings {
   theme: ThemeMode;
   accent: AccentColor;
   density: Density;
+  accountName: string;
+  profileLabel: string;
+  localMode: boolean;
+  notificationsEnabled: boolean;
+  confirmBeforeReset: boolean;
 }
 
 export interface AppData {

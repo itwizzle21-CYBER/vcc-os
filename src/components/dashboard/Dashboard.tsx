@@ -13,36 +13,43 @@ export default function Dashboard({
     <div className="dashboard-board">
       <section className="kpi-row">
         <a href="/money" className="kpi-card">
+          <span className="widget-chip">Widget ready</span>
           <span>Total Cash</span>
           <strong>{formatCurrency(financialState.totalCash)}</strong>
           <small>Across money sources</small>
         </a>
         <a href="/money" className="kpi-card">
+          <span className="widget-chip">Widget ready</span>
           <span>Money Snapshot</span>
           <strong>{formatCurrency(financialState.spendableCash)}</strong>
           <small>Spendable after repayment plan</small>
         </a>
-        <a href="/bills" className="kpi-card warning">
-          <span>Bills Pressure</span>
-          <strong>{formatCurrency(financialState.billsPressure)}</strong>
-          <small>{financialState.billsDueThisWeek} due this week</small>
+        <a href="/savings" className="kpi-card">
+          <span className="widget-chip">Widget ready</span>
+          <span>Protected Savings</span>
+          <strong>{formatCurrency(financialState.protectedSavings)}</strong>
+          <small>Shielded from weekly spending</small>
         </a>
       </section>
 
       <section className="dashboard-grid refined-dashboard-grid">
         <a href="/missions" className="panel command-panel">
+          <span className="widget-chip">Widget ready</span>
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Today&apos;s Recommended</p>
-              <h2>{decisionState.recommendedMove}</h2>
+              <p className="eyebrow">Today Briefing</p>
+              <h2>{decisionState.todayBriefing}</h2>
             </div>
             <ShieldCheck size={20} />
           </div>
-          <p className="briefing">{decisionState.todayBriefing}</p>
-          <div className="recommended">Next action: {decisionState.missionStack[0]?.title || "Protect the week"}</div>
+          <div className="recommended">
+            <span>Today&apos;s Recommended</span>
+            <strong>{decisionState.recommendedMove}</strong>
+          </div>
         </a>
 
         <a href="/money" className="panel balance-panel">
+          <span className="widget-chip">Widget ready</span>
           <p className="eyebrow">Money Snapshot</p>
           <div className="balance-list">
             <Metric label="Total Cash" value={financialState.totalCash} />
@@ -55,9 +62,10 @@ export default function Dashboard({
         </a>
 
         <a href="/bills" className="panel bills-focus-panel">
+          <span className="widget-chip">Widget ready</span>
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Bills</p>
+              <p className="eyebrow">Bills + Pressure</p>
               <h2>{financialState.billsDueThisWeek} due this week</h2>
             </div>
             <ReceiptText size={20} />
@@ -67,6 +75,7 @@ export default function Dashboard({
         </a>
 
         <a href="/inventory" className="panel inventory-focus-panel">
+          <span className="widget-chip">Widget ready</span>
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Inventory</p>
@@ -79,6 +88,7 @@ export default function Dashboard({
         </a>
 
         <a href="/transactions" className="panel analytics-panel">
+          <span className="widget-chip">Widget ready</span>
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Statistics / Cash Flow / Categories</p>
@@ -110,6 +120,7 @@ export default function Dashboard({
         </a>
 
         <section className="panel activity-panel">
+          <span className="widget-chip">Widget ready</span>
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Activity</p>
@@ -128,6 +139,7 @@ export default function Dashboard({
         </section>
 
         <a href="/debt" className="panel progress-panel">
+          <span className="widget-chip">Widget ready</span>
           <p className="eyebrow">Debt Progress</p>
           <h2>{formatCurrency(financialState.totalDebt)}</h2>
           <div className="progress-track">
@@ -138,6 +150,7 @@ export default function Dashboard({
         </a>
 
         <section className="panel objective-panel">
+          <span className="widget-chip">Widget ready</span>
           <p className="eyebrow">Objective Stack</p>
           <div className="objective-list">
             {decisionState.missionStack.map((mission) => (

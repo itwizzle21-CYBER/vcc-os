@@ -168,6 +168,51 @@ export function createStarterData(): AppData {
       theme: "dark",
       accent: "blue",
       density: "compact",
+      accountName: "Alex",
+      profileLabel: "Local Profile",
+      localMode: true,
+      notificationsEnabled: true,
+      confirmBeforeReset: true,
+    },
+  };
+}
+
+export function createZeroData(): AppData {
+  const today = todayIso();
+  const { start, end } = weekBounds(today);
+
+  return {
+    version: 2,
+    sections: {
+      money: blankRows("money", 20),
+      bills: blankRows("bills", 20),
+      income: blankRows("income", 20),
+      transactions: blankRows("transactions", 20),
+      debt: blankRows("debt", 20),
+      savings: blankRows("savings", 20),
+      inventory: blankRows("inventory", 20),
+      goals: blankRows("goals", 20),
+    },
+    sortBy: {},
+    paycheckPlanner: {
+      paycheckAmount: "",
+      payDate: today,
+      weekStart: start,
+      weekEnd: end,
+      spotMeRepayment: "",
+      myPayRepayment: "",
+      locked: false,
+    },
+    paycheckHistory: [],
+    settings: {
+      theme: "dark",
+      accent: "blue",
+      density: "compact",
+      accountName: "Alex",
+      profileLabel: "Local Profile",
+      localMode: true,
+      notificationsEnabled: true,
+      confirmBeforeReset: true,
     },
   };
 }

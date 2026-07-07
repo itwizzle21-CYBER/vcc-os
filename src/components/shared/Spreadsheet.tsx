@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import type { SectionConfig, SectionKey, SpreadsheetRow } from "../../lib/types/app";
 import { formatCurrency, isBlankRow } from "../../lib/calculations/currency";
@@ -69,6 +70,10 @@ export default function Spreadsheet({
         cells: Object.fromEntries(config.columns.map((column) => [column.key, ""])),
       },
     ]);
+  }
+
+  function deleteRow(rowId: string) {
+    onRowsChange(config.key, rows.filter((row) => row.id !== rowId));
   }
 
   function moveFocus(rowIndex: number, columnIndex: number) {
@@ -143,6 +148,7 @@ export default function Spreadsheet({
         <table>
           <thead>
             <tr>
+              <th className="row-action-heading">Actions</th>
               {config.columns.map((column) => (
                 <th key={column.key}>{column.label}</th>
               ))}
@@ -151,6 +157,11 @@ export default function Spreadsheet({
           <tbody>
             {visibleRows.map((row, rowIndex) => (
               <tr key={row.id}>
+                <td className="row-actions">
+                  <button type="button" aria-label={`Delete ${config.title} row ${rowIndex + 1}`} onClick={() => deleteRow(row.id)}>
+                    <Trash2 size={15} />
+                  </button>
+                </td>
                 {config.columns.map((column, columnIndex) => {
                   const computed = getComputedCell?.(row, column.key);
                   const readOnly = column.readOnly || typeof computed === "string";

@@ -48,7 +48,7 @@ export default function App() {
   }
 
   return (
-    <AppShell currentPath={path} settings={data.settings}>
+    <AppShell currentPath={path} settings={data.settings} data={data}>
       {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} />}
       {path === "/money" && (
         <ModulePage section="money" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} header={<PaycheckPlanner data={data} onChange={updateData} />} />
@@ -168,6 +168,30 @@ function MissionsPage({ decisionState }: { decisionState: ReturnType<typeof comp
 function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppData) => void }) {
   return (
     <div className="settings-page">
+      <section className="panel settings-hero">
+        <div>
+          <p className="eyebrow">Account</p>
+          <h2>{data.settings.accountName || "Local Account"}</h2>
+          <p>Profile, local mode, appearance, notifications, density, and data controls.</p>
+        </div>
+        <div className="settings-status-grid">
+          <span>{data.settings.localMode ? "Local Mode On" : "Cloud Mode Ready"}</span>
+          <span>{data.settings.notificationsEnabled ? "Notifications On" : "Notifications Off"}</span>
+          <span>{data.settings.density} density</span>
+        </div>
+      </section>
+
+      <section className="panel">
+        <p className="eyebrow">Profile</p>
+        <h2>Account Details</h2>
+        <div className="settings-grid">
+          <SettingInput label="Greeting name" value={data.settings.accountName} onChange={(accountName) => onChange({ ...data, settings: { ...data.settings, accountName } })} />
+          <SettingInput label="Profile label" value={data.settings.profileLabel} onChange={(profileLabel) => onChange({ ...data, settings: { ...data.settings, profileLabel } })} />
+          <SettingToggle label="VCC Local Mode" checked={data.settings.localMode} onChange={(localMode) => onChange({ ...data, settings: { ...data.settings, localMode } })} />
+          <SettingToggle label="Notifications" checked={data.settings.notificationsEnabled} onChange={(notificationsEnabled) => onChange({ ...data, settings: { ...data.settings, notificationsEnabled } })} />
+        </div>
+      </section>
+
       <section className="panel">
         <p className="eyebrow">Customization</p>
         <h2>Workspace Settings</h2>
@@ -175,22 +199,55 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
           <SettingSelect label="Theme mode" value={data.settings.theme} options={["dark", "midnight", "slate", "light"]} onChange={(theme) => onChange({ ...data, settings: { ...data.settings, theme: theme as AppData["settings"]["theme"] } })} />
           <SettingSelect label="Accent color" value={data.settings.accent} options={["blue", "green", "gold", "purple", "red"]} onChange={(accent) => onChange({ ...data, settings: { ...data.settings, accent: accent as AppData["settings"]["accent"] } })} />
           <SettingSelect label="Layout density" value={data.settings.density} options={["comfortable", "compact", "ultra"]} onChange={(density) => onChange({ ...data, settings: { ...data.settings, density: density as AppData["settings"]["density"] } })} />
+          <SettingToggle label="Confirm before reset" checked={data.settings.confirmBeforeReset} onChange={(confirmBeforeReset) => onChange({ ...data, settings: { ...data.settings, confirmBeforeReset } })} />
         </div>
       </section>
+
+      <section className="panel">
+        <p className="eyebrow">Data Health</p>
+        <h2>Local Spreadsheet Storage</h2>
+        <div className="settings-status-grid">
+          <span>Money rows: {data.sections.money.length}</span>
+          <span>Bills rows: {data.sections.bills.length}</span>
+          <span>Transactions rows: {data.sections.transactions.length}</span>
+          <span>Inventory rows: {data.sections.inventory.length}</span>
+        </div>
+      </section>
+
       <section className="panel danger-panel">
         <p className="eyebrow">Data Controls</p>
-        <h2>Reset All Data</h2>
-        <p>Restores starter data and at least 20 blank rows in every spreadsheet section.</p>
+        <h2>Reset All Data To Zero</h2>
+        <p>Clears all sample values and restores blank spreadsheet rows for every section.</p>
         <button
           type="button"
           onClick={() => {
-            if (window.confirm("Reset all VCC OS data? This replaces local starter data.")) onChange(resetAllData());
+            if (!data.settings.confirmBeforeReset || window.confirm("Reset all VCC OS data to zero? This clears local spreadsheet values.")) {
+              onChange({ ...resetAllData(), settings: data.settings });
+            }
           }}
         >
-          Reset All Data
+          Zero All Data
         </button>
       </section>
     </div>
+  );
+}
+
+function SettingInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label>
+      <span>{label}</span>
+      <input value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function SettingToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label className="setting-toggle">
+      <span>{label}</span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    </label>
   );
 }
 
