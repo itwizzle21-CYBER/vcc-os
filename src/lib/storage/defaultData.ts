@@ -188,14 +188,14 @@ export function createZeroData(): AppData {
   return {
     version: 2,
     sections: {
-      money: blankRows("money", 20),
-      bills: blankRows("bills", 20),
-      income: blankRows("income", 20),
-      transactions: blankRows("transactions", 20),
-      debt: blankRows("debt", 20),
-      savings: blankRows("savings", 20),
-      inventory: blankRows("inventory", 20),
-      goals: blankRows("goals", 20),
+      money: [],
+      bills: [],
+      income: [],
+      transactions: [],
+      debt: [],
+      savings: [],
+      inventory: [],
+      goals: [],
     },
     sortBy: {},
     paycheckPlanner: {

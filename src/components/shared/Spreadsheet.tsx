@@ -28,6 +28,7 @@ export default function Spreadsheet({
   const [validationMessage, setValidationMessage] = useState("");
   const [newRowId, setNewRowId] = useState("");
   const tableRef = useRef<HTMLDivElement>(null);
+  const activeCellRef = useRef<{ rowId: string; columnKey: string; value: string } | null>(null);
   const editableColumnKeys = useMemo(
     () => config.columns.filter((column) => !column.readOnly).map((column) => column.key),
     [config.columns]
@@ -62,8 +63,6 @@ export default function Spreadsheet({
   }, [blankRowIds, config.columns, getComputedCell, rows, search, sortBy]);
 
   function updateCell(rowId: string, columnKey: string, value: string) {
-    const column = config.columns.find((item) => item.key === columnKey);
-    if (column?.type === "currency" && value && !value.startsWith("$")) value = formatLooseCurrency(value);
     if (preventDuplicateKey === columnKey && value.trim()) {
       const duplicate = rows.some(
         (row) => row.id !== rowId && (row.cells[columnKey] || "").trim().toLocaleLowerCase() === value.trim().toLocaleLowerCase()
@@ -74,6 +73,9 @@ export default function Spreadsheet({
       }
     }
     setValidationMessage("");
+    if (activeCellRef.current?.rowId === rowId && activeCellRef.current.columnKey === columnKey) {
+      activeCellRef.current = { ...activeCellRef.current, value };
+    }
     onRowsChange(
       config.key,
       rows.map((row) => {
@@ -87,6 +89,38 @@ export default function Spreadsheet({
         };
       })
     );
+  }
+
+  function commitCell(rowId: string, columnKey: string, currentValue?: string) {
+    const column = config.columns.find((item) => item.key === columnKey);
+    if (column?.type !== "currency") return;
+    const row = rows.find((item) => item.id === rowId);
+    const value = currentValue ?? row?.cells[columnKey] ?? "";
+    const formatted = formatLooseCurrency(value);
+    if (formatted !== value) updateCell(rowId, columnKey, formatted);
+  }
+
+  function commitActiveCell() {
+    const activeCell = activeCellRef.current;
+    if (!activeCell) return;
+    activeCellRef.current = null;
+    commitCell(activeCell.rowId, activeCell.columnKey, activeCell.value);
+  }
+
+  function commitFocusedCell() {
+    if (typeof document === "undefined") return;
+    const focused = document.activeElement;
+    if (!(focused instanceof HTMLInputElement)) return;
+    const rowId = focused.dataset.rowId;
+    const columnKey = focused.dataset.columnKey;
+    if (!rowId || !columnKey) return;
+    commitCell(rowId, columnKey, focused.value);
+  }
+
+  function handleCellFocus(rowId: string, columnKey: string, value: string) {
+    const activeCell = activeCellRef.current;
+    if (activeCell && (activeCell.rowId !== rowId || activeCell.columnKey !== columnKey)) commitActiveCell();
+    activeCellRef.current = { rowId, columnKey, value };
   }
 
   function addRow() {
@@ -112,7 +146,7 @@ export default function Spreadsheet({
     next?.focus();
   }
 
-  function handleKeyDown(event: React.KeyboardEvent, rowIndex: number, columnIndex: number) {
+  function handleKeyDown(event: React.KeyboardEvent, rowIndex: number, columnIndex: number, rowId?: string, columnKey?: string) {
     const lastColumn = config.columns.length - 1;
     const lastRow = visibleRows.length - 1;
     if (event.key === "ArrowRight") {
@@ -135,7 +169,13 @@ export default function Spreadsheet({
       moveFocus(rowIndex, lastColumn);
     } else if (event.key === "Enter") {
       event.preventDefault();
+      if (rowId && columnKey) {
+        commitCell(rowId, columnKey, (event.currentTarget as HTMLInputElement).value);
+        activeCellRef.current = null;
+      }
       moveFocus(Math.min(lastRow, rowIndex + 1), columnIndex);
+    } else if (event.key === "Tab" && rowId && columnKey) {
+      commitCell(rowId, columnKey, (event.currentTarget as HTMLInputElement).value);
     } else if (event.key === "Escape") {
       (event.currentTarget as HTMLElement).blur();
     }
@@ -174,7 +214,7 @@ export default function Spreadsheet({
         {validationMessage && <p className="table-validation" role="alert">{validationMessage}</p>}
       </div>
 
-      <div className="table-wrap" ref={tableRef}>
+      <div className="table-wrap" ref={tableRef} onPointerDownCapture={commitFocusedCell}>
         <table>
           <thead>
             <tr>
@@ -218,11 +258,18 @@ export default function Spreadsheet({
                       <input
                         data-row-index={rowIndex}
                         data-column-index={columnIndex}
+                        data-row-id={row.id}
+                        data-column-key={column.key}
                         value={value}
                         readOnly={readOnly}
                         aria-readonly={readOnly}
+                        onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value)}
                         onChange={(event) => updateCell(row.id, column.key, event.target.value)}
-                        onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex)}
+                        onBlur={(event) => {
+                          commitCell(row.id, column.key, event.currentTarget.value);
+                          activeCellRef.current = null;
+                        }}
+                        onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
                       />
                     </td>
                   );

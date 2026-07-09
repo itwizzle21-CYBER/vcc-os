@@ -34,7 +34,7 @@ export function resetSection(data: AppData, section: SectionKey): AppData {
     ...data,
     sections: {
       ...data.sections,
-      [section]: blankRows(section, 20),
+      [section]: [],
     },
   };
 }

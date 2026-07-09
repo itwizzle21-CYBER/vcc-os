@@ -244,7 +244,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
       <section className="panel danger-panel">
         <p className="eyebrow">Data Controls</p>
         <h2>Reset All Data To Zero</h2>
-        <p>Clears all sample values and restores blank spreadsheet rows for every section.</p>
+        <p>Clears all spreadsheet rows and leaves every section empty until you add new rows.</p>
         <button
           type="button"
           onClick={() => {
