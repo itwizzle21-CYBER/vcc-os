@@ -175,6 +175,8 @@ export function createStarterData(): AppData {
       confirmBeforeReset: true,
       widgetOrder: ["total-cash", "money-snapshot", "protected-savings", "command", "balance", "bills", "inventory", "analytics", "activity", "progress", "objectives"],
       hiddenWidgets: [],
+      surfaceStyle: "glass",
+      sidebarCollapsed: false,
     },
   };
 }
@@ -217,6 +219,8 @@ export function createZeroData(): AppData {
       confirmBeforeReset: true,
       widgetOrder: ["total-cash", "money-snapshot", "protected-savings", "command", "balance", "bills", "inventory", "analytics", "activity", "progress", "objectives"],
       hiddenWidgets: [],
+      surfaceStyle: "glass",
+      sidebarCollapsed: false,
     },
   };
 }

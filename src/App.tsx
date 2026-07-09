@@ -22,6 +22,7 @@ export default function App() {
     document.documentElement.dataset.theme = data.settings.theme;
     document.documentElement.dataset.accent = data.settings.accent;
     document.documentElement.dataset.density = data.settings.density;
+    document.documentElement.dataset.surface = data.settings.surfaceStyle;
   }, [data]);
 
   function updateData(next: AppData) {
@@ -48,7 +49,7 @@ export default function App() {
   }
 
   return (
-    <AppShell currentPath={path} settings={data.settings} data={data}>
+    <AppShell currentPath={path} settings={data.settings} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
       {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} settings={data.settings} onSettingsChange={(settings) => updateData({ ...data, settings })} />}
       {path === "/money" && (
         <ModulePage section="money" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} header={<PaycheckPlanner data={data} onChange={updateData} />} />
@@ -200,6 +201,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
           <SettingSelect label="Theme mode" value={data.settings.theme} options={["dark", "midnight", "slate", "light"]} onChange={(theme) => onChange({ ...data, settings: { ...data.settings, theme: theme as AppData["settings"]["theme"] } })} />
           <SettingSelect label="Accent color" value={data.settings.accent} options={["blue", "green", "gold", "purple", "red"]} onChange={(accent) => onChange({ ...data, settings: { ...data.settings, accent: accent as AppData["settings"]["accent"] } })} />
           <SettingSelect label="Layout density" value={data.settings.density} options={["comfortable", "compact", "ultra"]} onChange={(density) => onChange({ ...data, settings: { ...data.settings, density: density as AppData["settings"]["density"] } })} />
+          <SettingSelect label="Surface style" value={data.settings.surfaceStyle} options={["glass", "neumorphic", "minimal"]} onChange={(surfaceStyle) => onChange({ ...data, settings: { ...data.settings, surfaceStyle: surfaceStyle as AppData["settings"]["surfaceStyle"] } })} />
           <SettingToggle label="Confirm before reset" checked={data.settings.confirmBeforeReset} onChange={(confirmBeforeReset) => onChange({ ...data, settings: { ...data.settings, confirmBeforeReset } })} />
         </div>
       </section>

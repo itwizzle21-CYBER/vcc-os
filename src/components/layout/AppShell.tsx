@@ -5,9 +5,12 @@ import {
   CheckCircle2,
   CircleDollarSign,
   ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
   CreditCard,
   Home,
   Landmark,
+  MoreHorizontal,
   ReceiptText,
   Search,
   Settings,
@@ -37,27 +40,32 @@ export default function AppShell({
   currentPath,
   settings,
   data,
+  onSettingsChange,
 }: {
   children: ReactNode;
   currentPath: string;
   settings: UserSettings;
   data: AppData;
+  onSettingsChange: (settings: UserSettings) => void;
 }) {
   const [brandOpen, setBrandOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [query, setQuery] = useState("");
   const brandRef = useRef<HTMLDivElement>(null);
+  const mobileMoreRef = useRef<HTMLDivElement>(null);
   const results = useMemo(() => buildSearchResults(data, query), [data, query]);
 
   useEffect(() => {
     function closeOnAway(event: MouseEvent) {
       if (!brandRef.current?.contains(event.target as Node)) setBrandOpen(false);
+      if (!mobileMoreRef.current?.contains(event.target as Node)) setMobileMoreOpen(false);
     }
     document.addEventListener("mousedown", closeOnAway);
     return () => document.removeEventListener("mousedown", closeOnAway);
   }, []);
 
   return (
-    <div className={`app-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density}`}>
+    <div className={`app-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <div className="sensor-strip" aria-hidden="true" />
       <aside className="sidebar">
         <div className="brand-wrap" ref={brandRef}>
@@ -77,18 +85,35 @@ export default function AppShell({
             </div>
           )}
         </div>
+        <a className="sidebar-profile" href="/settings" aria-label={`Open ${settings.accountName || "account"} profile`}>
+          <UserCircle size={21} />
+          <span>
+            <strong>{settings.accountName || "Account"}</strong>
+            <small>{settings.profileLabel}</small>
+          </span>
+        </a>
         <nav>
           {nav.map((item) => {
             const Icon = item.icon;
             const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
             return (
-              <a key={item.path} href={item.path} className={active ? "active" : ""}>
+              <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
                 <Icon size={18} />
                 <span>{item.label}</span>
               </a>
             );
           })}
         </nav>
+        <button
+          className="sidebar-collapse"
+          type="button"
+          aria-label={settings.sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-pressed={settings.sidebarCollapsed}
+          onClick={() => onSettingsChange({ ...settings, sidebarCollapsed: !settings.sidebarCollapsed })}
+        >
+          {settings.sidebarCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+          <span>Collapse</span>
+        </button>
       </aside>
 
       <main className="workspace">
@@ -122,7 +147,7 @@ export default function AppShell({
               <Bell size={17} />
               {settings.notificationsEnabled && <span>3</span>}
             </button>
-            <a className="profile-pill" href="/settings">
+            <a className="profile-pill top-profile" href="/settings">
               <UserCircle size={18} />
               <span>{settings.accountName || "Account Profile"}</span>
             </a>
@@ -131,20 +156,50 @@ export default function AppShell({
         {children}
       </main>
 
-      <nav className="mobile-nav">
-        {nav.slice(0, 5).map((item) => {
+      <nav className="mobile-nav" aria-label="Primary mobile navigation">
+        {[nav[0], nav[1], nav[4], nav[7]].map((item) => {
           const Icon = item.icon;
           const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
           return (
-            <a key={item.path} href={item.path} className={active ? "active" : ""}>
+            <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
               <Icon size={18} />
               <span>{item.label}</span>
             </a>
           );
         })}
+        <div className="mobile-more-wrap" ref={mobileMoreRef}>
+          <button
+            type="button"
+            className={mobileMoreOpen || isMorePath(currentPath) ? "active" : ""}
+            aria-expanded={mobileMoreOpen}
+            aria-controls="mobile-more-menu"
+            onClick={() => setMobileMoreOpen((open) => !open)}
+          >
+            <MoreHorizontal size={19} />
+            <span>More</span>
+          </button>
+          {mobileMoreOpen && (
+            <div className="mobile-more-menu" id="mobile-more-menu">
+              {nav.filter((item) => !["/", "/money", "/transactions", "/inventory"].includes(item.path)).map((item) => {
+                const Icon = item.icon;
+                const active = normalize(currentPath) === item.path;
+                return (
+                  <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </nav>
     </div>
   );
+}
+
+function isMorePath(path: string) {
+  return !["/", "/money", "/transactions", "/inventory"].includes(normalize(path));
 }
 
 function normalize(path: string) {

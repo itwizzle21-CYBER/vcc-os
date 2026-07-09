@@ -1,7 +1,7 @@
 import { Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import type { SectionConfig, SectionKey, SpreadsheetRow } from "../../lib/types/app";
-import { formatCurrency, isBlankRow } from "../../lib/calculations/currency";
+import { formatCurrency } from "../../lib/calculations/currency";
 
 interface SpreadsheetProps {
   config: SectionConfig;
@@ -26,7 +26,21 @@ export default function Spreadsheet({
 }: SpreadsheetProps) {
   const [search, setSearch] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
+  const [newRowId, setNewRowId] = useState("");
   const tableRef = useRef<HTMLDivElement>(null);
+  const editableColumnKeys = useMemo(
+    () => config.columns.filter((column) => !column.readOnly).map((column) => column.key),
+    [config.columns]
+  );
+  const blankRowIds = useMemo(
+    () =>
+      new Set(
+        rows
+          .filter((row) => editableColumnKeys.every((key) => !String(row.cells[key] || "").trim()))
+          .map((row) => row.id)
+      ),
+    [editableColumnKeys, rows]
+  );
   const visibleRows = useMemo(() => {
     const normalized = rows.map((row) => ({
       ...row,
@@ -34,8 +48,8 @@ export default function Spreadsheet({
         config.columns.map((column) => [column.key, getComputedCell?.(row, column.key) ?? row.cells[column.key] ?? ""])
       ),
     }));
-    const filled = normalized.filter((row) => !isBlankRow(row.cells));
-    const blanks = normalized.filter((row) => isBlankRow(row.cells));
+    const filled = normalized.filter((row) => !blankRowIds.has(row.id));
+    const blanks = normalized.filter((row) => blankRowIds.has(row.id));
     const searched = search.trim()
       ? filled.filter((row) =>
           Object.values(row.cells).some((value) => String(value || "").toLowerCase().includes(search.toLowerCase()))
@@ -45,7 +59,7 @@ export default function Spreadsheet({
       ? [...searched].sort((a, b) => String(a.cells[sortBy] || "").localeCompare(String(b.cells[sortBy] || ""), undefined, { numeric: true }))
       : searched;
     return [...sorted, ...(!search.trim() ? blanks : [])];
-  }, [config.columns, getComputedCell, rows, search, sortBy]);
+  }, [blankRowIds, config.columns, getComputedCell, rows, search, sortBy]);
 
   function updateCell(rowId: string, columnKey: string, value: string) {
     const column = config.columns.find((item) => item.key === columnKey);
@@ -76,10 +90,12 @@ export default function Spreadsheet({
   }
 
   function addRow() {
+    const id = `${config.key}-${Date.now()}`;
+    setNewRowId(id);
     onRowsChange(config.key, [
       ...rows,
       {
-        id: `${config.key}-${Date.now()}`,
+        id,
         cells: Object.fromEntries(config.columns.map((column) => [column.key, ""])),
       },
     ]);
@@ -170,8 +186,8 @@ export default function Spreadsheet({
           </thead>
           <tbody>
             {visibleRows.map((row, rowIndex) => (
-              <tr key={row.id}>
-                <td className="row-actions">
+              <tr key={row.id} className={`${blankRowIds.has(row.id) ? "blank-row" : ""} ${row.id === newRowId ? "new-row" : ""}`}>
+                <td className="row-actions" data-label="Actions">
                   <button type="button" aria-label={`Delete ${config.title} row ${rowIndex + 1}`} onClick={() => deleteRow(row.id)}>
                     <Trash2 size={15} />
                   </button>
@@ -183,7 +199,7 @@ export default function Spreadsheet({
                   if (config.key === "inventory" && column.key === "alert") {
                     const tone = value.toLowerCase();
                     return (
-                      <td key={column.key}>
+                      <td key={column.key} data-label={column.label}>
                         <button
                           type="button"
                           className={`inventory-alert-button ${tone}`}
@@ -198,7 +214,7 @@ export default function Spreadsheet({
                     );
                   }
                   return (
-                    <td key={column.key}>
+                    <td key={column.key} data-label={column.label}>
                       <input
                         data-row-index={rowIndex}
                         data-column-index={columnIndex}
