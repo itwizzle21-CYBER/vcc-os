@@ -173,6 +173,8 @@ export function createStarterData(): AppData {
       localMode: true,
       notificationsEnabled: true,
       confirmBeforeReset: true,
+      widgetOrder: ["total-cash", "money-snapshot", "protected-savings", "command", "balance", "bills", "inventory", "analytics", "activity", "progress", "objectives"],
+      hiddenWidgets: [],
     },
   };
 }
@@ -213,6 +215,8 @@ export function createZeroData(): AppData {
       localMode: true,
       notificationsEnabled: true,
       confirmBeforeReset: true,
+      widgetOrder: ["total-cash", "money-snapshot", "protected-savings", "command", "balance", "bills", "inventory", "analytics", "activity", "progress", "objectives"],
+      hiddenWidgets: [],
     },
   };
 }

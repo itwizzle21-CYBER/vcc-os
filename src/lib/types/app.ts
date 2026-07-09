@@ -55,6 +55,8 @@ export interface UserSettings {
   localMode: boolean;
   notificationsEnabled: boolean;
   confirmBeforeReset: boolean;
+  widgetOrder: string[];
+  hiddenWidgets: string[];
 }
 
 export interface AppData {

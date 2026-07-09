@@ -835,6 +835,250 @@ td input[readonly] {
   min-height: 1.25rem;
 }
 
+.widget-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  gap: 0.8rem;
+}
+
+.dashboard-widget {
+  position: relative;
+  min-width: 0;
+  overflow: clip;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.15);
+  transition: border-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease, transform 160ms ease;
+}
+
+.dashboard-widget:hover {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
+}
+
+.dashboard-widget.is-dragging {
+  opacity: 0.5;
+  transform: scale(0.985);
+}
+
+.widget-link {
+  display: grid;
+  min-height: 100%;
+  gap: 0.85rem;
+  padding: 2.65rem 1rem 1rem;
+}
+
+.widget-controls {
+  position: absolute;
+  z-index: 5;
+  top: 0.55rem;
+  right: 0.55rem;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.widget-controls button {
+  display: grid;
+  width: 32px;
+  min-height: 32px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+}
+
+.widget-controls button:hover,
+.widget-controls button:focus-visible {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.kpi-content {
+  gap: 0.35rem;
+}
+
+.kpi-content span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.kpi-content strong {
+  font-size: 1.45rem;
+}
+
+.kpi-content small,
+.focus-widget p,
+.dashboard-widget small {
+  color: var(--muted);
+}
+
+.focus-value {
+  margin-top: auto;
+  font-size: 1.8rem;
+}
+
+.table-validation {
+  grid-column: 1 / -1;
+  margin: 0;
+  border-left: 3px solid var(--bad);
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--bad) 10%, transparent);
+  color: var(--bad);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.inventory-alert-button {
+  width: 100%;
+  min-width: 7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  padding: 0.45rem 0.7rem;
+  font-weight: 850;
+}
+
+.inventory-alert-button.critical {
+  border-color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 16%, var(--surface));
+  color: var(--bad);
+}
+
+.inventory-alert-button.low {
+  border-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 16%, var(--surface));
+  color: var(--warn);
+}
+
+.inventory-alert-button.stocked {
+  border-color: var(--good);
+  color: var(--good);
+}
+
+.settings-copy {
+  color: var(--muted);
+}
+
+.widget-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 57.999rem) {
+  .workspace {
+    padding-inline: clamp(0.7rem, 3vw, 1rem);
+  }
+
+  .top-actions,
+  .search-shell,
+  .search-pill {
+    width: 100%;
+  }
+
+  .search-pill input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .profile-pill {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .profile-pill span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-card {
+    min-width: 0;
+  }
+
+  .summary-card strong {
+    overflow-wrap: anywhere;
+    font-size: 1.05rem;
+  }
+
+  .spreadsheet-toolbar {
+    position: relative;
+  }
+
+  .toolbar-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .toolbar-controls label {
+    min-width: 0;
+  }
+
+  .toolbar-controls input,
+  .toolbar-controls select,
+  .toolbar-controls button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .table-wrap {
+    max-height: 62svh;
+    overscroll-behavior: contain;
+  }
+
+  .widget-controls button {
+    width: 44px;
+    min-height: 44px;
+  }
+
+  .widget-link {
+    padding-top: 3.15rem;
+  }
+}
+
+@media (min-width: 58rem) {
+  .widget-board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .widget-wide {
+    grid-column: span 2;
+  }
+
+  .widget-tall {
+    grid-row: span 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sensor-strip::after {
+    animation: none;
+  }
+
+  .dashboard-widget {
+    transition: none;
+  }
+}
+
 @media (min-width: 58rem) {
   .app-shell {
     display: grid;

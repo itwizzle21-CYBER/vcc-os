@@ -11,6 +11,7 @@ interface SpreadsheetProps {
   onRowsChange: (section: SectionKey, rows: SpreadsheetRow[]) => void;
   onResetSection: (section: SectionKey) => void;
   getComputedCell?: (row: SpreadsheetRow, columnKey: string) => string | undefined;
+  preventDuplicateKey?: string;
 }
 
 export default function Spreadsheet({
@@ -21,8 +22,10 @@ export default function Spreadsheet({
   onRowsChange,
   onResetSection,
   getComputedCell,
+  preventDuplicateKey,
 }: SpreadsheetProps) {
   const [search, setSearch] = useState("");
+  const [validationMessage, setValidationMessage] = useState("");
   const tableRef = useRef<HTMLDivElement>(null);
   const visibleRows = useMemo(() => {
     const normalized = rows.map((row) => ({
@@ -47,6 +50,16 @@ export default function Spreadsheet({
   function updateCell(rowId: string, columnKey: string, value: string) {
     const column = config.columns.find((item) => item.key === columnKey);
     if (column?.type === "currency" && value && !value.startsWith("$")) value = formatLooseCurrency(value);
+    if (preventDuplicateKey === columnKey && value.trim()) {
+      const duplicate = rows.some(
+        (row) => row.id !== rowId && (row.cells[columnKey] || "").trim().toLocaleLowerCase() === value.trim().toLocaleLowerCase()
+      );
+      if (duplicate) {
+        setValidationMessage(`${value.trim()} is already in ${config.title}.`);
+        return;
+      }
+    }
+    setValidationMessage("");
     onRowsChange(
       config.key,
       rows.map((row) => {
@@ -142,6 +155,7 @@ export default function Spreadsheet({
             Reset Section
           </button>
         </div>
+        {validationMessage && <p className="table-validation" role="alert">{validationMessage}</p>}
       </div>
 
       <div className="table-wrap" ref={tableRef}>
@@ -166,6 +180,23 @@ export default function Spreadsheet({
                   const computed = getComputedCell?.(row, column.key);
                   const readOnly = column.readOnly || typeof computed === "string";
                   const value = computed ?? row.cells[column.key] ?? "";
+                  if (config.key === "inventory" && column.key === "alert") {
+                    const tone = value.toLowerCase();
+                    return (
+                      <td key={column.key}>
+                        <button
+                          type="button"
+                          className={`inventory-alert-button ${tone}`}
+                          data-row-index={rowIndex}
+                          data-column-index={columnIndex}
+                          onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex)}
+                          onClick={() => document.getElementById("buy-next")?.scrollIntoView({ behavior: "smooth" })}
+                        >
+                          {value}
+                        </button>
+                      </td>
+                    );
+                  }
                   return (
                     <td key={column.key}>
                       <input

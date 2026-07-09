@@ -49,7 +49,7 @@ export default function App() {
 
   return (
     <AppShell currentPath={path} settings={data.settings} data={data}>
-      {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} />}
+      {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} settings={data.settings} onSettingsChange={(settings) => updateData({ ...data, settings })} />}
       {path === "/money" && (
         <ModulePage section="money" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} header={<PaycheckPlanner data={data} onChange={updateData} />} />
       )}
@@ -104,7 +104,7 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
   return (
     <div className="module-page">
       <SummaryGrid items={summaryForSection("inventory", props.financialState)} />
-      <section className="buy-next-panel">
+      <section className="buy-next-panel" id="buy-next">
         <div>
           <p className="eyebrow">Buy Next</p>
           <h2>Inventory below minimum</h2>
@@ -127,6 +127,7 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
         onRowsChange={props.updateRows}
         onResetSection={props.resetSection}
         getComputedCell={(row, columnKey) => computedCell("inventory", row, columnKey)}
+        preventDuplicateKey="item"
       />
     </div>
   );
@@ -204,6 +205,30 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
       </section>
 
       <section className="panel">
+        <p className="eyebrow">Dashboard Widgets</p>
+        <h2>Choose What Appears</h2>
+        <p className="settings-copy">Drag widgets on the dashboard to reorder them. Hidden widgets stay available here.</p>
+        <div className="widget-settings-grid">
+          {widgetOptions.map((widget) => (
+            <SettingToggle
+              key={widget.id}
+              label={widget.label}
+              checked={!data.settings.hiddenWidgets.includes(widget.id)}
+              onChange={(visible) => onChange({
+                ...data,
+                settings: {
+                  ...data.settings,
+                  hiddenWidgets: visible
+                    ? data.settings.hiddenWidgets.filter((id) => id !== widget.id)
+                    : [...data.settings.hiddenWidgets, widget.id],
+                },
+              })}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="panel">
         <p className="eyebrow">Data Health</p>
         <h2>Local Spreadsheet Storage</h2>
         <div className="settings-status-grid">
@@ -232,6 +257,20 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
     </div>
   );
 }
+
+const widgetOptions = [
+  { id: "total-cash", label: "Total Cash" },
+  { id: "money-snapshot", label: "Spendable Cash" },
+  { id: "protected-savings", label: "Protected Savings" },
+  { id: "command", label: "Command Center" },
+  { id: "balance", label: "Money Snapshot" },
+  { id: "bills", label: "Bills + Pressure" },
+  { id: "inventory", label: "Inventory" },
+  { id: "analytics", label: "Cash Flow + Categories" },
+  { id: "activity", label: "Activity Alerts" },
+  { id: "progress", label: "Debt Progress" },
+  { id: "objectives", label: "Objective Stack" },
+];
 
 function SettingInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
