@@ -41,7 +41,7 @@ export default function Dashboard({
     },
     {
       id: "command",
-      className: "widget-wide command-panel",
+      className: "widget-wide",
       content: (
         <a href="/missions" className="widget-link">
           <div className="panel-heading"><div><p className="eyebrow">Today Briefing</p><h2>{decisionState.todayBriefing}</h2></div><ShieldCheck size={20} /></div>
