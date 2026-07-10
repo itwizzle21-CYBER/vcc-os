@@ -59,7 +59,7 @@ export default function App() {
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/transactions" && <TransactionsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
-      {path === "/savings" && <ModulePage section="savings" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <ModulePage section="goals" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/reports" && <ReportsPage financialState={financialState} decisionState={decisionState} />}
@@ -498,6 +498,150 @@ function TransactionsPage({
         addLabel="Add Transaction"
       />
     </div>
+  );
+}
+
+function SavingsPage({
+  data,
+  financialState,
+  updateRows,
+  updateSort,
+  resetSection,
+}: {
+  data: AppData;
+  financialState: ReturnType<typeof computeFinancialState>;
+  updateRows: (section: SectionKey, rows: SpreadsheetRow[]) => void;
+  updateSort: (section: SectionKey, sortBy: string) => void;
+  resetSection: (section: SectionKey) => void;
+}) {
+  const [savingsSearch, setSavingsSearch] = useState("");
+  const [vaultType, setVaultType] = useState("all");
+  const savingsRows = data.sections.savings.map(normalizeSavingsRow);
+  const filledSavingsRows = savingsRows.filter((row) => !isBlankRow(row.cells));
+  const monthlySavingsRate = data.sections.transactions
+    .map(normalizeTransactionRow)
+    .filter((row) => transactionType(row) === "transfer" && row.cells.category.toLowerCase().includes("saving") && transactionDateMatches(row.cells.date, "month"))
+    .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+  const totalSaved = filledSavingsRows.reduce((sum, row) => sum + toNumber(row.cells.balance), 0);
+  const totalTarget = filledSavingsRows.reduce((sum, row) => sum + toNumber(row.cells.target), 0);
+  const monthlyInterest = filledSavingsRows.reduce((sum, row) => sum + (toNumber(row.cells.balance) * toNumber(row.cells.interestRate)) / 100 / 12, 0);
+  const progressPercent = totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0;
+  const visibleSavingsRows = savingsRows.filter((row) => {
+    if (isBlankRow(row.cells)) return !savingsSearch.trim() && vaultType === "all";
+    const query = savingsSearch.trim().toLowerCase();
+    const type = savingsType(row);
+    const matchesType = vaultType === "all" || type === vaultType;
+    const matchesSearch = !query || [row.cells.name, row.cells.institution, row.cells.type, row.cells.notes]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+    return matchesType && matchesSearch;
+  });
+  const visibleSavingsIds = new Set(visibleSavingsRows.map((row) => row.id));
+
+  function updateVisibleSavingsRows(section: SectionKey, nextVisibleRows: SpreadsheetRow[]) {
+    const normalizedNextRows = nextVisibleRows.map(normalizeSavingsRow);
+    const nextVisibleIds = new Set(normalizedNextRows.map((row) => row.id));
+    const preservedRows = savingsRows.filter((row) => !visibleSavingsIds.has(row.id) || nextVisibleIds.has(row.id));
+    const mergedRows = preservedRows.map((row) => normalizedNextRows.find((next) => next.id === row.id) || row);
+    const addedRows = normalizedNextRows.filter((row) => !savingsRows.some((existing) => existing.id === row.id));
+    updateRows(section, [...mergedRows, ...addedRows]);
+  }
+
+  return (
+    <div className="savings-page module-page">
+      <SummaryGrid items={summaryForSection("savings", financialState)} />
+      <section className="savings-command-panel">
+        <div>
+          <p className="eyebrow">Savings Vaults</p>
+          <h2>Your financial vaults</h2>
+        </div>
+        <div className="savings-filter-row">
+          <label className="savings-search">
+            <span>Search vaults</span>
+            <input value={savingsSearch} onChange={(event) => setSavingsSearch(event.target.value)} placeholder="Search names, institutions, notes" />
+          </label>
+          <label className="savings-type-select">
+            <span>Type</span>
+            <select value={vaultType} onChange={(event) => setVaultType(event.target.value)}>
+              <option value="all">All Vaults</option>
+              <option value="high_yield">High Yield</option>
+              <option value="traditional">Traditional</option>
+              <option value="money_market">Money Market</option>
+              <option value="cd">CD</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+        </div>
+        <div className="savings-inline-stats">
+          <strong>{formatCurrency(totalSaved)} saved</strong>
+          <span>{formatCurrency(totalTarget)} target</span>
+          <em>{progressPercent}% progress</em>
+          <em>+{formatCurrency(monthlyInterest)} monthly interest</em>
+          <em>{formatCurrency(monthlySavingsRate)} saved this month</em>
+        </div>
+      </section>
+
+      <section className="vault-grid">
+        {filledSavingsRows.length ? filledSavingsRows.map((row) => (
+          <VaultCard key={row.id} row={row} monthlySavingsRate={monthlySavingsRate} vaultCount={Math.max(1, filledSavingsRows.length)} />
+        )) : (
+          <article className="panel vault-empty-card">
+            <p className="eyebrow">No Vaults Yet</p>
+            <h2>Create your first savings bucket</h2>
+            <p className="empty-copy">Use the spreadsheet below to add emergency funds, car savings, protected savings, or high-yield accounts.</p>
+          </article>
+        )}
+      </section>
+
+      <Spreadsheet
+        config={sectionConfigs.savings}
+        rows={visibleSavingsRows}
+        sortBy={data.sortBy.savings}
+        onSortChange={updateSort}
+        onRowsChange={updateVisibleSavingsRows}
+        onResetSection={resetSection}
+        getComputedCell={(row, columnKey) => computedCell("savings", row, columnKey)}
+        addLabel="Add Vault"
+      />
+    </div>
+  );
+}
+
+function VaultCard({ row, monthlySavingsRate, vaultCount }: { row: SpreadsheetRow; monthlySavingsRate: number; vaultCount: number }) {
+  const balance = toNumber(row.cells.balance);
+  const target = toNumber(row.cells.target);
+  const interestRate = toNumber(row.cells.interestRate);
+  const pct = target > 0 ? Math.min(100, Math.round((balance / target) * 100)) : 0;
+  const projection = savingsProjection(row, monthlySavingsRate / Math.max(1, vaultCount));
+  const type = savingsType(row);
+
+  return (
+    <article className={`vault-card ${type}`}>
+      <div className="vault-heading">
+        <span>{vaultIcon(type)}</span>
+        <div>
+          <h2>{row.cells.name || "Unnamed vault"}</h2>
+          <p>{vaultLabel(type)}{row.cells.institution ? ` · ${row.cells.institution}` : ""}</p>
+        </div>
+      </div>
+      <div className="vault-balance-row">
+        <div>
+          <strong>{formatCurrency(balance)}</strong>
+          {target > 0 && <small>of {formatCurrency(target)}</small>}
+        </div>
+        {interestRate > 0 && <em>{interestRate}% APY</em>}
+      </div>
+      {target > 0 && (
+        <>
+          <div className="vault-progress"><i style={{ width: `${pct}%` }} /></div>
+          <div className="vault-footer">
+            <span>{pct}% complete</span>
+            <span>{projection}</span>
+          </div>
+        </>
+      )}
+    </article>
   );
 }
 
@@ -1069,6 +1213,23 @@ function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
   };
 }
 
+function normalizeSavingsRow(row: SpreadsheetRow): SpreadsheetRow {
+  return {
+    ...row,
+    cells: {
+      ...row.cells,
+      name: row.cells.name || "",
+      balance: row.cells.balance || "",
+      protected: row.cells.protected || "",
+      target: row.cells.target || "",
+      interestRate: row.cells.interestRate || row.cells.interest_rate || "",
+      institution: row.cells.institution || "",
+      type: row.cells.type || savingsType(row),
+      notes: row.cells.notes || "",
+    },
+  };
+}
+
 function transactionType(row: SpreadsheetRow): "income" | "expense" | "transfer" {
   const value = `${row.cells.type || ""} ${row.cells.category || ""}`.toLowerCase();
   if (value.includes("transfer")) return "transfer";
@@ -1087,6 +1248,48 @@ function transactionDateMatches(dateText: string, filter: string): boolean {
     return date.getMonth() === lastMonth.getMonth() && date.getFullYear() === lastMonth.getFullYear();
   }
   return true;
+}
+
+function savingsType(row: SpreadsheetRow): "high_yield" | "traditional" | "money_market" | "cd" | "other" {
+  const value = `${row.cells.type || ""} ${row.cells.name || ""}`.toLowerCase();
+  if (value.includes("market")) return "money_market";
+  if (value.includes("cd") || value.includes("certificate")) return "cd";
+  if (value.includes("traditional")) return "traditional";
+  if (value.includes("high") || value.includes("yield") || value.includes("hysa")) return "high_yield";
+  return "other";
+}
+
+function vaultLabel(type: ReturnType<typeof savingsType>): string {
+  return {
+    high_yield: "High Yield",
+    traditional: "Traditional",
+    money_market: "Money Market",
+    cd: "CD",
+    other: "Savings",
+  }[type];
+}
+
+function vaultIcon(type: ReturnType<typeof savingsType>): string {
+  return {
+    high_yield: "$",
+    traditional: "B",
+    money_market: "%",
+    cd: "L",
+    other: "S",
+  }[type];
+}
+
+function savingsProjection(row: SpreadsheetRow, monthlyContribution: number): string {
+  const balance = toNumber(row.cells.balance);
+  const target = toNumber(row.cells.target);
+  if (!target) return "No target";
+  const remaining = target - balance;
+  if (remaining <= 0) return "Goal reached";
+  if (monthlyContribution <= 0) return "Add savings transfers";
+  const months = Math.ceil(remaining / monthlyContribution);
+  const date = new Date();
+  date.setMonth(date.getMonth() + months);
+  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
 function billStatus(row: SpreadsheetRow): string {
