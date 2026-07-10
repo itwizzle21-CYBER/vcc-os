@@ -1316,6 +1316,141 @@ td input[readonly] {
   background: #ff6666;
 }
 
+.transactions-command-panel {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.95rem;
+  background:
+    radial-gradient(circle at top left, rgba(86, 165, 255, 0.14), transparent 34%),
+    color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-raised);
+  padding: 1rem;
+}
+
+.transactions-command-panel h2 {
+  margin: 0;
+}
+
+.transactions-filter-row {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) auto;
+  gap: 0.8rem;
+  align-items: end;
+}
+
+.transactions-search,
+.transactions-filter-controls label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.transactions-search span,
+.transactions-filter-controls span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.transactions-search input,
+.transactions-filter-controls select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0 0.85rem;
+}
+
+.transactions-filter-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(9rem, 1fr));
+  gap: 0.65rem;
+}
+
+.transactions-inline-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.transactions-inline-stats span,
+.transactions-inline-stats strong,
+.transactions-inline-stats em {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  padding: 0.42rem 0.7rem;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.transactions-inline-stats .income {
+  color: #25d39b;
+}
+
+.transactions-inline-stats .expense {
+  color: #ff6666;
+}
+
+.transactions-insight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 1rem;
+}
+
+.transaction-flow-card {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.transaction-flow-bars {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.transaction-mini-bar {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.transaction-mini-bar span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.transaction-mini-bar i {
+  display: block;
+  overflow: hidden;
+  height: 0.65rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.transaction-mini-bar b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.transaction-mini-bar.green b {
+  background: #25d39b;
+}
+
+.transaction-mini-bar.red b {
+  background: #ff6666;
+}
+
+.transaction-mini-bar.blue b {
+  background: #56a5ff;
+}
+
 .reports-grid {
   display: grid;
   gap: 0.85rem;
@@ -1913,6 +2048,23 @@ td input[readonly] {
 
   .bill-mini-bar {
     grid-template-columns: 5.8rem minmax(0, 1fr) auto;
+  }
+
+  .transactions-filter-row,
+  .transactions-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .transactions-filter-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .transaction-mini-bar {
+    grid-template-columns: 5.8rem minmax(0, 1fr);
+  }
+
+  .transaction-mini-bar strong {
+    grid-column: 1 / -1;
   }
 
   .reports-grid {

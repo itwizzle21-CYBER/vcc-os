@@ -42,11 +42,14 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
     key: "transactions",
     title: "Transactions",
     columns: [
-      { key: "date", label: "Date", type: "date" },
       { key: "description", label: "Description" },
+      { key: "type", label: "Type" },
       { key: "category", label: "Category" },
       { key: "amount", label: "Amount", type: "currency" },
+      { key: "date", label: "Date", type: "date" },
       { key: "account", label: "Account" },
+      { key: "recurring", label: "Recurring" },
+      { key: "notes", label: "Notes" },
     ],
   },
   debt: {

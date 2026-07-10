@@ -57,7 +57,7 @@ export default function App() {
       )}
       {path === "/bills" && <BillsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
-      {path === "/transactions" && <ModulePage section="transactions" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/transactions" && <TransactionsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/savings" && <ModulePage section="savings" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
@@ -372,6 +372,141 @@ function BillsPage({
         getComputedCell={(row, columnKey) => computedCell("bills", row, columnKey)}
         addLabel="Add Bill"
       />
+    </div>
+  );
+}
+
+function TransactionsPage({
+  data,
+  financialState,
+  updateRows,
+  updateSort,
+  resetSection,
+}: {
+  data: AppData;
+  financialState: ReturnType<typeof computeFinancialState>;
+  updateRows: (section: SectionKey, rows: SpreadsheetRow[]) => void;
+  updateSort: (section: SectionKey, sortBy: string) => void;
+  resetSection: (section: SectionKey) => void;
+}) {
+  const [transactionSearch, setTransactionSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const transactionRows = data.sections.transactions.map(normalizeTransactionRow);
+  const visibleTransactionRows = transactionRows.filter((row) => {
+    if (isBlankRow(row.cells)) return !transactionSearch.trim() && typeFilter === "all" && dateFilter === "all";
+    const type = transactionType(row);
+    const query = transactionSearch.trim().toLowerCase();
+    const matchesType = typeFilter === "all" || type === typeFilter;
+    const matchesSearch = !query || [row.cells.description, row.cells.category, row.cells.account, row.cells.notes]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+    const matchesDate = dateFilter === "all" || transactionDateMatches(row.cells.date, dateFilter);
+    return matchesType && matchesSearch && matchesDate;
+  });
+  const visibleTransactionIds = new Set(visibleTransactionRows.map((row) => row.id));
+  const visibleFilledRows = visibleTransactionRows.filter((row) => !isBlankRow(row.cells));
+  const incomeTotal = visibleFilledRows
+    .filter((row) => transactionType(row) === "income")
+    .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+  const expenseTotal = visibleFilledRows
+    .filter((row) => transactionType(row) === "expense")
+    .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+  const transferTotal = visibleFilledRows
+    .filter((row) => transactionType(row) === "transfer")
+    .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+  const recurringCount = visibleFilledRows.filter((row) => isAffirmative(row.cells.recurring)).length;
+
+  function updateVisibleTransactionRows(section: SectionKey, nextVisibleRows: SpreadsheetRow[]) {
+    const normalizedNextRows = nextVisibleRows.map(normalizeTransactionRow);
+    const nextVisibleIds = new Set(normalizedNextRows.map((row) => row.id));
+    const preservedRows = transactionRows.filter((row) => !visibleTransactionIds.has(row.id) || nextVisibleIds.has(row.id));
+    const mergedRows = preservedRows.map((row) => normalizedNextRows.find((next) => next.id === row.id) || row);
+    const addedRows = normalizedNextRows.filter((row) => !transactionRows.some((existing) => existing.id === row.id));
+    updateRows(section, [...mergedRows, ...addedRows]);
+  }
+
+  return (
+    <div className="transactions-page module-page">
+      <SummaryGrid items={summaryForSection("transactions", financialState)} />
+      <section className="transactions-command-panel">
+        <div>
+          <p className="eyebrow">Transactions Control</p>
+          <h2>Track every dollar in and out</h2>
+        </div>
+        <div className="transactions-filter-row">
+          <label className="transactions-search">
+            <span>Search transactions</span>
+            <input value={transactionSearch} onChange={(event) => setTransactionSearch(event.target.value)} placeholder="Search descriptions, categories, accounts" />
+          </label>
+          <div className="transactions-filter-controls">
+            <label>
+              <span>Type</span>
+              <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+                <option value="all">All Types</option>
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+                <option value="transfer">Transfer</option>
+              </select>
+            </label>
+            <label>
+              <span>Date</span>
+              <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
+                <option value="all">All Time</option>
+                <option value="month">This Month</option>
+                <option value="lastmonth">Last Month</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div className="transactions-inline-stats">
+          <span>{visibleFilledRows.length} transactions</span>
+          <strong className="income">+{formatCurrency(incomeTotal)}</strong>
+          <strong className="expense">-{formatCurrency(expenseTotal)}</strong>
+          <em>{formatCurrency(transferTotal)} transfers</em>
+          <em>{recurringCount} recurring</em>
+        </div>
+      </section>
+
+      <section className="transactions-insight-grid">
+        <article className="panel transaction-flow-card">
+          <p className="eyebrow">Filtered Flow</p>
+          <div className="transaction-flow-bars">
+            <TransactionMiniBar label="Income" value={incomeTotal} max={Math.max(1, incomeTotal, expenseTotal, transferTotal)} tone="green" />
+            <TransactionMiniBar label="Expenses" value={expenseTotal} max={Math.max(1, incomeTotal, expenseTotal, transferTotal)} tone="red" />
+            <TransactionMiniBar label="Transfers" value={transferTotal} max={Math.max(1, incomeTotal, expenseTotal, transferTotal)} tone="blue" />
+          </div>
+        </article>
+        <article className="panel transaction-flow-card">
+          <p className="eyebrow">Activity Signal</p>
+          <h2>{visibleFilledRows.length ? `${visibleFilledRows.length} visible rows` : "No transactions found"}</h2>
+          <p className="empty-copy">
+            {recurringCount ? `${recurringCount} recurring transaction${recurringCount > 1 ? "s are" : " is"} visible in this view.` : "Use filters to isolate income, expenses, transfers, and recent months."}
+          </p>
+        </article>
+      </section>
+
+      <Spreadsheet
+        config={sectionConfigs.transactions}
+        rows={visibleTransactionRows}
+        sortBy={data.sortBy.transactions}
+        onSortChange={updateSort}
+        onRowsChange={updateVisibleTransactionRows}
+        onResetSection={resetSection}
+        getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
+        addLabel="Add Transaction"
+      />
+    </div>
+  );
+}
+
+function TransactionMiniBar({ label, value, max, tone }: { label: string; value: number; max: number; tone: "green" | "red" | "blue" }) {
+  return (
+    <div className={`transaction-mini-bar ${tone}`}>
+      <span>{label}</span>
+      <i><b style={{ width: `${Math.max(5, Math.min(100, (value / max) * 100))}%` }} /></i>
+      <strong>{formatCurrency(value)}</strong>
     </div>
   );
 }
@@ -915,6 +1050,43 @@ function normalizeBillRow(row: SpreadsheetRow): SpreadsheetRow {
       notes: row.cells.notes || "",
     },
   };
+}
+
+function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
+  return {
+    ...row,
+    cells: {
+      ...row.cells,
+      description: row.cells.description || "",
+      type: row.cells.type || transactionType(row),
+      category: row.cells.category || "",
+      amount: row.cells.amount || "",
+      date: row.cells.date || "",
+      account: row.cells.account || "",
+      recurring: row.cells.recurring || row.cells.is_recurring || "",
+      notes: row.cells.notes || "",
+    },
+  };
+}
+
+function transactionType(row: SpreadsheetRow): "income" | "expense" | "transfer" {
+  const value = `${row.cells.type || ""} ${row.cells.category || ""}`.toLowerCase();
+  if (value.includes("transfer")) return "transfer";
+  if (value.includes("income") || toNumber(row.cells.amount) > 0) return "income";
+  return "expense";
+}
+
+function transactionDateMatches(dateText: string, filter: string): boolean {
+  if (!dateText) return false;
+  const date = new Date(`${dateText}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return false;
+  const now = new Date();
+  if (filter === "month") return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  if (filter === "lastmonth") {
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return date.getMonth() === lastMonth.getMonth() && date.getFullYear() === lastMonth.getFullYear();
+  }
+  return true;
 }
 
 function billStatus(row: SpreadsheetRow): string {
