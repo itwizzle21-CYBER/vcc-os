@@ -8,9 +8,11 @@ import {
   ChevronsLeft,
   ChevronsRight,
   CreditCard,
+  FileBarChart,
   Home,
   Landmark,
-  MoreHorizontal,
+  Menu,
+  X,
   ReceiptText,
   Search,
   Settings,
@@ -23,14 +25,15 @@ import type { AppData, UserSettings } from "../../lib/types/app";
 
 const nav = [
   { path: "/", label: "Dashboard", icon: Home },
-  { path: "/money", label: "Money", icon: Wallet },
-  { path: "/income", label: "Income", icon: CircleDollarSign },
+  { path: "/money", label: "Money Snapshot", icon: Wallet },
   { path: "/bills", label: "Bills", icon: ReceiptText },
-  { path: "/transactions", label: "Transactions", icon: BarChart3 },
-  { path: "/debt", label: "Debt", icon: CreditCard },
-  { path: "/savings", label: "Savings", icon: Landmark },
   { path: "/inventory", label: "Inventory", icon: Boxes },
+  { path: "/transactions", label: "Transactions", icon: BarChart3 },
+  { path: "/savings", label: "Savings", icon: Landmark },
   { path: "/goals", label: "Goals", icon: Target },
+  { path: "/reports", label: "Reports", icon: FileBarChart },
+  { path: "/income", label: "Income", icon: CircleDollarSign },
+  { path: "/debt", label: "Debt", icon: CreditCard },
   { path: "/missions", label: "Missions", icon: CheckCircle2 },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
@@ -49,16 +52,16 @@ export default function AppShell({
   onSettingsChange: (settings: UserSettings) => void;
 }) {
   const [brandOpen, setBrandOpen] = useState(false);
-  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const brandRef = useRef<HTMLDivElement>(null);
-  const mobileMoreRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const results = useMemo(() => buildSearchResults(data, query), [data, query]);
 
   useEffect(() => {
     function closeOnAway(event: MouseEvent) {
       if (!brandRef.current?.contains(event.target as Node)) setBrandOpen(false);
-      if (!mobileMoreRef.current?.contains(event.target as Node)) setMobileMoreOpen(false);
+      if (!mobileMenuRef.current?.contains(event.target as Node)) setMobileMenuOpen(false);
     }
     document.addEventListener("mousedown", closeOnAway);
     return () => document.removeEventListener("mousedown", closeOnAway);
@@ -118,6 +121,16 @@ export default function AppShell({
 
       <main className="workspace">
         <header className="topbar">
+          <button
+            className="mobile-menu-trigger"
+            type="button"
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-navigation"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            {mobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
+          </button>
           <div>
             <p className="eyebrow">{settings.localMode ? "VCC Local Mode" : settings.profileLabel}</p>
             <h1>{titleForPath(currentPath, settings)}</h1>
@@ -156,50 +169,59 @@ export default function AppShell({
         {children}
       </main>
 
-      <nav className="mobile-nav" aria-label="Primary mobile navigation">
-        {[nav[0], nav[1], nav[4], nav[7]].map((item) => {
-          const Icon = item.icon;
-          const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
-          return (
-            <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
-              <Icon size={18} />
-              <span>{item.label}</span>
+      <div className={`mobile-menu-layer ${mobileMenuOpen ? "open" : ""}`} aria-hidden={!mobileMenuOpen}>
+        <div className="mobile-menu-scrim" />
+        <nav className="mobile-drawer" id="mobile-navigation" aria-label="Primary mobile navigation" ref={mobileMenuRef}>
+          <div className="mobile-drawer-head">
+            <a href="/" className="mobile-brand" onClick={() => setMobileMenuOpen(false)}>
+              <span>V</span>
+              <strong>VCC OS</strong>
             </a>
-          );
-        })}
-        <div className="mobile-more-wrap" ref={mobileMoreRef}>
-          <button
-            type="button"
-            className={mobileMoreOpen || isMorePath(currentPath) ? "active" : ""}
-            aria-expanded={mobileMoreOpen}
-            aria-controls="mobile-more-menu"
-            onClick={() => setMobileMoreOpen((open) => !open)}
-          >
-            <MoreHorizontal size={19} />
-            <span>More</span>
-          </button>
-          {mobileMoreOpen && (
-            <div className="mobile-more-menu" id="mobile-more-menu">
-              {nav.filter((item) => !["/", "/money", "/transactions", "/inventory"].includes(item.path)).map((item) => {
-                const Icon = item.icon;
-                const active = normalize(currentPath) === item.path;
-                return (
-                  <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
-                    <Icon size={18} />
-                    <span>{item.label}</span>
+            <button type="button" aria-label="Close navigation menu" onClick={() => setMobileMenuOpen(false)}>
+              <X size={20} />
+            </button>
+          </div>
+          <a className="mobile-profile" href="/settings" onClick={() => setMobileMenuOpen(false)}>
+            <UserCircle size={20} />
+            <span>
+              <strong>{settings.accountName || "Account"}</strong>
+              <small>{settings.profileLabel}</small>
+            </span>
+          </a>
+          <div className="mobile-drawer-search">
+            <Search size={16} />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search VCC OS" />
+          </div>
+          <div className="mobile-drawer-results">
+            {query.trim() && (
+              results.length > 0 ? (
+                results.slice(0, 4).map((result) => (
+                  <a key={`${result.href}-${result.label}`} href={result.href} onClick={() => setMobileMenuOpen(false)}>
+                    <strong>{result.label}</strong>
+                    <span>{result.detail}</span>
                   </a>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </nav>
+                ))
+              ) : (
+                <span>No matches found</span>
+              )
+            )}
+          </div>
+          <div className="mobile-drawer-nav">
+            {nav.map((item) => {
+              const Icon = item.icon;
+              const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
+              return (
+                <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined} onClick={() => setMobileMenuOpen(false)}>
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </a>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
     </div>
   );
-}
-
-function isMorePath(path: string) {
-  return !["/", "/money", "/transactions", "/inventory"].includes(normalize(path));
 }
 
 function normalize(path: string) {
@@ -225,6 +247,7 @@ function buildSearchResults(data: AppData, query: string) {
     savings: "/savings",
     inventory: "/inventory",
     goals: "/goals",
+    reports: "/reports",
   };
 
   for (const item of nav) {

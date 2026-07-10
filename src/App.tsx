@@ -4,6 +4,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import PaycheckPlanner from "./components/modules/PaycheckPlanner";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
+import { formatCurrency } from "./lib/calculations/currency";
 import { computeDecisionEngine } from "./lib/engine/decisionEngine";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
@@ -61,6 +62,7 @@ export default function App() {
       {path === "/savings" && <ModulePage section="savings" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <ModulePage section="goals" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/reports" && <ReportsPage financialState={financialState} decisionState={decisionState} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} />}
     </AppShell>
@@ -134,6 +136,106 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
   );
 }
 
+function ReportsPage({
+  financialState,
+  decisionState,
+}: {
+  financialState: ReturnType<typeof computeFinancialState>;
+  decisionState: ReturnType<typeof computeDecisionEngine>;
+}) {
+  const reportSummary = [
+    { label: "Total Cash", value: financialState.totalCash },
+    { label: "Monthly Spending", value: financialState.monthlySpending },
+    { label: "Bills Pressure", value: financialState.billsPressure, tone: "warn" as const },
+    { label: "Safe To Spend", value: financialState.safeToSpend },
+  ];
+  const highestCashFlowValue = Math.max(
+    1,
+    ...financialState.cashFlow.flatMap((item) => [Math.abs(item.income), Math.abs(item.spending)])
+  );
+  const categoryRows = financialState.categorySummary.length
+    ? financialState.categorySummary
+    : [{ label: "No category spend", amount: 0 }];
+
+  return (
+    <div className="reports-page">
+      <SummaryGrid items={reportSummary} />
+      <section className="reports-grid">
+        <article className="panel report-card report-card-wide">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Cash Flow Trend</p>
+              <h2>Income and spending</h2>
+            </div>
+            <a href="/transactions" className="report-link">Transactions</a>
+          </div>
+          <div className="report-bars" aria-label="Cash flow report">
+            {financialState.cashFlow.map((item) => (
+              <div key={item.label}>
+                <span>{item.label}</span>
+                <div>
+                  <i style={{ height: `${Math.max(8, (Math.abs(item.income) / highestCashFlowValue) * 100)}%` }} />
+                  <b style={{ height: `${Math.max(8, (Math.abs(item.spending) / highestCashFlowValue) * 100)}%` }} />
+                </div>
+                <small>{formatCurrency(item.income)} in</small>
+                <small>{formatCurrency(item.spending)} out</small>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="panel report-card">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Spending By Category</p>
+              <h2>Where money is going</h2>
+            </div>
+            <a href="/transactions" className="report-link">Open</a>
+          </div>
+          <div className="report-list">
+            {categoryRows.map((category) => (
+              <a key={category.label} href="/transactions">
+                <span>{category.label}</span>
+                <strong>{formatCurrency(category.amount)}</strong>
+              </a>
+            ))}
+          </div>
+        </article>
+
+        <article className="panel report-card">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Decision Pulse</p>
+              <h2>Current recommendation</h2>
+            </div>
+            <a href="/missions" className="report-link">Missions</a>
+          </div>
+          <div className="report-callout">
+            <strong>{decisionState.recommendedMove}</strong>
+            <span>{decisionState.todayBriefing}</span>
+          </div>
+        </article>
+
+        <article className="panel report-card report-card-wide">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Financial Position</p>
+              <h2>Snapshot health</h2>
+            </div>
+            <a href="/money" className="report-link">Money</a>
+          </div>
+          <div className="report-metric-grid">
+            <ReportMetric label="Borrowed Money" value={financialState.borrowedMoney} href="/money" />
+            <ReportMetric label="Protected Savings" value={financialState.protectedSavings} href="/savings" />
+            <ReportMetric label="Total Debt" value={financialState.totalDebt} href="/debt" />
+            <ReportMetric label="Refill Cost" value={financialState.estimatedRefillCost} href="/inventory" />
+          </div>
+        </article>
+      </section>
+    </div>
+  );
+}
+
 function MissionsPage({ decisionState }: { decisionState: ReturnType<typeof computeDecisionEngine> }) {
   return (
     <div className="missions-page">
@@ -164,6 +266,15 @@ function MissionsPage({ decisionState }: { decisionState: ReturnType<typeof comp
         </div>
       </section>
     </div>
+  );
+}
+
+function ReportMetric({ label, value, href }: { label: string; value: number; href: string }) {
+  return (
+    <a href={href}>
+      <span>{label}</span>
+      <strong>{formatCurrency(value)}</strong>
+    </a>
   );
 }
 
