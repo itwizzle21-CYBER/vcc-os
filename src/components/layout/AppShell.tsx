@@ -40,6 +40,7 @@ const nav = [
 ];
 
 const dashboardNav = nav.filter((item) => !["/income", "/debt", "/missions"].includes(item.path));
+const bottomNav = dashboardNav.slice(0, 5);
 
 export default function AppShell({
   children,
@@ -164,7 +165,7 @@ export default function AppShell({
             {mobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
           </button>
           <div>
-            <p className="eyebrow">{settings.localMode ? "VCC Local Mode" : settings.profileLabel}</p>
+            <p className="eyebrow">{subtitleForPath(currentPath)}</p>
             <h1>{titleForPath(currentPath, settings)}</h1>
           </div>
           <div className="top-actions">
@@ -252,6 +253,18 @@ export default function AppShell({
           </div>
         </nav>
       </div>
+      <nav className="mobile-bottom-nav" aria-label="Primary bottom navigation">
+        {bottomNav.map((item) => {
+          const Icon = item.icon;
+          const active = normalize(currentPath) === item.path;
+          return (
+            <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
+              <Icon size={19} />
+              <span>{item.path === "/money" ? "Money" : item.label}</span>
+            </a>
+          );
+        })}
+      </nav>
     </div>
   );
 }
@@ -264,6 +277,23 @@ function titleForPath(path: string, settings: UserSettings) {
   const normalized = normalize(path);
   const label = nav.find((item) => item.path === normalized)?.label || "Dashboard";
   return label === "Dashboard" ? `Good evening, ${settings.accountName || "Account"}` : label;
+}
+
+function subtitleForPath(path: string) {
+  const normalized = normalize(path);
+  return {
+    "/money": "Your complete financial picture",
+    "/bills": "Track and manage recurring expenses",
+    "/inventory": "Assets, subscriptions, and liabilities",
+    "/transactions": "Track every dollar in and out",
+    "/savings": "Your financial vaults",
+    "/goals": "Your progress targets",
+    "/reports": "Visual analytics for your finances",
+    "/settings": "Manage your account and preferences",
+    "/income": "Extra income workspace",
+    "/debt": "Paydown and payoff tracking",
+    "/missions": "Decision engine priorities",
+  }[normalized] || "Vitality Command Center";
 }
 
 function buildSearchResults(data: AppData, query: string) {

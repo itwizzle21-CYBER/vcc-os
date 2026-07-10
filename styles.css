@@ -2970,7 +2970,7 @@ td input[readonly] {
 .base44-dashboard {
   display: grid;
   gap: 1.55rem;
-  width: min(1520px, calc(100vw - 3rem));
+  width: min(1216px, calc(100vw - 2rem));
   margin: 0 auto;
   padding: 0.95rem 0 4rem;
 }
@@ -4265,5 +4265,437 @@ td input:focus {
 
   .reference-shell .spreadsheet-toolbar {
     top: 78px;
+  }
+}
+
+/* Live Base44 architecture pass */
+.reference-shell.app-shell {
+  background: #0d0e12;
+  color: #f0f2f5;
+}
+
+.reference-shell .workspace {
+  width: min(1280px, 100%);
+  padding: 1.5rem 2rem 6rem;
+}
+
+.reference-shell.dashboard-shell .workspace {
+  width: 100%;
+  padding: 0;
+}
+
+.reference-shell .topbar {
+  display: flex;
+  min-height: 3.375rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 2rem;
+}
+
+.reference-shell .topbar > div:first-of-type {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.reference-shell .topbar > div:first-of-type::before {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.85rem;
+  background: rgba(86, 165, 255, 0.14);
+  color: #56a5ff;
+  content: "";
+  box-shadow: inset 0 0 0 1px rgba(86, 165, 255, 0.18);
+}
+
+.reference-shell .topbar .eyebrow {
+  display: block;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.reference-shell .topbar h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
+.reference-shell .top-actions {
+  display: none;
+}
+
+.reference-shell .module-page,
+.reference-shell .money-page,
+.reference-shell .savings-page,
+.reference-shell .goals-page,
+.reference-shell .reports-page,
+.reference-shell .settings-page,
+.reference-shell .missions-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.reference-shell .money-page > .summary-grid,
+.reference-shell .bills-page > .summary-grid,
+.reference-shell .inventory-page > .summary-grid,
+.reference-shell .transactions-page > .summary-grid {
+  display: none;
+}
+
+.reference-shell .summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.reference-shell .summary-card,
+.reference-shell .panel,
+.reference-shell .spreadsheet-panel,
+.reference-shell .planner-panel,
+.reference-shell .buy-next-panel,
+.reference-shell .money-section-card,
+.reference-shell .bills-command-panel,
+.reference-shell .transactions-command-panel,
+.reference-shell .inventory-command-panel,
+.reference-shell .savings-command-panel,
+.reference-shell .goals-command-panel,
+.reference-shell .reports-command-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: none;
+}
+
+.reference-shell .summary-card {
+  min-height: 5.875rem;
+  padding: 1.25rem;
+}
+
+.reference-shell .summary-card span {
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 0.875rem;
+}
+
+.reference-shell .summary-card strong {
+  color: #ffffff;
+  font-size: 1.55rem;
+  font-weight: 850;
+}
+
+.reference-shell .bills-command-panel,
+.reference-shell .transactions-command-panel,
+.reference-shell .inventory-command-panel,
+.reference-shell .savings-command-panel,
+.reference-shell .goals-command-panel,
+.reference-shell .reports-command-panel {
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.reference-shell .bills-command-panel h2,
+.reference-shell .transactions-command-panel h2,
+.reference-shell .inventory-command-panel h2,
+.reference-shell .savings-command-panel h2,
+.reference-shell .goals-command-panel h2,
+.reference-shell .reports-command-panel h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.reference-shell .bills-command-panel .eyebrow,
+.reference-shell .transactions-command-panel .eyebrow,
+.reference-shell .inventory-command-panel .eyebrow,
+.reference-shell .savings-command-panel .eyebrow,
+.reference-shell .goals-command-panel .eyebrow,
+.reference-shell .reports-command-panel .eyebrow {
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.reference-shell .bills-filter-row,
+.reference-shell .transactions-filter-row,
+.reference-shell .inventory-filter-row,
+.reference-shell .savings-filter-row,
+.reference-shell .goals-filter-row {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) auto;
+  align-items: end;
+  gap: 1rem;
+}
+
+.reference-shell .bills-status-tabs,
+.reference-shell .inventory-tabs,
+.reference-shell .goals-status-tabs,
+.reference-shell .reports-period-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.reference-shell .bills-status-tabs button,
+.reference-shell .inventory-tabs button,
+.reference-shell .goals-status-tabs button,
+.reference-shell .reports-period-tabs button,
+.reference-shell .toolbar-controls button,
+.reference-shell .settings-actions button,
+.reference-shell .settings-reset-grid button {
+  min-height: 2.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(255, 255, 255, 0.58);
+  padding: 0 0.8rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.reference-shell .bills-status-tabs button.active,
+.reference-shell .inventory-tabs button.active,
+.reference-shell .goals-status-tabs button.active,
+.reference-shell .reports-period-tabs button.active {
+  background: rgba(86, 165, 255, 0.18);
+  color: #ffffff;
+}
+
+.reference-shell .bills-inline-stats,
+.reference-shell .transactions-inline-stats,
+.reference-shell .inventory-inline-stats,
+.reference-shell .savings-inline-stats,
+.reference-shell .goals-inline-stats {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.9rem;
+}
+
+.reference-shell .bills-insight-grid,
+.reference-shell .transactions-insight-grid {
+  display: none;
+}
+
+.reference-shell .spreadsheet-panel {
+  overflow: hidden;
+  padding: 0;
+}
+
+.reference-shell .spreadsheet-toolbar {
+  position: sticky;
+  top: 4rem;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  align-items: end;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #17181d;
+  padding: 1rem 1.25rem;
+}
+
+.reference-shell .spreadsheet-toolbar .eyebrow {
+  display: none;
+}
+
+.reference-shell .spreadsheet-toolbar h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.reference-shell .toolbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+.reference-shell .toolbar-controls label,
+.reference-shell .bills-search,
+.reference-shell .transactions-search,
+.reference-shell .inventory-search,
+.reference-shell .savings-search,
+.reference-shell .goals-search,
+.reference-shell .transactions-filter-controls label,
+.reference-shell .savings-type-select {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.reference-shell .toolbar-controls span,
+.reference-shell .bills-search span,
+.reference-shell .transactions-search span,
+.reference-shell .inventory-search span,
+.reference-shell .savings-search span,
+.reference-shell .goals-search span,
+.reference-shell .transactions-filter-controls span,
+.reference-shell .savings-type-select span {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.reference-shell .toolbar-controls input,
+.reference-shell .toolbar-controls select,
+.reference-shell .bills-search input,
+.reference-shell .transactions-search input,
+.reference-shell .inventory-search input,
+.reference-shell .savings-search input,
+.reference-shell .goals-search input,
+.reference-shell .transactions-filter-controls select,
+.reference-shell .savings-type-select select,
+.reference-shell .settings-grid input,
+.reference-shell .settings-grid select {
+  min-height: 2.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.055);
+  color: #ffffff;
+  padding: 0 0.75rem;
+}
+
+.reference-shell .table-wrap {
+  background: transparent;
+}
+
+.reference-shell table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.reference-shell th {
+  height: 2.3rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  font-weight: 650;
+  padding: 0.65rem 0.75rem;
+}
+
+.reference-shell td,
+.reference-shell .row-actions {
+  height: 2.3rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+  background: transparent;
+  padding: 0.15rem 0.25rem;
+}
+
+.reference-shell td input {
+  min-height: 2rem;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 75;
+  display: none;
+  min-height: calc(4.5rem + env(safe-area-inset-bottom));
+  align-items: start;
+  justify-content: space-around;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(18, 19, 24, 0.92);
+  padding: 0.45rem 0.75rem env(safe-area-inset-bottom);
+  backdrop-filter: blur(18px);
+}
+
+.mobile-bottom-nav a {
+  display: grid;
+  min-width: 3rem;
+  min-height: 3.2rem;
+  place-items: center;
+  gap: 0.25rem;
+  border-radius: 0.75rem;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.mobile-bottom-nav a.active {
+  color: #56a5ff;
+}
+
+@media (max-width: 70rem) {
+  .reference-shell .workspace {
+    width: 100%;
+    padding: 1.5rem 1rem 6.5rem;
+  }
+
+  .reference-shell.dashboard-shell .workspace {
+    padding: 0;
+  }
+
+  .reference-shell .topbar {
+    min-height: 3.375rem;
+    margin-bottom: 1.5rem;
+    padding-top: 0.25rem;
+  }
+
+  .reference-shell .topbar h1 {
+    font-size: 1.5rem;
+  }
+
+  .reference-shell .topbar .eyebrow {
+    font-size: 0.82rem;
+  }
+
+  .reference-shell .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reference-shell .bills-filter-row,
+  .reference-shell .transactions-filter-row,
+  .reference-shell .inventory-filter-row,
+  .reference-shell .savings-filter-row,
+  .reference-shell .goals-filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .reference-shell .inventory-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .reference-shell .inventory-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .reference-shell .inventory-tabs button {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .reference-shell .toolbar-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .reference-shell .spreadsheet-toolbar {
+    grid-template-columns: 1fr;
+    top: 3.5rem;
+  }
+
+  .mobile-bottom-nav {
+    display: flex;
   }
 }

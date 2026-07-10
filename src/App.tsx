@@ -874,7 +874,7 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
   }
 
   return (
-    <div className="module-page">
+    <div className="inventory-page module-page">
       <SummaryGrid items={summaryForSection("inventory", props.financialState)} />
       <section className="inventory-command-panel">
         <div className="inventory-tabs" role="tablist" aria-label="Inventory status filter">
