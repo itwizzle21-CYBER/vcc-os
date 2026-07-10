@@ -61,7 +61,7 @@ export default function App() {
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
-      {path === "/goals" && <ModulePage section="goals" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/reports" && <ReportsPage financialState={financialState} decisionState={decisionState} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} />}
@@ -605,6 +605,139 @@ function SavingsPage({
         addLabel="Add Vault"
       />
     </div>
+  );
+}
+
+function GoalsPage({
+  data,
+  financialState,
+  updateRows,
+  updateSort,
+  resetSection,
+}: {
+  data: AppData;
+  financialState: ReturnType<typeof computeFinancialState>;
+  updateRows: (section: SectionKey, rows: SpreadsheetRow[]) => void;
+  updateSort: (section: SectionKey, sortBy: string) => void;
+  resetSection: (section: SectionKey) => void;
+}) {
+  const [goalSearch, setGoalSearch] = useState("");
+  const [goalStatus, setGoalStatus] = useState("all");
+  const goalRows = data.sections.goals.map(normalizeGoalRow);
+  const filledGoalRows = goalRows.filter((row) => !isBlankRow(row.cells));
+  const activeGoals = filledGoalRows.filter((row) => goalStatusValue(row) === "active");
+  const completedGoals = filledGoalRows.filter((row) => goalStatusValue(row) === "completed");
+  const totalTarget = activeGoals.reduce((sum, row) => sum + toNumber(row.cells.target), 0);
+  const totalCurrent = activeGoals.reduce((sum, row) => sum + toNumber(row.cells.current), 0);
+  const overallProgress = totalTarget > 0 ? Math.min(100, Math.round((totalCurrent / totalTarget) * 100)) : 0;
+  const visibleGoalRows = goalRows.filter((row) => {
+    if (isBlankRow(row.cells)) return !goalSearch.trim() && goalStatus === "all";
+    const query = goalSearch.trim().toLowerCase();
+    const status = goalStatusValue(row);
+    const matchesStatus = goalStatus === "all" || status === goalStatus;
+    const matchesSearch = !query || [row.cells.name, row.cells.category, row.cells.priority, row.cells.status]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+    return matchesStatus && matchesSearch;
+  });
+  const visibleGoalIds = new Set(visibleGoalRows.map((row) => row.id));
+
+  function updateVisibleGoalRows(section: SectionKey, nextVisibleRows: SpreadsheetRow[]) {
+    const normalizedNextRows = nextVisibleRows.map(normalizeGoalRow);
+    const nextVisibleIds = new Set(normalizedNextRows.map((row) => row.id));
+    const preservedRows = goalRows.filter((row) => !visibleGoalIds.has(row.id) || nextVisibleIds.has(row.id));
+    const mergedRows = preservedRows.map((row) => normalizedNextRows.find((next) => next.id === row.id) || row);
+    const addedRows = normalizedNextRows.filter((row) => !goalRows.some((existing) => existing.id === row.id));
+    updateRows(section, [...mergedRows, ...addedRows]);
+  }
+
+  return (
+    <div className="goals-page module-page">
+      <SummaryGrid items={summaryForSection("goals", financialState)} />
+      <section className="goals-command-panel">
+        <div>
+          <p className="eyebrow">Goals Board</p>
+          <h2>Track progress toward your dreams</h2>
+        </div>
+        <div className="goals-filter-row">
+          <label className="goals-search">
+            <span>Search goals</span>
+            <input value={goalSearch} onChange={(event) => setGoalSearch(event.target.value)} placeholder="Search goals, categories, priorities" />
+          </label>
+          <label className="goals-status-select">
+            <span>Status</span>
+            <select value={goalStatus} onChange={(event) => setGoalStatus(event.target.value)}>
+              <option value="all">All Goals</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+              <option value="paused">Paused</option>
+            </select>
+          </label>
+        </div>
+        <div className="goals-inline-stats">
+          <strong>{activeGoals.length} active</strong>
+          <span>{overallProgress}% overall progress</span>
+          <em>{completedGoals.length} completed</em>
+          <em>{formatCurrency(totalCurrent)} saved</em>
+          <em>{formatCurrency(totalTarget)} target</em>
+        </div>
+      </section>
+
+      <section className="goal-card-grid">
+        {filledGoalRows.length ? filledGoalRows.map((row) => <GoalCard key={row.id} row={row} />) : (
+          <article className="panel goal-empty-card">
+            <p className="eyebrow">No Goals Yet</p>
+            <h2>Set your first financial goal</h2>
+            <p className="empty-copy">Use the spreadsheet below to add goals like emergency fund, car, home, education, or retirement.</p>
+          </article>
+        )}
+      </section>
+
+      <Spreadsheet
+        config={sectionConfigs.goals}
+        rows={visibleGoalRows}
+        sortBy={data.sortBy.goals}
+        onSortChange={updateSort}
+        onRowsChange={updateVisibleGoalRows}
+        onResetSection={resetSection}
+        getComputedCell={(row, columnKey) => computedCell("goals", row, columnKey)}
+        addLabel="Add Goal"
+      />
+    </div>
+  );
+}
+
+function GoalCard({ row }: { row: SpreadsheetRow }) {
+  const current = toNumber(row.cells.current);
+  const target = toNumber(row.cells.target);
+  const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+  const status = goalStatusValue(row);
+  const complete = status === "completed";
+  const priority = goalPriority(row);
+
+  return (
+    <article className={`goal-card ${priority} ${complete ? "complete" : ""}`}>
+      <div className="goal-card-heading">
+        <span>{goalIcon(row)}</span>
+        <div>
+          <h2>{row.cells.name || "Unnamed goal"}</h2>
+          <p>
+            <em>{priority}</em>
+            {row.cells.deadline && <small>Due {row.cells.deadline}</small>}
+          </p>
+        </div>
+      </div>
+      <div className="goal-amount-row">
+        <strong>{formatCurrency(current)}</strong>
+        <span>of {formatCurrency(target)}</span>
+      </div>
+      <div className="goal-progress"><i style={{ width: `${pct}%` }} /></div>
+      <div className="goal-footer">
+        <span>{pct}%</span>
+        <span>{complete ? "Completed" : status}</span>
+      </div>
+    </article>
   );
 }
 
@@ -1230,6 +1363,25 @@ function normalizeSavingsRow(row: SpreadsheetRow): SpreadsheetRow {
   };
 }
 
+function normalizeGoalRow(row: SpreadsheetRow): SpreadsheetRow {
+  const current = row.cells.current || row.cells.current_amount || "";
+  const target = row.cells.target || row.cells.target_amount || "";
+  return {
+    ...row,
+    cells: {
+      ...row.cells,
+      name: row.cells.name || "",
+      current,
+      target,
+      deadline: row.cells.deadline || "",
+      category: row.cells.category || goalCategory(row),
+      priority: row.cells.priority || "medium",
+      status: row.cells.status || goalStatusFromAmounts(current, target),
+      autoAlert: row.cells.autoAlert || "",
+    },
+  };
+}
+
 function transactionType(row: SpreadsheetRow): "income" | "expense" | "transfer" {
   const value = `${row.cells.type || ""} ${row.cells.category || ""}`.toLowerCase();
   if (value.includes("transfer")) return "transfer";
@@ -1248,6 +1400,46 @@ function transactionDateMatches(dateText: string, filter: string): boolean {
     return date.getMonth() === lastMonth.getMonth() && date.getFullYear() === lastMonth.getFullYear();
   }
   return true;
+}
+
+function goalStatusFromAmounts(current: string, target: string): string {
+  return toNumber(target) > 0 && toNumber(current) >= toNumber(target) ? "completed" : "active";
+}
+
+function goalStatusValue(row: SpreadsheetRow): string {
+  const status = (row.cells.status || "").trim().toLowerCase();
+  return status || goalStatusFromAmounts(row.cells.current, row.cells.target);
+}
+
+function goalPriority(row: SpreadsheetRow): "low" | "medium" | "high" | "critical" {
+  const value = (row.cells.priority || "").trim().toLowerCase();
+  if (value === "low" || value === "high" || value === "critical") return value;
+  return "medium";
+}
+
+function goalCategory(row: SpreadsheetRow): string {
+  const value = `${row.cells.category || ""} ${row.cells.name || ""}`.toLowerCase();
+  if (value.includes("emergency")) return "emergency_fund";
+  if (value.includes("vacation") || value.includes("trip")) return "vacation";
+  if (value.includes("home") || value.includes("house")) return "home";
+  if (value.includes("car") || value.includes("vehicle")) return "car";
+  if (value.includes("education") || value.includes("school")) return "education";
+  if (value.includes("retire")) return "retirement";
+  if (value.includes("invest")) return "investment";
+  return "other";
+}
+
+function goalIcon(row: SpreadsheetRow): string {
+  return {
+    emergency_fund: "!",
+    vacation: "V",
+    home: "H",
+    car: "C",
+    education: "E",
+    retirement: "R",
+    investment: "%",
+    other: "G",
+  }[goalCategory(row)] || "G";
 }
 
 function savingsType(row: SpreadsheetRow): "high_yield" | "traditional" | "money_market" | "cd" | "other" {
