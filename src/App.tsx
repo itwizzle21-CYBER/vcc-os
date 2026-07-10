@@ -51,7 +51,7 @@ export default function App() {
 
   return (
     <AppShell currentPath={path} settings={data.settings} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
-      {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} settings={data.settings} onSettingsChange={(settings) => updateData({ ...data, settings })} />}
+      {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} data={data} settings={data.settings} onSettingsChange={(settings) => updateData({ ...data, settings })} />}
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
       )}

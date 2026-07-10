@@ -1916,6 +1916,26 @@ td input[readonly] {
   padding: 1.25rem 0 4rem;
 }
 
+.dashboard-status-line {
+  display: inline-flex;
+  width: max-content;
+  align-items: center;
+  gap: 0.7rem;
+  color: #8e9299;
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-status-line i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #27d79a;
+  box-shadow: 0 0 0 6px rgba(39, 215, 154, 0.08), 0 0 22px rgba(39, 215, 154, 0.6);
+}
+
 .base-panel {
   border: 1px solid #303239;
   border-radius: 1.1rem;
@@ -2139,6 +2159,21 @@ td input[readonly] {
   color: #25d39b;
 }
 
+.intelligence-card > span.warning {
+  background: rgba(255, 184, 28, 0.13);
+  color: #ffc22a;
+}
+
+.intelligence-card > span.info {
+  background: rgba(86, 165, 255, 0.13);
+  color: #56a5ff;
+}
+
+.intelligence-card > span.success {
+  background: rgba(26, 205, 145, 0.12);
+  color: #25d39b;
+}
+
 .intelligence-card strong,
 .activity-row strong {
   display: block;
@@ -2153,10 +2188,22 @@ td input[readonly] {
   padding: 1.75rem 1.6rem;
 }
 
+.dashboard-activity-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
 .activity-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding-block: 0.45rem;
+}
+
+.activity-row:last-child {
+  border-bottom: 0;
 }
 
 .activity-row > span {
@@ -2168,6 +2215,21 @@ td input[readonly] {
   border-radius: 999px;
   background: rgba(255, 96, 96, 0.14);
   color: #ff6969;
+}
+
+.activity-row > span.income {
+  background: rgba(26, 205, 145, 0.12);
+  color: #25d39b;
+}
+
+.activity-row > span.expense {
+  background: rgba(255, 96, 96, 0.14);
+  color: #ff6969;
+}
+
+.activity-row b {
+  color: #f5f5f7;
+  font-size: 0.95rem;
 }
 
 @media (max-width: 70rem) {
@@ -2221,6 +2283,14 @@ td input[readonly] {
 
   .base44-dashboard .panel-heading {
     align-items: flex-start;
+  }
+
+  .activity-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .activity-row b {
+    grid-column: 2;
   }
 }
 

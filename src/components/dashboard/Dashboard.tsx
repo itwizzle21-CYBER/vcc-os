@@ -11,28 +11,40 @@ import {
   Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { formatCurrency } from "../../lib/calculations/currency";
-import type { DecisionState, FinancialState, UserSettings } from "../../lib/types/app";
+import { formatCurrency, isBlankRow, toNumber } from "../../lib/calculations/currency";
+import type { AppData, DecisionState, FinancialState, SpreadsheetRow, UserSettings } from "../../lib/types/app";
 
 export default function Dashboard({
   financialState,
   decisionState,
+  data,
 }: {
   financialState: FinancialState;
   decisionState: DecisionState;
+  data: AppData;
   settings: UserSettings;
   onSettingsChange: (settings: UserSettings) => void;
 }) {
-  const primaryAlert = decisionState.priorityAlerts[0];
   const income = financialState.monthlyIncome || financialState.weeklyIncome || financialState.receivedIncome;
   const expenses = financialState.monthlySpending + financialState.billsPressure;
   const cashFlowTotal = Math.max(1, income + expenses);
   const incomeWidth = Math.max(8, Math.min(100, (income / cashFlowTotal) * 100));
-  const goalsActive = financialState.closestGoal === "None" ? 0 : 1;
-  const activityTitle = financialState.lastTransaction === "None" ? "No transactions yet" : financialState.lastTransaction;
+  const goalsActive = data.sections.goals.filter((row) => !isBlankRow(row.cells) && toNumber(row.cells.current) < toNumber(row.cells.target)).length;
+  const alerts = decisionState.priorityAlerts.length
+    ? decisionState.priorityAlerts.slice(0, 3)
+    : [{ title: "All clear", detail: "No alerts right now", tone: "success" as const }];
+  const recentActivity = data.sections.transactions
+    .filter((row) => !isBlankRow(row.cells))
+    .slice(-5)
+    .reverse();
 
   return (
     <div className="base44-dashboard">
+      <div className="dashboard-status-line">
+        <i />
+        <span>System Active</span>
+      </div>
+
       <a href="/missions" className="mission-banner">
         <div>
           <p><Zap size={16} /> Today&apos;s Mission</p>
@@ -75,16 +87,18 @@ export default function Dashboard({
           </div>
         </a>
 
-        <a href="/missions" className="intelligence-wrap">
+        <section className="intelligence-wrap">
           <h3><Zap size={19} /> Intelligence</h3>
-          <div className="base-panel intelligence-card">
-            <span className={primaryAlert?.tone || "success"}><CheckCircle2 size={20} /></span>
-            <div>
-              <strong>{primaryAlert?.title || "All clear"}</strong>
-              <small>{primaryAlert?.detail || "No alerts right now"}</small>
-            </div>
-          </div>
-        </a>
+          {alerts.map((alert) => (
+            <a href="/missions" className="base-panel intelligence-card" key={alert.title}>
+              <span className={alert.tone}><AlertIcon tone={alert.tone} /></span>
+              <div>
+                <strong>{alert.title}</strong>
+                <small>{alert.detail}</small>
+              </div>
+            </a>
+          ))}
+        </section>
       </section>
 
       <section className="base-panel recent-activity-card">
@@ -92,13 +106,26 @@ export default function Dashboard({
           <h3><Clock3 size={19} /> Recent Activity</h3>
           <a href="/transactions">All Transactions <ArrowRight size={15} /></a>
         </div>
-        <a className="activity-row" href="/transactions">
-          <span><Boxes size={18} /></span>
-          <div>
-            <strong>{activityTitle}</strong>
-            <small>{financialState.lastTransaction === "None" ? "Add a transaction to start activity history." : "Latest transaction activity"}</small>
-          </div>
-        </a>
+        <div className="dashboard-activity-list">
+          {recentActivity.length ? recentActivity.map((row) => (
+            <a className="activity-row" href="/transactions" key={row.id}>
+              <span className={toNumber(row.cells.amount) >= 0 ? "income" : "expense"}><ActivityIcon row={row} /></span>
+              <div>
+                <strong>{row.cells.description || "Transaction"}</strong>
+                <small>{row.cells.category || "Uncategorized"} · {row.cells.date || "No date"}</small>
+              </div>
+              <b>{formatCurrency(toNumber(row.cells.amount))}</b>
+            </a>
+          )) : (
+            <a className="activity-row" href="/transactions">
+              <span><Boxes size={18} /></span>
+              <div>
+                <strong>No transactions yet</strong>
+                <small>Add a transaction to start activity history.</small>
+              </div>
+            </a>
+          )}
+        </div>
       </section>
     </div>
   );
@@ -124,6 +151,16 @@ function DashboardKpi({
       <strong>{value}</strong>
     </a>
   );
+}
+
+function AlertIcon({ tone }: { tone: "warning" | "info" | "success" }) {
+  if (tone === "warning") return <ReceiptText size={20} />;
+  if (tone === "info") return <Zap size={20} />;
+  return <CheckCircle2 size={20} />;
+}
+
+function ActivityIcon({ row }: { row: SpreadsheetRow }) {
+  return toNumber(row.cells.amount) >= 0 ? <PiggyBank size={18} /> : <ReceiptText size={18} />;
 }
 
 function missionTitle(financialState: FinancialState, decisionState: DecisionState) {
