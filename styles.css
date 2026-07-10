@@ -2772,6 +2772,76 @@ td input:focus {
   background: #202228;
 }
 
+.inventory-command-panel {
+  display: grid;
+  gap: 0.9rem;
+  border: 1px solid #303239;
+  border-radius: 1.1rem;
+  background: #17181d;
+  padding: 1.15rem;
+}
+
+.inventory-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.inventory-tabs button {
+  min-height: 38px;
+  border: 1px solid #303239;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.035);
+  color: #8e9299;
+  padding: 0 0.85rem;
+  font-weight: 850;
+}
+
+.inventory-tabs button.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.inventory-search {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.inventory-search span {
+  color: #8e9299;
+  font-size: 0.75rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.inventory-search input {
+  width: 100%;
+  border: 1px solid #303239;
+  border-radius: 0.85rem;
+  background: #202228;
+  color: var(--text);
+  padding: 0 0.9rem;
+}
+
+.inventory-inline-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.8rem;
+  color: #8e9299;
+  font-size: 0.9rem;
+}
+
+.inventory-inline-stats strong {
+  color: #ffffff;
+}
+
+.inventory-inline-stats em {
+  color: #25d39b;
+  font-style: normal;
+  font-weight: 900;
+}
+
 @media (max-width: 70rem) {
   .reference-shell .workspace {
     width: min(100% - 1.2rem, 44rem);
@@ -2802,6 +2872,15 @@ td input:focus {
   .reference-shell .summary-card {
     min-height: 104px;
     padding: 1rem;
+  }
+
+  .inventory-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inventory-tabs button {
+    width: 100%;
   }
 
   .reference-shell .spreadsheet-toolbar {

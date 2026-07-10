@@ -12,6 +12,7 @@ interface SpreadsheetProps {
   onResetSection: (section: SectionKey) => void;
   getComputedCell?: (row: SpreadsheetRow, columnKey: string) => string | undefined;
   preventDuplicateKey?: string;
+  addLabel?: string;
 }
 
 export default function Spreadsheet({
@@ -23,6 +24,7 @@ export default function Spreadsheet({
   onResetSection,
   getComputedCell,
   preventDuplicateKey,
+  addLabel = "Add Row",
 }: SpreadsheetProps) {
   const [search, setSearch] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
@@ -205,7 +207,7 @@ export default function Spreadsheet({
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search rows" />
           </label>
           <button type="button" onClick={addRow}>
-            Add Row
+            {addLabel}
           </button>
           <button type="button" className="ghost-button" onClick={() => onResetSection(config.key)}>
             Reset Section

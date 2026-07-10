@@ -4,7 +4,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import PaycheckPlanner from "./components/modules/PaycheckPlanner";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
-import { formatCurrency } from "./lib/calculations/currency";
+import { formatCurrency, isBlankRow, toNumber } from "./lib/calculations/currency";
 import { computeDecisionEngine } from "./lib/engine/decisionEngine";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
@@ -104,9 +104,83 @@ function ModulePage({
 }
 
 function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">) {
+  const [inventoryTab, setInventoryTab] = useState("all");
+  const [inventorySearch, setInventorySearch] = useState("");
+  const inventoryRows = props.data.sections.inventory.map(normalizeInventoryRow);
+  const filledInventoryRows = inventoryRows.filter((row) => !isBlankRow(row.cells));
+  const searchedInventoryRows = filledInventoryRows.filter((row) => {
+    const query = inventorySearch.trim().toLowerCase();
+    if (!query) return true;
+    return [row.cells.item, row.cells.category, row.cells.alert, row.cells.notes]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  });
+  const visibleInventoryRows = searchedInventoryRows.filter((row) => {
+    if (inventoryTab === "all") return true;
+    if (inventoryTab === "buy-next") return row.cells.alert === "Critical" || row.cells.alert === "Low";
+    return row.cells.alert.toLowerCase() === inventoryTab;
+  });
+  const visibleInventoryIds = new Set(visibleInventoryRows.map((row) => row.id));
+  const inventoryStats = {
+    visible: visibleInventoryRows.length,
+    total: filledInventoryRows.length,
+    critical: filledInventoryRows.filter((row) => row.cells.alert === "Critical").length,
+    low: filledInventoryRows.filter((row) => row.cells.alert === "Low").length,
+    stocked: filledInventoryRows.filter((row) => row.cells.alert === "Stocked").length,
+    refill: visibleInventoryRows.reduce((sum, row) => {
+      const qty = toNumber(row.cells.qty);
+      const min = toNumber(row.cells.minNeeded);
+      const needed = Math.max(0, min - qty);
+      return sum + needed * toNumber(row.cells.cost);
+    }, 0),
+  };
+
+  function updateVisibleInventoryRows(section: SectionKey, nextVisibleRows: SpreadsheetRow[]) {
+    const nextVisibleIds = new Set(nextVisibleRows.map((row) => row.id));
+    const preservedRows = inventoryRows.filter((row) => !visibleInventoryIds.has(row.id) || nextVisibleIds.has(row.id));
+    const mergedRows = preservedRows.map((row) => nextVisibleRows.find((next) => next.id === row.id) || row);
+    const addedRows = nextVisibleRows.filter((row) => !inventoryRows.some((existing) => existing.id === row.id));
+    props.updateRows(section, [...mergedRows, ...addedRows].map(normalizeInventoryRow));
+  }
+
   return (
     <div className="module-page">
       <SummaryGrid items={summaryForSection("inventory", props.financialState)} />
+      <section className="inventory-command-panel">
+        <div className="inventory-tabs" role="tablist" aria-label="Inventory status filter">
+          {[
+            ["all", "All"],
+            ["buy-next", "Buy Next"],
+            ["critical", "Critical"],
+            ["low", "Low"],
+            ["stocked", "Stocked"],
+            ["clear", "Clear"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={inventoryTab === value ? "active" : ""}
+              aria-pressed={inventoryTab === value}
+              onClick={() => setInventoryTab(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <label className="inventory-search">
+          <span>Search inventory</span>
+          <input value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Search items, categories, alerts" />
+        </label>
+        <div className="inventory-inline-stats">
+          <span>{inventoryStats.visible} shown</span>
+          <span>{inventoryStats.total} items</span>
+          <strong>{inventoryStats.critical} critical</strong>
+          <strong>{inventoryStats.low} low</strong>
+          <strong>{inventoryStats.stocked} stocked</strong>
+          <em>{formatCurrency(inventoryStats.refill)} refill</em>
+        </div>
+      </section>
       <section className="buy-next-panel" id="buy-next">
         <div>
           <p className="eyebrow">Buy Next</p>
@@ -124,13 +198,14 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
       </section>
       <Spreadsheet
         config={sectionConfigs.inventory}
-        rows={props.data.sections.inventory}
+        rows={visibleInventoryRows}
         sortBy={props.data.sortBy.inventory}
         onSortChange={props.updateSort}
-        onRowsChange={props.updateRows}
+        onRowsChange={updateVisibleInventoryRows}
         onResetSection={props.resetSection}
         getComputedCell={(row, columnKey) => computedCell("inventory", row, columnKey)}
         preventDuplicateKey="item"
+        addLabel="Add Item"
       />
     </div>
   );
