@@ -209,7 +209,7 @@ function normalize(path: string) {
 function titleForPath(path: string, settings: UserSettings) {
   const normalized = normalize(path);
   const label = nav.find((item) => item.path === normalized)?.label || "Dashboard";
-  return label === "Dashboard" ? `Good evening, ${settings.accountName || "Alex"}` : label;
+  return label === "Dashboard" ? `Good evening, ${settings.accountName || "Account"}` : label;
 }
 
 function buildSearchResults(data: AppData, query: string) {
