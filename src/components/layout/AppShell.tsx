@@ -72,38 +72,36 @@ export default function AppShell({
   }, []);
 
   return (
-    <div className={`app-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}>
+    <div className={`app-shell reference-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}>
       <div className="sensor-strip" aria-hidden="true" />
-      {isDashboard && (
-        <header className="dashboard-top-nav">
-          <a className="dashboard-top-brand" href="/">
-            <span><Zap size={20} /></span>
-            <strong>VCC-OS</strong>
-          </a>
-          <nav aria-label="Dashboard navigation">
-            {dashboardNav.map((item) => {
-              const Icon = item.icon;
-              const active = normalize(currentPath) === item.path;
-              return (
-                <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
-                  <Icon size={18} />
-                  <span>{item.label}</span>
-                </a>
-              );
-            })}
-          </nav>
-          <button
-            className="dashboard-mobile-menu-trigger"
-            type="button"
-            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-navigation"
-            onClick={() => setMobileMenuOpen((open) => !open)}
-          >
-            {mobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
-          </button>
-        </header>
-      )}
+      <header className="dashboard-top-nav">
+        <a className="dashboard-top-brand" href="/">
+          <span><Zap size={20} /></span>
+          <strong>VCC-OS</strong>
+        </a>
+        <nav aria-label="Primary navigation">
+          {dashboardNav.map((item) => {
+            const Icon = item.icon;
+            const active = normalize(currentPath) === item.path;
+            return (
+              <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </a>
+            );
+          })}
+        </nav>
+        <button
+          className="dashboard-mobile-menu-trigger"
+          type="button"
+          aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-navigation"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+        >
+          {mobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
+        </button>
+      </header>
       <aside className="sidebar">
         <div className="brand-wrap" ref={brandRef}>
           <button className="brand" type="button" onClick={() => setBrandOpen((open) => !open)} aria-expanded={brandOpen}>

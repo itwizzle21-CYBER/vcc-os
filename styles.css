@@ -2565,3 +2565,246 @@ td input:focus {
     padding: 0;
   }
 }
+
+/* Shared Base44-aligned page shell */
+.reference-shell.app-shell {
+  display: block;
+  grid-template-columns: none;
+  min-height: 100vh;
+  background: #090b0f;
+}
+
+.reference-shell .sensor-strip,
+.reference-shell .sidebar {
+  display: none;
+}
+
+.reference-shell .workspace {
+  width: min(1520px, calc(100vw - 3rem));
+  max-width: none;
+  margin: 0 auto;
+  padding: 1.25rem 0 4rem;
+}
+
+.reference-shell.dashboard-shell .workspace {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.reference-shell .topbar {
+  position: relative;
+  top: auto;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 0 1.25rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  backdrop-filter: none;
+}
+
+.reference-shell .topbar > div:first-of-type {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.reference-shell .topbar .eyebrow {
+  display: none;
+}
+
+.reference-shell .topbar h1 {
+  color: #f5f5f7;
+  font-size: clamp(1.85rem, 3vw, 2.65rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.reference-shell .top-actions {
+  justify-content: end;
+  flex-wrap: nowrap;
+}
+
+.reference-shell .search-pill,
+.reference-shell .profile-pill,
+.reference-shell .icon-pill {
+  border-color: #303239;
+  background: #17181d;
+  color: #8e9299;
+}
+
+.reference-shell .search-pill {
+  border-radius: 0.9rem;
+}
+
+.reference-shell .search-pill input {
+  width: min(22rem, 34vw);
+}
+
+.reference-shell .profile-pill {
+  display: none;
+}
+
+.reference-shell .topbar .mobile-menu-trigger {
+  display: none;
+}
+
+.reference-shell .summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.reference-shell .summary-card,
+.reference-shell .panel,
+.reference-shell .spreadsheet-panel,
+.reference-shell .planner-panel,
+.reference-shell .buy-next-panel {
+  border: 1px solid #303239;
+  border-radius: 1.1rem;
+  background: #17181d;
+  box-shadow: none;
+}
+
+.reference-shell .summary-card {
+  min-height: 126px;
+  justify-content: start;
+  padding: 1.35rem;
+}
+
+.reference-shell .summary-card span {
+  color: #8e9299;
+  font-size: 0.94rem;
+}
+
+.reference-shell .summary-card strong {
+  color: #ffffff;
+  font-size: clamp(1.45rem, 2.4vw, 2rem);
+  line-height: 1;
+}
+
+.reference-shell .spreadsheet-panel {
+  overflow: hidden;
+}
+
+.reference-shell .spreadsheet-toolbar {
+  position: sticky;
+  top: 78px;
+  border-bottom-color: #303239;
+  background: #17181d;
+  padding: 1.25rem;
+}
+
+.reference-shell .spreadsheet-toolbar .eyebrow {
+  display: none;
+}
+
+.reference-shell .spreadsheet-toolbar h2,
+.reference-shell .panel h2,
+.reference-shell .planner-form h2,
+.reference-shell .buy-next-panel h2 {
+  color: #f5f5f7;
+  font-size: 1.2rem;
+}
+
+.reference-shell .toolbar-controls input,
+.reference-shell .toolbar-controls select,
+.reference-shell .planner-form input,
+.reference-shell .settings-grid select,
+.reference-shell .settings-grid input {
+  border-color: #303239;
+  border-radius: 0.75rem;
+  background: #202228;
+}
+
+.reference-shell .toolbar-controls button,
+.reference-shell .planner-form button,
+.reference-shell .week-detail button,
+.reference-shell .danger-panel button {
+  border-radius: 0.8rem;
+}
+
+.reference-shell table {
+  min-width: 820px;
+}
+
+.reference-shell th {
+  background: #17181d;
+  color: #8e9299;
+}
+
+.reference-shell .row-actions,
+.reference-shell td {
+  background: #17181d;
+}
+
+.reference-shell .table-wrap {
+  background: #111217;
+}
+
+.reference-shell .settings-page,
+.reference-shell .reports-page,
+.reference-shell .module-page,
+.reference-shell .missions-page {
+  gap: 1.25rem;
+}
+
+.reference-shell .settings-hero {
+  border-color: #303239;
+}
+
+.reference-shell .settings-status-grid span,
+.reference-shell .setting-toggle,
+.reference-shell .metric-line,
+.reference-shell .mini-list div,
+.reference-shell .objective-list a,
+.reference-shell .history-list button,
+.reference-shell .category-list div,
+.reference-shell .notification-list a,
+.reference-shell .report-list a,
+.reference-shell .report-metric-grid a,
+.reference-shell .report-callout,
+.reference-shell .buy-next-grid a {
+  border: 1px solid #303239;
+  background: #202228;
+}
+
+@media (max-width: 70rem) {
+  .reference-shell .workspace {
+    width: min(100% - 1.2rem, 44rem);
+    padding-top: 0.8rem;
+  }
+
+  .reference-shell.dashboard-shell .workspace {
+    width: 100%;
+  }
+
+  .reference-shell .topbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reference-shell .top-actions {
+    justify-content: stretch;
+  }
+
+  .reference-shell .search-pill input {
+    width: 100%;
+  }
+
+  .reference-shell .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+  }
+
+  .reference-shell .summary-card {
+    min-height: 104px;
+    padding: 1rem;
+  }
+
+  .reference-shell .spreadsheet-toolbar {
+    top: 78px;
+  }
+}
