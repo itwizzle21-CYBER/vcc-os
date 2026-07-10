@@ -1833,6 +1833,200 @@ td input[readonly] {
   gap: 0.85rem;
 }
 
+.reports-command-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.95rem;
+  background:
+    radial-gradient(circle at top left, rgba(86, 165, 255, 0.14), transparent 34%),
+    color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-raised);
+  padding: 1rem;
+}
+
+.reports-command-panel h2 {
+  margin: 0;
+}
+
+.reports-period-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: var(--surface-2);
+  padding: 0.35rem;
+}
+
+.reports-period-tabs button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--muted);
+  padding: 0 0.75rem;
+  font-weight: 850;
+}
+
+.reports-period-tabs button.active,
+.reports-period-tabs button:hover {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.report-empty-state {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.report-analytics-grid {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.95fr);
+}
+
+.report-flow-chart {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.8rem, 1fr));
+  gap: 0.7rem;
+  min-height: 15rem;
+}
+
+.report-flow-chart > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+}
+
+.report-flow-chart span,
+.report-flow-chart small,
+.report-category-chart span,
+.report-forecast-bars span,
+.report-forecast-bars strong,
+.report-pill {
+  color: var(--muted);
+}
+
+.report-flow-chart div div {
+  display: flex;
+  height: 10.5rem;
+  align-items: end;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 0.8rem;
+  background: var(--surface-2);
+  padding: 0.55rem;
+}
+
+.report-flow-chart i,
+.report-flow-chart b {
+  width: 34%;
+  min-height: 0.45rem;
+  border-radius: 999px;
+}
+
+.report-flow-chart i {
+  background: #25d39b;
+}
+
+.report-flow-chart b {
+  background: #ff6666;
+}
+
+.report-category-chart {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.report-category-chart > div {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-2);
+  padding: 0.75rem;
+}
+
+.report-category-chart span {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 850;
+}
+
+.report-category-chart span i {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+}
+
+.report-category-chart strong {
+  position: relative;
+  z-index: 1;
+}
+
+.report-category-chart b {
+  position: absolute;
+  inset: auto auto 0 0;
+  height: 3px;
+  border-radius: 999px;
+}
+
+.report-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.report-forecast-bars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-height: 15rem;
+  gap: 0.7rem;
+  align-items: end;
+}
+
+.report-forecast-bars > div {
+  display: grid;
+  height: 100%;
+  gap: 0.45rem;
+  align-items: end;
+  justify-items: center;
+  min-width: 0;
+}
+
+.report-forecast-bars i {
+  display: block;
+  width: min(2.8rem, 80%);
+  min-height: 0.55rem;
+  border-radius: 0.65rem 0.65rem 0.2rem 0.2rem;
+}
+
+.report-forecast-bars i.positive {
+  background: #25d39b;
+}
+
+.report-forecast-bars i.negative {
+  background: #ff6666;
+}
+
+.report-forecast-bars strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 0.78rem;
+}
+
 .report-card {
   display: grid;
   gap: 1rem;
@@ -2462,6 +2656,25 @@ td input[readonly] {
   .goal-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .reports-command-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reports-period-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-flow-chart,
+  .report-forecast-bars {
+    min-height: 12rem;
   }
 
   .reports-grid {

@@ -62,7 +62,7 @@ export default function App() {
       {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
-      {path === "/reports" && <ReportsPage financialState={financialState} decisionState={decisionState} />}
+      {path === "/reports" && <ReportsPage data={data} financialState={financialState} decisionState={decisionState} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} />}
     </AppShell>
@@ -941,101 +941,149 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
 }
 
 function ReportsPage({
+  data,
   financialState,
   decisionState,
 }: {
+  data: AppData;
   financialState: ReturnType<typeof computeFinancialState>;
   decisionState: ReturnType<typeof computeDecisionEngine>;
 }) {
+  const [period, setPeriod] = useState("monthly");
+  const transactions = data.sections.transactions.map(normalizeTransactionRow).filter((row) => !isBlankRow(row.cells));
+  const filteredTransactions = transactions.filter((row) => period === "all" || transactionDateMatchesReport(row.cells.date, period));
+  const incomeRows = filteredTransactions.filter((row) => transactionType(row) === "income");
+  const expenseRows = filteredTransactions.filter((row) => transactionType(row) === "expense");
+  const totalIncome = incomeRows.reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+  const totalExpenses = expenseRows.reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+  const cashFlow = totalIncome - totalExpenses;
+  const savingsRate = totalIncome > 0 ? Math.round((cashFlow / totalIncome) * 100) : 0;
+  const categoryData = buildCategoryReport(expenseRows);
+  const trendData = buildTrendReport(filteredTransactions, period);
+  const trendMax = Math.max(1, ...trendData.flatMap((item) => [item.income, item.expenses]));
+  const forecast = buildForecast(cashFlow, period);
+  const forecastMax = Math.max(1, ...forecast.map((item) => Math.abs(item.balance)));
   const reportSummary = [
-    { label: "Total Cash", value: financialState.totalCash },
-    { label: "Monthly Spending", value: financialState.monthlySpending },
-    { label: "Bills Pressure", value: financialState.billsPressure, tone: "warn" as const },
-    { label: "Safe To Spend", value: financialState.safeToSpend },
+    { label: "Income", value: totalIncome },
+    { label: "Expenses", value: totalExpenses, tone: "bad" as const },
+    { label: "Cash Flow", value: cashFlow, tone: cashFlow >= 0 ? undefined : "bad" as const },
+    { label: "Savings Rate", value: `${savingsRate}%` },
   ];
-  const highestCashFlowValue = Math.max(
-    1,
-    ...financialState.cashFlow.flatMap((item) => [Math.abs(item.income), Math.abs(item.spending)])
-  );
-  const categoryRows = financialState.categorySummary.length
-    ? financialState.categorySummary
-    : [{ label: "No category spend", amount: 0 }];
 
   return (
     <div className="reports-page">
-      <SummaryGrid items={reportSummary} />
-      <section className="reports-grid">
-        <article className="panel report-card report-card-wide">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Cash Flow Trend</p>
-              <h2>Income and spending</h2>
-            </div>
-            <a href="/transactions" className="report-link">Transactions</a>
-          </div>
-          <div className="report-bars" aria-label="Cash flow report">
-            {financialState.cashFlow.map((item) => (
-              <div key={item.label}>
-                <span>{item.label}</span>
-                <div>
-                  <i style={{ height: `${Math.max(8, (Math.abs(item.income) / highestCashFlowValue) * 100)}%` }} />
-                  <b style={{ height: `${Math.max(8, (Math.abs(item.spending) / highestCashFlowValue) * 100)}%` }} />
-                </div>
-                <small>{formatCurrency(item.income)} in</small>
-                <small>{formatCurrency(item.spending)} out</small>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="panel report-card">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Spending By Category</p>
-              <h2>Where money is going</h2>
-            </div>
-            <a href="/transactions" className="report-link">Open</a>
-          </div>
-          <div className="report-list">
-            {categoryRows.map((category) => (
-              <a key={category.label} href="/transactions">
-                <span>{category.label}</span>
-                <strong>{formatCurrency(category.amount)}</strong>
-              </a>
-            ))}
-          </div>
-        </article>
-
-        <article className="panel report-card">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Decision Pulse</p>
-              <h2>Current recommendation</h2>
-            </div>
-            <a href="/missions" className="report-link">Missions</a>
-          </div>
-          <div className="report-callout">
-            <strong>{decisionState.recommendedMove}</strong>
-            <span>{decisionState.todayBriefing}</span>
-          </div>
-        </article>
-
-        <article className="panel report-card report-card-wide">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Financial Position</p>
-              <h2>Snapshot health</h2>
-            </div>
-            <a href="/money" className="report-link">Money</a>
-          </div>
-          <div className="report-metric-grid">
-            <ReportMetric label="Borrowed Money" value={financialState.borrowedMoney} href="/money" />
-            <ReportMetric label="Protected Savings" value={financialState.protectedSavings} href="/savings" />
-            <ReportMetric label="Total Debt" value={financialState.totalDebt} href="/debt" />
-            <ReportMetric label="Refill Cost" value={financialState.estimatedRefillCost} href="/inventory" />
-          </div>
-        </article>
+      <section className="reports-command-panel">
+        <div>
+          <p className="eyebrow">Reports</p>
+          <h2>Visual analytics for your finances</h2>
+        </div>
+        <div className="reports-period-tabs" role="tablist" aria-label="Report period">
+          {[
+            ["weekly", "Weekly"],
+            ["monthly", "Monthly"],
+            ["yearly", "Yearly"],
+            ["all", "All Time"],
+          ].map(([value, label]) => (
+            <button key={value} type="button" className={period === value ? "active" : ""} aria-pressed={period === value} onClick={() => setPeriod(value)}>
+              {label}
+            </button>
+          ))}
+        </div>
       </section>
+
+      <SummaryGrid items={reportSummary} />
+
+      {transactions.length === 0 ? (
+        <section className="panel report-empty-state">
+          <p className="eyebrow">No Data Yet</p>
+          <h2>Add transactions to unlock reports</h2>
+          <p className="empty-copy">Reports stay empty until your transaction spreadsheet has real rows.</p>
+          <a href="/transactions" className="report-link">Open Transactions</a>
+        </section>
+      ) : (
+        <section className="reports-grid report-analytics-grid">
+          <article className="panel report-card report-card-wide">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Cash Flow Trend</p>
+                <h2>Income and expenses</h2>
+              </div>
+              <a href="/transactions" className="report-link">Transactions</a>
+            </div>
+            <div className="report-flow-chart" aria-label="Cash flow trend">
+              {trendData.length ? trendData.map((item) => (
+                <div key={item.label}>
+                  <span>{item.label}</span>
+                  <div>
+                    <i style={{ height: `${Math.max(7, (item.income / trendMax) * 100)}%` }} />
+                    <b style={{ height: `${Math.max(7, (item.expenses / trendMax) * 100)}%` }} />
+                  </div>
+                  <small>{formatCurrency(item.income)} in</small>
+                  <small>{formatCurrency(item.expenses)} out</small>
+                </div>
+              )) : <p className="empty-copy">No transactions in this period.</p>}
+            </div>
+          </article>
+
+          <article className="panel report-card">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Spending By Category</p>
+                <h2>Where money is going</h2>
+              </div>
+              <a href="/transactions" className="report-link">Open</a>
+            </div>
+            <div className="report-category-chart">
+              {categoryData.length ? categoryData.slice(0, 8).map((category, index) => (
+                <div key={category.label}>
+                  <span><i style={{ background: REPORT_COLORS[index % REPORT_COLORS.length] }} />{category.label}</span>
+                  <strong>{formatCurrency(category.amount)}</strong>
+                  <b style={{ width: `${Math.max(5, (category.amount / Math.max(1, categoryData[0].amount)) * 100)}%`, background: REPORT_COLORS[index % REPORT_COLORS.length] }} />
+                </div>
+              )) : <p className="empty-copy">No expense data in this period.</p>}
+            </div>
+          </article>
+
+          <article className="panel report-card">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">12-Month Forecast</p>
+                <h2>Projected change</h2>
+              </div>
+              <span className="report-pill">{formatCurrency(projectedMonthlyCashFlow(cashFlow, period))}/mo</span>
+            </div>
+            <div className="report-forecast-bars" aria-label="Forecast">
+              {forecast.map((item) => (
+                <div key={item.label}>
+                  <span>{item.label}</span>
+                  <i className={item.balance >= 0 ? "positive" : "negative"} style={{ height: `${Math.max(7, (Math.abs(item.balance) / forecastMax) * 100)}%` }} />
+                  <strong>{formatCurrency(item.balance)}</strong>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="panel report-card report-card-wide">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Decision Pulse</p>
+                <h2>Current recommendation</h2>
+              </div>
+              <a href="/missions" className="report-link">Missions</a>
+            </div>
+            <div className="report-callout">
+              <strong>{decisionState.recommendedMove}</strong>
+              <span>{decisionState.todayBriefing}</span>
+            </div>
+            <div className="report-metric-grid">
+              <ReportMetric label="Safe To Spend" value={financialState.safeToSpend} href="/money" />
+              <ReportMetric label="Bills Pressure" value={financialState.billsPressure} href="/bills" />
+              <ReportMetric label="Protected Savings" value={financialState.protectedSavings} href="/savings" />
+              <ReportMetric label="Total Debt" value={financialState.totalDebt} href="/debt" />
+            </div>
+          </article>
+        </section>
+      )}
     </div>
   );
 }
@@ -1080,6 +1128,81 @@ function ReportMetric({ label, value, href }: { label: string; value: number; hr
       <strong>{formatCurrency(value)}</strong>
     </a>
   );
+}
+
+const REPORT_COLORS = ["#56a5ff", "#25d39b", "#ffc22a", "#ff6666", "#b16cff", "#23c6d8", "#ec6aa5", "#8e9299"];
+
+function transactionDateMatchesReport(dateText: string, period: string): boolean {
+  if (!dateText) return false;
+  const date = new Date(`${dateText}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return false;
+  const now = new Date();
+  if (period === "weekly") {
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+    return date >= weekAgo && date <= now;
+  }
+  if (period === "monthly") return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  if (period === "yearly") return date.getFullYear() === now.getFullYear();
+  return true;
+}
+
+function buildCategoryReport(rows: SpreadsheetRow[]): Array<{ label: string; amount: number }> {
+  return Object.entries(
+    rows.reduce<Record<string, number>>((acc, row) => {
+      const category = row.cells.category || "Uncategorized";
+      acc[category] = (acc[category] || 0) + Math.abs(toNumber(row.cells.amount));
+      return acc;
+    }, {})
+  )
+    .map(([label, amount]) => ({ label: titleCase(label.replace(/_/g, " ")), amount }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+function buildTrendReport(rows: SpreadsheetRow[], period: string): Array<{ label: string; income: number; expenses: number }> {
+  const buckets = rows.reduce<Record<string, { label: string; income: number; expenses: number; order: number }>>((acc, row) => {
+    if (!row.cells.date) return acc;
+    const date = new Date(`${row.cells.date}T12:00:00`);
+    if (Number.isNaN(date.getTime())) return acc;
+    const label = reportBucketLabel(date, period);
+    const order = reportBucketOrder(date, period);
+    if (!acc[label]) acc[label] = { label, income: 0, expenses: 0, order };
+    if (transactionType(row) === "income") acc[label].income += Math.abs(toNumber(row.cells.amount));
+    if (transactionType(row) === "expense") acc[label].expenses += Math.abs(toNumber(row.cells.amount));
+    return acc;
+  }, {});
+  return Object.values(buckets).sort((a, b) => a.order - b.order);
+}
+
+function reportBucketLabel(date: Date, period: string): string {
+  if (period === "weekly") return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (period === "monthly") return `Week ${Math.ceil(date.getDate() / 7)}`;
+  return date.toLocaleDateString("en-US", { month: "short" });
+}
+
+function reportBucketOrder(date: Date, period: string): number {
+  if (period === "weekly") return date.getTime();
+  if (period === "monthly") return Math.ceil(date.getDate() / 7);
+  return date.getMonth();
+}
+
+function projectedMonthlyCashFlow(cashFlow: number, period: string): number {
+  const months = period === "yearly" ? 12 : period === "monthly" ? 1 : period === "weekly" ? 0.25 : 12;
+  return months > 0 ? cashFlow / months : 0;
+}
+
+function buildForecast(cashFlow: number, period: string): Array<{ label: string; balance: number }> {
+  const monthly = projectedMonthlyCashFlow(cashFlow, period);
+  return [
+    { label: "Now", balance: 0 },
+    { label: "+3mo", balance: monthly * 3 },
+    { label: "+6mo", balance: monthly * 6 },
+    { label: "+12mo", balance: monthly * 12 },
+  ];
+}
+
+function titleCase(value: string): string {
+  return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppData) => void }) {
