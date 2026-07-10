@@ -55,7 +55,7 @@ export default function App() {
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
       )}
-      {path === "/bills" && <ModulePage section="bills" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/bills" && <BillsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/transactions" && <ModulePage section="transactions" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
@@ -248,6 +248,140 @@ function MoneyPage({
           </div>
         </article>
       </section>
+    </div>
+  );
+}
+
+function BillsPage({
+  data,
+  financialState,
+  updateRows,
+  updateSort,
+  resetSection,
+}: {
+  data: AppData;
+  financialState: ReturnType<typeof computeFinancialState>;
+  updateRows: (section: SectionKey, rows: SpreadsheetRow[]) => void;
+  updateSort: (section: SectionKey, sortBy: string) => void;
+  resetSection: (section: SectionKey) => void;
+}) {
+  const [billSearch, setBillSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const billRows = data.sections.bills.map(normalizeBillRow);
+  const filledBillRows = billRows.filter((row) => !isBlankRow(row.cells));
+  const visibleBillRows = billRows.filter((row) => {
+    if (isBlankRow(row.cells)) return true;
+    const status = billStatus(row);
+    const query = billSearch.trim().toLowerCase();
+    const matchesStatus = statusFilter === "all" || status === statusFilter;
+    const matchesSearch = !query || [row.cells.name, row.cells.category, row.cells.status, row.cells.priority, row.cells.notes]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+    return matchesStatus && matchesSearch;
+  });
+  const visibleBillIds = new Set(visibleBillRows.map((row) => row.id));
+  const billStats = {
+    shown: visibleBillRows.filter((row) => !isBlankRow(row.cells)).length,
+    total: filledBillRows.length,
+    amount: visibleBillRows.reduce((sum, row) => sum + toNumber(row.cells.amount), 0),
+    overdue: filledBillRows.filter((row) => ["overdue", "late"].includes(billStatus(row))).length,
+    upcoming: filledBillRows.filter((row) => billStatus(row) === "upcoming").length,
+    paid: filledBillRows.filter((row) => billStatus(row) === "paid").length,
+    autopay: filledBillRows.filter((row) => isAffirmative(row.cells.autopay)).length,
+    critical: filledBillRows.filter((row) => (row.cells.priority || "").toLowerCase() === "critical").length,
+  };
+
+  function updateVisibleBillRows(section: SectionKey, nextVisibleRows: SpreadsheetRow[]) {
+    const normalizedNextRows = nextVisibleRows.map(normalizeBillRow);
+    const nextVisibleIds = new Set(normalizedNextRows.map((row) => row.id));
+    const preservedRows = billRows.filter((row) => !visibleBillIds.has(row.id) || nextVisibleIds.has(row.id));
+    const mergedRows = preservedRows.map((row) => normalizedNextRows.find((next) => next.id === row.id) || row);
+    const addedRows = normalizedNextRows.filter((row) => !billRows.some((existing) => existing.id === row.id));
+    updateRows(section, [...mergedRows, ...addedRows]);
+  }
+
+  return (
+    <div className="bills-page module-page">
+      <SummaryGrid items={summaryForSection("bills", financialState)} />
+      <section className="bills-command-panel">
+        <div>
+          <p className="eyebrow">Bills Control</p>
+          <h2>Track and manage recurring expenses</h2>
+        </div>
+        <div className="bills-filter-row">
+          <label className="bills-search">
+            <span>Search bills</span>
+            <input value={billSearch} onChange={(event) => setBillSearch(event.target.value)} placeholder="Search bills, categories, status" />
+          </label>
+          <div className="bills-status-tabs" role="tablist" aria-label="Bill status filter">
+            {[
+              ["all", "All"],
+              ["upcoming", "Upcoming"],
+              ["paid", "Paid"],
+              ["overdue", "Overdue"],
+              ["late", "Late"],
+              ["cancelled", "Cancelled"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={statusFilter === value ? "active" : ""}
+                aria-pressed={statusFilter === value}
+                onClick={() => setStatusFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="bills-inline-stats">
+          <span>{billStats.shown} shown</span>
+          <span>{billStats.total} bills</span>
+          <strong>{formatCurrency(billStats.amount)} total</strong>
+          <strong className={billStats.overdue > 0 ? "bad" : ""}>{billStats.overdue} overdue</strong>
+          <em>{billStats.autopay} autopay</em>
+        </div>
+      </section>
+
+      <section className="bills-insight-grid">
+        <article className="panel bill-insight-card">
+          <p className="eyebrow">Status Mix</p>
+          <div className="bill-status-bars">
+            <BillMiniBar label="Upcoming" value={billStats.upcoming} total={Math.max(1, billStats.total)} tone="blue" />
+            <BillMiniBar label="Paid" value={billStats.paid} total={Math.max(1, billStats.total)} tone="green" />
+            <BillMiniBar label="Overdue/Late" value={billStats.overdue} total={Math.max(1, billStats.total)} tone="red" />
+          </div>
+        </article>
+        <article className="panel bill-insight-card">
+          <p className="eyebrow">Priority Alert</p>
+          <h2>{billStats.critical ? `${billStats.critical} critical bills` : "No critical bills"}</h2>
+          <p className="empty-copy">
+            {billStats.overdue > 0 ? `${billStats.overdue} bill${billStats.overdue > 1 ? "s need" : " needs"} attention now.` : "Bill pressure is being tracked from your rows."}
+          </p>
+        </article>
+      </section>
+
+      <Spreadsheet
+        config={sectionConfigs.bills}
+        rows={visibleBillRows}
+        sortBy={data.sortBy.bills}
+        onSortChange={updateSort}
+        onRowsChange={updateVisibleBillRows}
+        onResetSection={resetSection}
+        getComputedCell={(row, columnKey) => computedCell("bills", row, columnKey)}
+        addLabel="Add Bill"
+      />
+    </div>
+  );
+}
+
+function BillMiniBar({ label, value, total, tone }: { label: string; value: number; total: number; tone: "blue" | "green" | "red" }) {
+  return (
+    <div className={`bill-mini-bar ${tone}`}>
+      <span>{label}</span>
+      <i><b style={{ width: `${Math.max(5, Math.min(100, (value / total) * 100))}%` }} /></i>
+      <strong>{value}</strong>
     </div>
   );
 }
@@ -763,6 +897,33 @@ function autoFillMoneyWeek(rows: SpreadsheetRow[], data: AppData): SpreadsheetRo
     if (row.cells.weekStart || row.cells.weekEnd) return row;
     return { ...row, cells: { ...row.cells, weekStart: data.paycheckPlanner.weekStart, weekEnd: data.paycheckPlanner.weekEnd } };
   });
+}
+
+function normalizeBillRow(row: SpreadsheetRow): SpreadsheetRow {
+  const dueDate = row.cells.dueDate || row.cells.due_date || "";
+  return {
+    ...row,
+    cells: {
+      ...row.cells,
+      name: row.cells.name || "",
+      category: row.cells.category || "",
+      dueDate,
+      amount: row.cells.amount || "",
+      status: row.cells.status || "",
+      autopay: row.cells.autopay || row.cells.is_autopay || "",
+      priority: row.cells.priority || "",
+      notes: row.cells.notes || "",
+    },
+  };
+}
+
+function billStatus(row: SpreadsheetRow): string {
+  const status = (row.cells.status || "").trim().toLowerCase();
+  return status || "upcoming";
+}
+
+function isAffirmative(value: string | undefined): boolean {
+  return ["yes", "y", "true", "on", "1", "autopay"].includes(String(value || "").trim().toLowerCase());
 }
 
 function moneySection(row: SpreadsheetRow): "cash" | "savings" | "borrowed" | "credit" {

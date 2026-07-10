@@ -18,9 +18,12 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
     title: "Bills",
     columns: [
       { key: "name", label: "Bill" },
-      { key: "amount", label: "Amount", type: "currency" },
+      { key: "category", label: "Category" },
       { key: "dueDate", label: "Due Date", type: "date" },
+      { key: "amount", label: "Amount", type: "currency" },
       { key: "status", label: "Status" },
+      { key: "autopay", label: "Autopay" },
+      { key: "priority", label: "Priority" },
       { key: "notes", label: "Notes" },
     ],
   },

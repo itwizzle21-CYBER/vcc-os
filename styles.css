@@ -1167,6 +1167,155 @@ td input[readonly] {
   align-items: center;
 }
 
+.bills-command-panel {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.95rem;
+  background:
+    radial-gradient(circle at top left, rgba(255, 184, 28, 0.14), transparent 34%),
+    color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-raised);
+  padding: 1rem;
+}
+
+.bills-command-panel h2 {
+  margin: 0;
+}
+
+.bills-filter-row {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.8fr) minmax(0, 1.2fr);
+  gap: 0.8rem;
+  align-items: end;
+}
+
+.bills-search {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.bills-search span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.bills-search input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0 0.85rem;
+}
+
+.bills-status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bills-status-tabs button {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  padding: 0 0.85rem;
+  font-weight: 850;
+}
+
+.bills-status-tabs button.active,
+.bills-status-tabs button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.bills-inline-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.bills-inline-stats span,
+.bills-inline-stats strong,
+.bills-inline-stats em {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  padding: 0.42rem 0.7rem;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.bills-inline-stats strong {
+  color: var(--text);
+}
+
+.bills-inline-stats .bad {
+  color: var(--bad);
+}
+
+.bills-insight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 1rem;
+}
+
+.bill-insight-card {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.bill-status-bars {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.bill-mini-bar {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.bill-mini-bar span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.bill-mini-bar i {
+  display: block;
+  overflow: hidden;
+  height: 0.65rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.bill-mini-bar b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.bill-mini-bar.blue b {
+  background: #56a5ff;
+}
+
+.bill-mini-bar.green b {
+  background: #25d39b;
+}
+
+.bill-mini-bar.red b {
+  background: #ff6666;
+}
+
 .reports-grid {
   display: grid;
   gap: 0.85rem;
@@ -1746,6 +1895,24 @@ td input[readonly] {
 
   .money-health-bars strong {
     grid-column: 1 / -1;
+  }
+
+  .bills-filter-row,
+  .bills-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bills-status-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bills-status-tabs button {
+    padding-inline: 0.55rem;
+  }
+
+  .bill-mini-bar {
+    grid-template-columns: 5.8rem minmax(0, 1fr) auto;
   }
 
   .reports-grid {
