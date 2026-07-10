@@ -7,6 +7,7 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
     columns: [
       { key: "label", label: "Source" },
       { key: "amount", label: "Amount", type: "currency" },
+      { key: "section", label: "Section" },
       { key: "weekStart", label: "Week Start", type: "date" },
       { key: "weekEnd", label: "Week End", type: "date" },
       { key: "notes", label: "Notes" },

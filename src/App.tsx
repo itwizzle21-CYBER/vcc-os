@@ -53,7 +53,7 @@ export default function App() {
     <AppShell currentPath={path} settings={data.settings} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
       {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} settings={data.settings} onSettingsChange={(settings) => updateData({ ...data, settings })} />}
       {path === "/money" && (
-        <ModulePage section="money" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} header={<PaycheckPlanner data={data} onChange={updateData} />} />
+        <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
       )}
       {path === "/bills" && <ModulePage section="bills" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
@@ -66,6 +66,189 @@ export default function App() {
       {path === "/missions" && <MissionsPage decisionState={decisionState} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} />}
     </AppShell>
+  );
+}
+
+function MoneyPage({
+  data,
+  financialState,
+  decisionState,
+  updateRows,
+  updateSort,
+  resetSection,
+  onChange,
+}: {
+  data: AppData;
+  financialState: ReturnType<typeof computeFinancialState>;
+  decisionState: ReturnType<typeof computeDecisionEngine>;
+  updateRows: (section: SectionKey, rows: SpreadsheetRow[]) => void;
+  updateSort: (section: SectionKey, sortBy: string) => void;
+  resetSection: (section: SectionKey) => void;
+  onChange: (data: AppData) => void;
+}) {
+  const moneyRows = data.sections.money;
+  const groupedRows = {
+    cash: moneyRows.filter((row) => moneySection(row) === "cash"),
+    savings: moneyRows.filter((row) => moneySection(row) === "savings"),
+    borrowed: moneyRows.filter((row) => moneySection(row) === "borrowed"),
+    credit: moneyRows.filter((row) => moneySection(row) === "credit"),
+  };
+  const moneyStats = [
+    { label: "Total Cash", value: financialState.totalCash },
+    { label: "Spendable Cash", value: financialState.spendableCash },
+    { label: "Safe To Spend", value: financialState.safeToSpend },
+    { label: "Protected Savings", value: financialState.protectedSavings },
+    { label: "Available Savings", value: financialState.availableSavings },
+    { label: "Borrowed Money", value: financialState.borrowedMoney, tone: "warn" as const },
+  ];
+  const sectionMeta = [
+    { key: "cash", title: "Cash & Checking", tone: "blue" },
+    { key: "savings", title: "Savings", tone: "green" },
+    { key: "borrowed", title: "Borrowed Money", tone: "gold" },
+    { key: "credit", title: "Credit Usage", tone: "red" },
+  ] as const;
+  const sectionTotals = {
+    cash: groupedRows.cash.reduce((sum, row) => sum + toNumber(row.cells.amount), 0),
+    savings: groupedRows.savings.reduce((sum, row) => sum + toNumber(row.cells.amount), 0),
+    borrowed: groupedRows.borrowed.reduce((sum, row) => sum + toNumber(row.cells.amount), 0),
+    credit: groupedRows.credit.reduce((sum, row) => sum + toNumber(row.cells.amount), 0),
+  };
+  const recentTransactions = data.sections.transactions.filter((row) => !isBlankRow(row.cells)).slice(-5).reverse();
+  const spendingBase = Math.max(1, financialState.monthlyIncome, financialState.monthlySpending);
+  const safeRatio = Math.max(0, Math.min(100, (financialState.safeToSpend / Math.max(1, financialState.spendableCash || financialState.totalCash)) * 100));
+
+  function updateMoneySectionRows(group: keyof typeof groupedRows, nextVisibleRows: SpreadsheetRow[]) {
+    const visibleIds = new Set(groupedRows[group].map((row) => row.id));
+    const nextVisibleIds = new Set(nextVisibleRows.map((row) => row.id));
+    const preservedRows = moneyRows.filter((row) => !visibleIds.has(row.id) || nextVisibleIds.has(row.id));
+    const mergedRows = preservedRows.map((row) => {
+      const updated = nextVisibleRows.find((next) => next.id === row.id);
+      if (!updated) return row;
+      return { ...updated, cells: { ...updated.cells, section: group } };
+    });
+    const addedRows = nextVisibleRows
+      .filter((row) => !moneyRows.some((existing) => existing.id === row.id))
+      .map((row) => ({ ...row, cells: { ...row.cells, section: group } }));
+    updateRows("money", [...mergedRows, ...addedRows]);
+  }
+
+  return (
+    <div className="money-page">
+      <SummaryGrid items={moneyStats} />
+      <section className="money-hero-panel">
+        <div>
+          <p className="eyebrow">Money Snapshot</p>
+          <h2>Your complete financial picture</h2>
+          <p>{decisionState.todayBriefing}</p>
+        </div>
+        <div className="money-hero-metrics">
+          <span>
+            <small>Safe today</small>
+            <strong>{formatCurrency(financialState.safeToSpend)}</strong>
+          </span>
+          <span>
+            <small>Weekly income</small>
+            <strong>{formatCurrency(financialState.weeklyIncome)}</strong>
+          </span>
+          <span>
+            <small>Bills pressure</small>
+            <strong>{formatCurrency(financialState.billsPressure)}</strong>
+          </span>
+        </div>
+      </section>
+
+      <PaycheckPlanner data={data} onChange={onChange} />
+
+      <section className="money-section-grid">
+        {sectionMeta.map((section) => (
+          <article className={`money-section-card ${section.tone}`} key={section.key}>
+            <div className="money-section-heading">
+              <div>
+                <p className="eyebrow">{section.title}</p>
+                <h2>{formatCurrency(sectionTotals[section.key])}</h2>
+              </div>
+              <span>{groupedRows[section.key].filter((row) => !isBlankRow(row.cells)).length} rows</span>
+            </div>
+            <Spreadsheet
+              config={{ ...sectionConfigs.money, title: section.title }}
+              rows={groupedRows[section.key]}
+              sortBy={data.sortBy.money}
+              onSortChange={updateSort}
+              onRowsChange={(_, rows) => updateMoneySectionRows(section.key, rows)}
+              onResetSection={resetSection}
+              getComputedCell={(row, columnKey) => computedCell("money", row, columnKey)}
+              addLabel={`Add ${section.title}`}
+            />
+          </article>
+        ))}
+      </section>
+
+      <section className="money-intelligence-grid">
+        <article className="panel money-safe-card">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Safe To Spend</p>
+              <h2>{formatCurrency(financialState.safeToSpend)}</h2>
+            </div>
+            <a href="/bills" className="report-link">Bills</a>
+          </div>
+          <div className="safe-meter">
+            <i style={{ width: `${safeRatio}%` }} />
+          </div>
+          <div className="money-breakdown">
+            <span>Spendable <strong>{formatCurrency(financialState.spendableCash)}</strong></span>
+            <span>Borrowed impact <strong>{formatCurrency(financialState.borrowedMoney)}</strong></span>
+            <span>Upcoming pressure <strong>{formatCurrency(financialState.billsPressure)}</strong></span>
+          </div>
+        </article>
+
+        <article className="panel money-health-card">
+          <p className="eyebrow">Financial Health</p>
+          <div className="money-health-bars">
+            <div>
+              <span>Income</span>
+              <i style={{ width: `${Math.max(8, (financialState.monthlyIncome / spendingBase) * 100)}%` }} />
+              <strong>{formatCurrency(financialState.monthlyIncome)}</strong>
+            </div>
+            <div>
+              <span>Spending</span>
+              <b style={{ width: `${Math.max(8, (financialState.monthlySpending / spendingBase) * 100)}%` }} />
+              <strong>{formatCurrency(financialState.monthlySpending)}</strong>
+            </div>
+            <div>
+              <span>Savings</span>
+              <i style={{ width: `${Math.max(8, ((financialState.protectedSavings + financialState.availableSavings) / spendingBase) * 100)}%` }} />
+              <strong>{formatCurrency(financialState.protectedSavings + financialState.availableSavings)}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article className="panel money-decision-card">
+          <p className="eyebrow">Decision Engine</p>
+          <h2>{decisionState.recommendedMove}</h2>
+          <p>{decisionState.priorityAlerts[0]?.detail || "No urgent alerts right now."}</p>
+          <a href="/missions" className="report-link">Open Missions</a>
+        </article>
+
+        <article className="panel money-activity-card">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Recent Activity</p>
+              <h2>Latest transactions</h2>
+            </div>
+            <a href="/transactions" className="report-link">All</a>
+          </div>
+          <div className="money-activity-list">
+            {recentTransactions.length ? recentTransactions.map((row) => (
+              <a href="/transactions" key={row.id}>
+                <span>{row.cells.description || "Transaction"}</span>
+                <strong>{row.cells.amount || "$0.00"}</strong>
+              </a>
+            )) : <p className="empty-copy">No transactions entered yet.</p>}
+          </div>
+        </article>
+      </section>
+    </div>
   );
 }
 
@@ -554,6 +737,9 @@ function summaryForSection(section: SectionKey, financialState: ReturnType<typeo
 }
 
 function computedCell(section: SectionKey, row: SpreadsheetRow, columnKey: string): string | undefined {
+  if (section === "money" && columnKey === "section") {
+    return moneySectionLabel(moneySection(row));
+  }
   if (section === "inventory") {
     if (columnKey === "category") return row.cells.item ? categorizeItem(row.cells.item) : "";
     if (columnKey === "alert") return getInventoryAlert(row.cells.qty || "", row.cells.minNeeded || "");
@@ -577,6 +763,23 @@ function autoFillMoneyWeek(rows: SpreadsheetRow[], data: AppData): SpreadsheetRo
     if (row.cells.weekStart || row.cells.weekEnd) return row;
     return { ...row, cells: { ...row.cells, weekStart: data.paycheckPlanner.weekStart, weekEnd: data.paycheckPlanner.weekEnd } };
   });
+}
+
+function moneySection(row: SpreadsheetRow): "cash" | "savings" | "borrowed" | "credit" {
+  const value = `${row.cells.section || ""} ${row.cells.label || ""}`.toLowerCase();
+  if (value.includes("saving") || value.includes("protected")) return "savings";
+  if (value.includes("borrow") || value.includes("spotme") || value.includes("mypay") || value.includes("advance")) return "borrowed";
+  if (value.includes("credit")) return "credit";
+  return "cash";
+}
+
+function moneySectionLabel(section: ReturnType<typeof moneySection>): string {
+  return {
+    cash: "Cash & Checking",
+    savings: "Savings",
+    borrowed: "Borrowed Money",
+    credit: "Credit Usage",
+  }[section];
 }
 
 function normalizePath(path: string) {
