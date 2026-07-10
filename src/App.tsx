@@ -1206,6 +1206,55 @@ function titleCase(value: string): string {
 }
 
 function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppData) => void }) {
+  const [featurePrefs, setFeaturePrefs] = useState<Record<string, boolean>>(() => loadFeaturePrefs());
+
+  function updateFeature(key: string, value: boolean) {
+    const next = { ...featurePrefs, [key]: value };
+    setFeaturePrefs(next);
+    localStorage.setItem("vcc-os-smart-features", JSON.stringify(next));
+  }
+
+  function exportData() {
+    const payload = {
+      app: "VCC-OS",
+      version: data.version,
+      exportDate: new Date().toISOString(),
+      data,
+      smartFeatures: featurePrefs,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `vcc-os-export-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(file: File | undefined) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result || "{}"));
+        const imported = parsed.data || parsed;
+        if (!imported.sections || !imported.settings) throw new Error("Invalid VCC export");
+        onChange({
+          ...data,
+          ...imported,
+          settings: { ...data.settings, ...imported.settings },
+        });
+        if (parsed.smartFeatures) {
+          setFeaturePrefs(parsed.smartFeatures);
+          localStorage.setItem("vcc-os-smart-features", JSON.stringify(parsed.smartFeatures));
+        }
+      } catch {
+        window.alert("That file does not look like a valid VCC-OS export.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
   return (
     <div className="settings-page">
       <section className="panel settings-hero">
@@ -1221,9 +1270,8 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
         </div>
       </section>
 
-      <section className="panel">
-        <p className="eyebrow">Profile</p>
-        <h2>Account Details</h2>
+      <section className="panel settings-card">
+        <SettingsCardHeader tone="blue" title="Profile" subtitle="Your local account information" />
         <div className="settings-grid">
           <SettingInput label="Greeting name" value={data.settings.accountName} onChange={(accountName) => onChange({ ...data, settings: { ...data.settings, accountName } })} />
           <SettingInput label="Profile label" value={data.settings.profileLabel} onChange={(profileLabel) => onChange({ ...data, settings: { ...data.settings, profileLabel } })} />
@@ -1232,9 +1280,8 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
         </div>
       </section>
 
-      <section className="panel">
-        <p className="eyebrow">Customization</p>
-        <h2>Workspace Settings</h2>
+      <section className="panel settings-card">
+        <SettingsCardHeader tone="purple" title="Appearance" subtitle="Customize the look and feel" />
         <div className="settings-grid">
           <SettingSelect label="Theme mode" value={data.settings.theme} options={["dark", "midnight", "slate", "light"]} onChange={(theme) => onChange({ ...data, settings: { ...data.settings, theme: theme as AppData["settings"]["theme"] } })} />
           <SettingSelect label="Accent color" value={data.settings.accent} options={["blue", "green", "gold", "purple", "red"]} onChange={(accent) => onChange({ ...data, settings: { ...data.settings, accent: accent as AppData["settings"]["accent"] } })} />
@@ -1244,9 +1291,32 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
         </div>
       </section>
 
-      <section className="panel">
-        <p className="eyebrow">Dashboard Widgets</p>
-        <h2>Choose What Appears</h2>
+      <section className="panel settings-card">
+        <SettingsCardHeader tone="green" title="Smart Features" subtitle="Financial intelligence controls" />
+        <div className="settings-row-list">
+          {smartFeatures.map((feature) => (
+            <SettingFeatureRow
+              key={feature.key}
+              title={feature.label}
+              description={feature.description}
+              checked={featurePrefs[feature.key] !== false}
+              onChange={(checked) => updateFeature(feature.key, checked)}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="panel settings-card">
+        <SettingsCardHeader tone="gold" title="Notifications" subtitle="Stay informed about bills, alerts, and weekly status" />
+        <div className="settings-row-list">
+          <SettingFeatureRow title="Bill Reminders" description="Alert before bills are due" checked={featurePrefs.billReminders !== false} onChange={(checked) => updateFeature("billReminders", checked)} />
+          <SettingFeatureRow title="Overdue Alerts" description="Warn when bills become overdue" checked={featurePrefs.overdueAlerts !== false} onChange={(checked) => updateFeature("overdueAlerts", checked)} />
+          <SettingFeatureRow title="Weekly Summary" description="Show weekly financial digest signals" checked={featurePrefs.weeklySummary !== false} onChange={(checked) => updateFeature("weeklySummary", checked)} />
+        </div>
+      </section>
+
+      <section className="panel settings-card">
+        <SettingsCardHeader tone="purple" title="Dashboard Widgets" subtitle="Choose what appears" />
         <p className="settings-copy">Drag widgets on the dashboard to reorder them. Hidden widgets stay available here.</p>
         <div className="widget-settings-grid">
           {widgetOptions.map((widget) => (
@@ -1268,14 +1338,35 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
         </div>
       </section>
 
-      <section className="panel">
-        <p className="eyebrow">Data Health</p>
-        <h2>Local Spreadsheet Storage</h2>
+      <section className="panel settings-card">
+        <SettingsCardHeader tone="green" title="Data Management" subtitle="Export, import, or reset your local VCC data" />
         <div className="settings-status-grid">
           <span>Money rows: {data.sections.money.length}</span>
           <span>Bills rows: {data.sections.bills.length}</span>
           <span>Transactions rows: {data.sections.transactions.length}</span>
           <span>Inventory rows: {data.sections.inventory.length}</span>
+        </div>
+        <div className="settings-actions">
+          <button type="button" onClick={exportData}>Export Data</button>
+          <label>
+            <span>Import Data</span>
+            <input type="file" accept="application/json,.json" onChange={(event) => importData(event.target.files?.[0])} />
+          </label>
+        </div>
+        <div className="settings-reset-grid">
+          {sectionResetOptions.map((section) => (
+            <button
+              key={section.key}
+              type="button"
+              onClick={() => {
+                if (!data.settings.confirmBeforeReset || window.confirm(`Reset ${section.label} to zero rows?`)) {
+                  onChange(resetSection(data, section.key));
+                }
+              }}
+            >
+              Reset {section.label}
+            </button>
+          ))}
         </div>
       </section>
 
@@ -1294,7 +1385,70 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
           Zero All Data
         </button>
       </section>
+
+      <section className="panel settings-card">
+        <SettingsCardHeader tone="red" title="Sign Out" subtitle="Local mode does not require an online sign-out" />
+        <p className="settings-copy">VCC-OS is running as a local-first workspace in this build.</p>
+      </section>
+
+      <section className="panel settings-card">
+        <SettingsCardHeader tone="blue" title="About VCC-OS" subtitle="Vitality Command Center Operating System" />
+        <p className="settings-copy">A personal finance command center for intelligence, automation, and clearer decisions.</p>
+      </section>
     </div>
+  );
+}
+
+const smartFeatures = [
+  { key: "decisionEngine", label: "Decision Engine", description: "Generate spending recommendations" },
+  { key: "forecasts", label: "Financial Forecasts", description: "Project future balances" },
+  { key: "cashflowPrediction", label: "Cash Flow Prediction", description: "Compare income and expenses" },
+  { key: "safeSpending", label: "Safe Spending Calculation", description: "Calculate safe-to-spend signals" },
+  { key: "savingsRecommendations", label: "Savings Recommendations", description: "Surface saving opportunities" },
+  { key: "healthScore", label: "Budget Health Score", description: "Show overall financial wellness signals" },
+];
+
+const sectionResetOptions: Array<{ key: SectionKey; label: string }> = [
+  { key: "money", label: "Money" },
+  { key: "bills", label: "Bills" },
+  { key: "transactions", label: "Transactions" },
+  { key: "savings", label: "Savings" },
+  { key: "goals", label: "Goals" },
+  { key: "inventory", label: "Inventory" },
+  { key: "debt", label: "Debt" },
+  { key: "income", label: "Income" },
+];
+
+function loadFeaturePrefs(): Record<string, boolean> {
+  try {
+    const saved = JSON.parse(localStorage.getItem("vcc-os-smart-features") || "{}");
+    return { ...Object.fromEntries(smartFeatures.map((feature) => [feature.key, true])), ...saved };
+  } catch {
+    return Object.fromEntries(smartFeatures.map((feature) => [feature.key, true]));
+  }
+}
+
+function SettingsCardHeader({ tone, title, subtitle }: { tone: "blue" | "purple" | "green" | "gold" | "red"; title: string; subtitle: string }) {
+  return (
+    <div className="settings-card-header">
+      <span className={tone}>{title.slice(0, 1)}</span>
+      <div>
+        <h2>{title}</h2>
+        <p>{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function SettingFeatureRow({ title, description, checked, onChange }: { title: string; description: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="settings-feature-row">
+      <span>
+        <strong>{title}</strong>
+        <small>{description}</small>
+      </span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    </label>
   );
 }
 
