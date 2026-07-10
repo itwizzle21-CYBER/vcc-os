@@ -1,42 +1,124 @@
 import {
   ArrowRight,
   Boxes,
-  CheckCircle2,
-  Clock3,
-  FileBarChart,
   PiggyBank,
   ReceiptText,
   Target,
+  TrendingDown,
   Wallet,
   Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { formatCurrency, isBlankRow, toNumber } from "../../lib/calculations/currency";
-import type { AppData, DecisionState, FinancialState, SpreadsheetRow, UserSettings } from "../../lib/types/app";
+import { formatCurrency } from "../../lib/calculations/currency";
+import type { AppData, DecisionState, FinancialState, UserSettings } from "../../lib/types/app";
 
-export default function Dashboard({
-  financialState,
-  decisionState,
-  data,
-}: {
+interface DashboardProps {
   financialState: FinancialState;
   decisionState: DecisionState;
   data: AppData;
   settings: UserSettings;
   onSettingsChange: (settings: UserSettings) => void;
-}) {
-  const income = financialState.monthlyIncome || financialState.weeklyIncome || financialState.receivedIncome;
-  const expenses = financialState.monthlySpending + financialState.billsPressure;
-  const cashFlowTotal = Math.max(1, income + expenses);
-  const incomeWidth = Math.max(8, Math.min(100, (income / cashFlowTotal) * 100));
-  const goalsActive = data.sections.goals.filter((row) => !isBlankRow(row.cells) && toNumber(row.cells.current) < toNumber(row.cells.target)).length;
-  const alerts = decisionState.priorityAlerts.length
-    ? decisionState.priorityAlerts.slice(0, 3)
-    : [{ title: "All clear", detail: "No alerts right now", tone: "success" as const }];
-  const recentActivity = data.sections.transactions
-    .filter((row) => !isBlankRow(row.cells))
-    .slice(-5)
-    .reverse();
+}
+
+interface DashboardModuleCardProps {
+  href: string;
+  tone: "blue" | "gold" | "green" | "emerald" | "purple" | "red";
+  icon: ReactNode;
+  title: string;
+  value: string;
+  detail: string;
+  metrics: Array<[string, string]>;
+}
+
+export default function Dashboard({
+  financialState,
+}: DashboardProps) {
+  const moduleCards: DashboardModuleCardProps[] = [
+    {
+      href: "/money",
+      tone: "blue",
+      icon: <Wallet size={22} />,
+      title: "Money Snapshot",
+      value: formatWholeCurrency(financialState.totalCash),
+      detail: "Current cash position",
+      metrics: [
+        ["Spendable Cash", formatWholeCurrency(financialState.spendableCash)],
+        ["Safe To Spend", formatWholeCurrency(financialState.safeToSpend)],
+        ["Protected Savings", formatWholeCurrency(financialState.protectedSavings)],
+        ["Borrowed Money", formatWholeCurrency(financialState.borrowedMoney)],
+      ],
+    },
+    {
+      href: "/bills",
+      tone: "gold",
+      icon: <ReceiptText size={22} />,
+      title: "Bills",
+      value: formatWholeCurrency(financialState.billsPressure),
+      detail: "Due pressure",
+      metrics: [
+        ["Due Today", String(financialState.billsDueToday)],
+        ["Due This Week", String(financialState.billsDueThisWeek)],
+        ["Overdue", String(financialState.overdueBills)],
+        ["Bills Pressure", formatWholeCurrency(financialState.billsPressure)],
+      ],
+    },
+    {
+      href: "/inventory",
+      tone: "green",
+      icon: <Boxes size={22} />,
+      title: "Inventory",
+      value: String(financialState.buyNextCount),
+      detail: "Buy Next items",
+      metrics: [
+        ["Critical Items", String(financialState.criticalItems)],
+        ["Low Stock", String(financialState.lowStock)],
+        ["Buy Next", String(financialState.buyNextCount)],
+        ["Refill Cost", formatWholeCurrency(financialState.estimatedRefillCost)],
+      ],
+    },
+    {
+      href: "/transactions",
+      tone: "red",
+      icon: <TrendingDown size={22} />,
+      title: "Transactions",
+      value: formatWholeCurrency(financialState.monthlySpending),
+      detail: "Monthly spending",
+      metrics: [
+        ["Weekly Spending", formatWholeCurrency(financialState.weeklySpending)],
+        ["Monthly Spending", formatWholeCurrency(financialState.monthlySpending)],
+        ["Largest Expense", financialState.largestExpense],
+        ["Last Transaction", financialState.lastTransaction],
+      ],
+    },
+    {
+      href: "/savings",
+      tone: "emerald",
+      icon: <PiggyBank size={22} />,
+      title: "Savings",
+      value: formatWholeCurrency(financialState.protectedSavings + financialState.availableSavings),
+      detail: "Protected and available",
+      metrics: [
+        ["Protected Savings", formatWholeCurrency(financialState.protectedSavings)],
+        ["Available Savings", formatWholeCurrency(financialState.availableSavings)],
+        ["Emergency Fund", formatWholeCurrency(financialState.emergencyFund)],
+        ["Goal Savings", formatWholeCurrency(financialState.goalSavings)],
+      ],
+    },
+    {
+      href: "/goals",
+      tone: "purple",
+      icon: <Target size={22} />,
+      title: "Goals",
+      value: `${Math.round(financialState.goalCompletionPercent)}%`,
+      detail: "Overall completion",
+      metrics: [
+        ["Goals Complete", String(financialState.goalsComplete)],
+        ["Closest Goal", financialState.closestGoal],
+        ["Completion", `${Math.round(financialState.goalCompletionPercent)}%`],
+        ["Estimated Finish", financialState.estimatedFinish],
+      ],
+    },
+  ];
 
   return (
     <div className="base44-dashboard">
@@ -51,7 +133,7 @@ export default function Dashboard({
           <div className="mission-banner-body">
             <span><ReceiptText size={29} /></span>
             <div>
-              <h2>{missionTitle()}</h2>
+              <h2>Pay New Bill</h2>
               <small>{missionDetail(financialState)}</small>
             </div>
           </div>
@@ -59,112 +141,45 @@ export default function Dashboard({
         <ArrowRight size={25} />
       </a>
 
-      <section className="dashboard-kpi-row" aria-label="Money snapshot">
-        <DashboardKpi href="/money" tone="blue" icon={<Wallet size={30} />} label="Net Balance" value={formatWholeCurrency(financialState.totalCash - financialState.totalDebt)} />
-        <DashboardKpi href="/bills" tone="gold" icon={<ReceiptText size={30} />} label="Upcoming Bills" value={formatWholeCurrency(financialState.billsPressure)} />
-        <DashboardKpi href="/savings" tone="green" icon={<PiggyBank size={30} />} label="Savings" value={formatWholeCurrency(financialState.protectedSavings + financialState.availableSavings)} />
-        <DashboardKpi href="/goals" tone="purple" icon={<Target size={30} />} label="Active Goals" value={String(goalsActive)} />
-      </section>
-
-      <section className="dashboard-lower-grid">
-        <a href="/reports" className="base-panel cash-flow-card">
-          <div className="panel-heading">
-            <h3><FileBarChart size={19} /> Cash Flow</h3>
-            <span>View Reports <ArrowRight size={15} /></span>
-          </div>
-          <div className="cash-flow-stats">
-            <div>
-              <small>Income</small>
-              <strong className="income-text">{formatWholeCurrency(income)}</strong>
-            </div>
-            <div>
-              <small>Expenses</small>
-              <strong className="expense-text">{formatWholeCurrency(expenses)}</strong>
-            </div>
-          </div>
-          <div className="cash-flow-track">
-            <i style={{ width: `${incomeWidth}%` }} />
-          </div>
-        </a>
-
-        <section className="intelligence-wrap">
-          <h3><Zap size={19} /> Intelligence</h3>
-          {alerts.map((alert) => (
-            <a href="/missions" className="base-panel intelligence-card" key={alert.title}>
-              <span className={alert.tone}><AlertIcon tone={alert.tone} /></span>
-              <div>
-                <strong>{alert.title}</strong>
-                <small>{alert.detail}</small>
-              </div>
-            </a>
-          ))}
-        </section>
-      </section>
-
-      <section className="base-panel recent-activity-card">
-        <div className="panel-heading">
-          <h3><Clock3 size={19} /> Recent Activity</h3>
-          <a href="/transactions">All Transactions <ArrowRight size={15} /></a>
-        </div>
-        <div className="dashboard-activity-list">
-          {recentActivity.length ? recentActivity.map((row) => (
-            <a className="activity-row" href="/transactions" key={row.id}>
-              <span className={toNumber(row.cells.amount) >= 0 ? "income" : "expense"}><ActivityIcon row={row} /></span>
-              <div>
-                <strong>{row.cells.description || "Transaction"}</strong>
-                <small>{row.cells.category || "Uncategorized"} · {row.cells.date || "No date"}</small>
-              </div>
-              <b>{formatCurrency(toNumber(row.cells.amount))}</b>
-            </a>
-          )) : (
-            <a className="activity-row" href="/transactions">
-              <span><Boxes size={18} /></span>
-              <div>
-                <strong>No transactions yet</strong>
-                <small>Add a transaction to start activity history.</small>
-              </div>
-            </a>
-          )}
-        </div>
+      <section className="dashboard-module-grid" aria-label="VCC dashboard modules">
+        {moduleCards.map((card) => (
+          <DashboardModuleCard key={card.href} {...card} />
+        ))}
       </section>
     </div>
   );
 }
 
-function DashboardKpi({
+function DashboardModuleCard({
   href,
   tone,
   icon,
-  label,
+  title,
   value,
-}: {
-  href: string;
-  tone: "blue" | "gold" | "green" | "purple";
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
+  detail,
+  metrics,
+}: DashboardModuleCardProps) {
   return (
-    <a href={href} className="base-panel dashboard-kpi-card">
-      <span className={tone}>{icon}</span>
-      <small>{label}</small>
-      <strong>{value}</strong>
+    <a href={href} className="base-panel dashboard-module-card">
+      <div className="dashboard-module-head">
+        <span className={tone}>{icon}</span>
+        <ArrowRight size={17} />
+      </div>
+      <div className="dashboard-module-title">
+        <small>{title}</small>
+        <strong>{value}</strong>
+        <em>{detail}</em>
+      </div>
+      <dl>
+        {metrics.map(([label, metric]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{metric}</dd>
+          </div>
+        ))}
+      </dl>
     </a>
   );
-}
-
-function AlertIcon({ tone }: { tone: "warning" | "info" | "success" }) {
-  if (tone === "warning") return <ReceiptText size={20} />;
-  if (tone === "info") return <Zap size={20} />;
-  return <CheckCircle2 size={20} />;
-}
-
-function ActivityIcon({ row }: { row: SpreadsheetRow }) {
-  return toNumber(row.cells.amount) >= 0 ? <PiggyBank size={18} /> : <ReceiptText size={18} />;
-}
-
-function missionTitle() {
-  return "Pay New Bill";
 }
 
 function missionDetail(financialState: FinancialState) {
