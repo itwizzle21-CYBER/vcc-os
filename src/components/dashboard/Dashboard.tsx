@@ -51,7 +51,7 @@ export default function Dashboard({
           <div className="mission-banner-body">
             <span><ReceiptText size={29} /></span>
             <div>
-              <h2>{missionTitle(financialState, decisionState)}</h2>
+              <h2>{missionTitle()}</h2>
               <small>{missionDetail(financialState)}</small>
             </div>
           </div>
@@ -163,14 +163,13 @@ function ActivityIcon({ row }: { row: SpreadsheetRow }) {
   return toNumber(row.cells.amount) >= 0 ? <PiggyBank size={18} /> : <ReceiptText size={18} />;
 }
 
-function missionTitle(financialState: FinancialState, decisionState: DecisionState) {
-  if (financialState.billsDueToday > 0) return "Pay New Bill";
-  return decisionState.recommendedMove;
+function missionTitle() {
+  return "Pay New Bill";
 }
 
 function missionDetail(financialState: FinancialState) {
-  if (financialState.billsDueToday > 0) return `Due today · ${formatCurrency(financialState.billsPressure)}`;
-  return `${financialState.billsDueThisWeek} due this week · ${formatCurrency(financialState.safeToSpend)} safe`;
+  const dueToday = financialState.billsDueToday > 0 ? financialState.billsPressure : 0;
+  return `Due today \u00b7 ${formatCurrency(dueToday)}`;
 }
 
 function formatWholeCurrency(value: number) {
