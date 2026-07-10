@@ -42,8 +42,7 @@ export default function Dashboard({
       value: formatWholeCurrency(financialState.totalCash),
       detail: "Current cash position",
       metrics: [
-        ["Spendable Cash", formatWholeCurrency(financialState.spendableCash)],
-        ["Safe To Spend", formatWholeCurrency(financialState.safeToSpend)],
+        ["Spendable / Safe", formatWholeCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend))],
         ["Protected Savings", formatWholeCurrency(financialState.protectedSavings)],
         ["Borrowed Money", formatWholeCurrency(financialState.borrowedMoney)],
       ],

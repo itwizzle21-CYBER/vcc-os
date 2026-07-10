@@ -2875,6 +2875,29 @@ td input[readonly] {
   background: #090b0f;
 }
 
+.dashboard-shell::before,
+.dashboard-shell::after {
+  position: fixed;
+  right: 0;
+  left: 0;
+  z-index: 70;
+  height: 4.75rem;
+  pointer-events: none;
+  content: "";
+}
+
+.dashboard-shell::before {
+  top: 63px;
+  background: linear-gradient(180deg, rgba(9, 11, 15, 0.92), rgba(9, 11, 15, 0));
+  backdrop-filter: blur(2px);
+}
+
+.dashboard-shell::after {
+  bottom: 0;
+  background: linear-gradient(0deg, rgba(9, 11, 15, 0.92), rgba(9, 11, 15, 0));
+  backdrop-filter: blur(2px);
+}
+
 .dashboard-shell .sensor-strip {
   display: none;
 }
@@ -2891,6 +2914,74 @@ td input[readonly] {
   border-radius: 0.45rem 0.45rem 0 0;
   background: #1a1b20;
   padding: 0 1.5rem;
+}
+
+.dashboard-top-nav::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(39, 215, 154, 0.25) 22%, rgba(86, 165, 255, 0.9) 50%, rgba(39, 215, 154, 0.25) 78%, transparent 100%);
+  box-shadow: 0 0 18px rgba(86, 165, 255, 0.32);
+  content: "";
+  transform-origin: left center;
+  animation: heartbeat-sensor 2.4s ease-in-out infinite;
+}
+
+.dashboard-top-nav::before {
+  position: absolute;
+  right: 1.15rem;
+  bottom: 0.55rem;
+  width: min(18rem, 24vw);
+  height: 1.2rem;
+  opacity: 0.72;
+  background:
+    linear-gradient(90deg, transparent 0 4%, rgba(39, 215, 154, 0.75) 4% 5%, transparent 5% 12%, rgba(39, 215, 154, 0.75) 12% 13%, transparent 13% 20%, rgba(86, 165, 255, 0.95) 20% 22%, transparent 22% 32%, rgba(39, 215, 154, 0.75) 32% 33%, transparent 33% 44%, rgba(39, 215, 154, 0.75) 44% 45%, transparent 45% 100%);
+  background-size: 6.5rem 100%;
+  content: "";
+  filter: drop-shadow(0 0 8px rgba(39, 215, 154, 0.55));
+  animation: heartbeat-wave 1.65s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes heartbeat-sensor {
+  0%, 100% {
+    opacity: 0.36;
+    transform: scaleX(0.38);
+  }
+
+  12% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  18% {
+    opacity: 0.5;
+    transform: scaleX(0.62);
+  }
+
+  30% {
+    opacity: 0.88;
+    transform: scaleX(0.92);
+  }
+
+  56% {
+    opacity: 0.3;
+    transform: scaleX(0.46);
+  }
+}
+
+@keyframes heartbeat-wave {
+  from {
+    background-position-x: 0;
+  }
+
+  to {
+    background-position-x: 6.5rem;
+  }
 }
 
 .dashboard-top-brand {
@@ -2969,10 +3060,10 @@ td input[readonly] {
 
 .base44-dashboard {
   display: grid;
-  gap: 1.55rem;
+  gap: 1.45rem;
   width: min(1216px, calc(100vw - 2rem));
   margin: 0 auto;
-  padding: 0.95rem 0 4rem;
+  padding: 0.85rem 0 4rem;
 }
 
 .dashboard-status-line {
@@ -3004,14 +3095,14 @@ td input[readonly] {
 
 .mission-banner {
   display: flex;
-  min-height: 126px;
+  min-height: 122px;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
   border-radius: 1.05rem;
   background: linear-gradient(135deg, #ff9f06 0%, #fb7b08 46%, #f45a0a 100%);
   color: white;
-  padding: 1.45rem 1.55rem;
+  padding: 1.35rem 1.45rem;
 }
 
 .mission-banner p,
@@ -3119,15 +3210,15 @@ td input[readonly] {
 .dashboard-module-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0.9rem;
 }
 
 .dashboard-module-card {
   display: grid;
-  min-height: 17rem;
+  min-height: 16.75rem;
   align-content: start;
-  gap: 1.15rem;
-  padding: 1.25rem;
+  gap: 1.05rem;
+  padding: 1.15rem;
 }
 
 .dashboard-module-head {
@@ -3191,7 +3282,7 @@ td input[readonly] {
 
 .dashboard-module-card dl {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.48rem;
   margin: 0;
 }
 
@@ -3201,7 +3292,7 @@ td input[readonly] {
   align-items: start;
   gap: 0.75rem;
   border-top: 1px solid rgba(255, 255, 255, 0.055);
-  padding-top: 0.55rem;
+  padding-top: 0.5rem;
 }
 
 .dashboard-module-card dt {
@@ -3403,6 +3494,14 @@ td input[readonly] {
     padding-inline: 1rem;
   }
 
+  .dashboard-shell::before {
+    top: 56px;
+  }
+
+  .dashboard-top-nav::before {
+    display: none;
+  }
+
   .dashboard-top-nav nav {
     display: none;
   }
@@ -3414,14 +3513,14 @@ td input[readonly] {
 
   .base44-dashboard {
     width: min(100% - 2rem, 44rem);
-    gap: 1rem;
-    padding-top: 0.95rem;
+    gap: 0.9rem;
+    padding-top: 0.85rem;
   }
 
   .mission-banner {
     min-height: 0;
     align-items: flex-start;
-    padding: 1.25rem;
+    padding: 1.15rem;
   }
 
   .mission-banner-body {
@@ -3444,7 +3543,7 @@ td input[readonly] {
 
   .dashboard-module-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
+    gap: 0.85rem;
   }
 
   .dashboard-lower-grid {
@@ -3458,8 +3557,8 @@ td input[readonly] {
   }
 
   .dashboard-module-card {
-    min-height: 17.25rem;
-    padding: 1rem;
+    min-height: 16.8rem;
+    padding: 0.95rem;
   }
 
   .dashboard-module-title strong {
