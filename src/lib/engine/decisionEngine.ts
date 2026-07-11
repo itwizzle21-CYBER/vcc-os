@@ -2,6 +2,7 @@ import { formatCurrency } from "../calculations/currency";
 import type { AppData, DecisionState, FinancialState } from "../types/app";
 
 export function computeDecisionEngine(financialState: FinancialState, data: AppData): DecisionState {
+  const spendableSafe = mergedSpendable(financialState);
   const alerts: DecisionState["priorityAlerts"] = [];
   if (financialState.overdueBills > 0) {
     alerts.push({
@@ -12,8 +13,8 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
   }
   if (financialState.borrowedMoney > 0) {
     alerts.push({
-      title: "Borrowed money is reducing safe cash",
-      detail: `${formatCurrency(financialState.borrowedMoney)} is being held back from Safe To Spend.`,
+      title: "Borrowed money is reducing spendable cash",
+      detail: `${formatCurrency(financialState.borrowedMoney)} is being held back from Spendable / Safe.`,
       tone: "info",
     });
   }
@@ -36,14 +37,14 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
 
   return {
     todayBriefing: data.paycheckPlanner.locked
-      ? `This week is locked. ${formatCurrency(financialState.safeToSpend)} is safe after repayments and bill pressure.`
-      : `Plan the week before spending. Safe To Spend is ${formatCurrency(financialState.safeToSpend)} before the next locked paycheck.`,
+      ? `This week is locked. ${formatCurrency(spendableSafe)} is spendable after repayments and bill pressure.`
+      : `Plan the week before spending. Spendable / Safe is ${formatCurrency(spendableSafe)} before the next locked paycheck.`,
     recommendedMove,
     todayMission: chooseTodayMission(financialState),
     priorityAlerts: alerts.slice(0, 4),
     missionStack: [
       {
-        title: "Protect Safe To Spend",
+        title: "Protect Spendable / Safe",
         detail: `Keep spendable cash above ${formatCurrency(financialState.billsPressure)} until bills clear.`,
         priority: financialState.billsPressure > 0 ? "High" : "Medium",
       },
@@ -62,14 +63,16 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
 }
 
 function chooseRecommendedMove(financialState: FinancialState): string {
+  const spendableSafe = mergedSpendable(financialState);
   if (financialState.overdueBills > 0) return "Pay overdue bills before new spending.";
-  if (financialState.borrowedMoney > 0) return "Repay SpotMe/MyPay first, then recalculate Safe To Spend.";
-  if (financialState.billsPressure > financialState.spendableCash * 0.5) return "Hold cash for bills due this week.";
+  if (financialState.borrowedMoney > 0) return "Repay SpotMe/MyPay first, then recalculate Spendable / Safe.";
+  if (financialState.billsPressure > spendableSafe * 0.5) return "Hold cash for bills due this week.";
   if (financialState.criticalItems > 0) return "Refill critical Buy Next items with the lowest-cost run.";
   return "Keep the week steady and avoid adding new fixed costs.";
 }
 
 function chooseTodayMission(financialState: FinancialState): DecisionState["todayMission"] {
+  const spendableSafe = mergedSpendable(financialState);
   if (financialState.overdueBills > 0) {
     return {
       title: "Stabilize overdue bills",
@@ -91,16 +94,16 @@ function chooseTodayMission(financialState: FinancialState): DecisionState["toda
   if (financialState.borrowedMoney > 0) {
     return {
       title: "Reduce borrowed cash drag",
-      detail: `${formatCurrency(financialState.borrowedMoney)} is lowering the Safe To Spend number.`,
+      detail: `${formatCurrency(financialState.borrowedMoney)} is lowering Spendable / Safe.`,
       href: "/money",
       priority: "High",
     };
   }
 
-  if (financialState.billsPressure > financialState.spendableCash * 0.5 && financialState.billsPressure > 0) {
+  if (financialState.billsPressure > spendableSafe * 0.5 && financialState.billsPressure > 0) {
     return {
       title: "Protect cash for bills",
-      detail: `${formatCurrency(financialState.billsPressure)} is reserved pressure against ${formatCurrency(financialState.spendableCash)} spendable cash.`,
+      detail: `${formatCurrency(financialState.billsPressure)} is reserved pressure against ${formatCurrency(spendableSafe)} Spendable / Safe.`,
       href: "/bills",
       priority: "High",
     };
@@ -135,8 +138,12 @@ function chooseTodayMission(financialState: FinancialState): DecisionState["toda
 
   return {
     title: "Hold the week steady",
-    detail: `Safe To Spend is ${formatCurrency(financialState.safeToSpend)}. Avoid adding fixed costs today.`,
+    detail: `Spendable / Safe is ${formatCurrency(spendableSafe)}. Avoid adding fixed costs today.`,
     href: "/money",
     priority: "Low",
   };
+}
+
+function mergedSpendable(financialState: FinancialState): number {
+  return Math.min(financialState.spendableCash, financialState.safeToSpend);
 }

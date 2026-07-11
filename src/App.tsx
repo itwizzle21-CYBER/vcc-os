@@ -88,10 +88,10 @@ function MoneyPage({
   onChange: (data: AppData) => void;
 }) {
   const moneyRows = data.sections.money;
+  const spendableSafe = Math.min(financialState.spendableCash, financialState.safeToSpend);
   const moneyStats = [
     { label: "Total Cash", value: financialState.totalCash },
-    { label: "Spendable Cash", value: financialState.spendableCash },
-    { label: "Safe To Spend", value: financialState.safeToSpend },
+    { label: "Spendable / Safe", value: spendableSafe },
     { label: "Protected Savings", value: financialState.protectedSavings },
     { label: "Available Savings", value: financialState.availableSavings },
     { label: "Borrowed Money", value: financialState.borrowedMoney, tone: "warn" as const },
@@ -142,10 +142,10 @@ function MoneyPaymentHistory({
   data: AppData;
   financialState: ReturnType<typeof computeFinancialState>;
 }) {
+  const spendableSafe = Math.min(financialState.spendableCash, financialState.safeToSpend);
   const currentSnapshotHasValue = [
     financialState.totalCash,
-    financialState.spendableCash,
-    financialState.safeToSpend,
+    spendableSafe,
     financialState.protectedSavings,
     financialState.borrowedMoney,
   ].some((value) => Math.abs(value) > 0.01);
@@ -170,12 +170,8 @@ function MoneyPaymentHistory({
             </div>
             <dl>
               <div>
-                <dt>Spendable</dt>
-                <dd>{formatCurrency(financialState.spendableCash)}</dd>
-              </div>
-              <div>
-                <dt>Safe To Spend</dt>
-                <dd>{formatCurrency(financialState.safeToSpend)}</dd>
+                <dt>Spendable / Safe</dt>
+                <dd>{formatCurrency(spendableSafe)}</dd>
               </div>
               <div>
                 <dt>Protected</dt>
@@ -1080,7 +1076,7 @@ function ReportsPage({
               <span>{decisionState.todayBriefing}</span>
             </div>
             <div className="report-metric-grid">
-              <ReportMetric label="Safe To Spend" value={financialState.safeToSpend} href="/money" />
+              <ReportMetric label="Spendable / Safe" value={Math.min(financialState.spendableCash, financialState.safeToSpend)} href="/money" />
               <ReportMetric label="Bills Pressure" value={financialState.billsPressure} href="/bills" />
               <ReportMetric label="Protected Savings" value={financialState.protectedSavings} href="/savings" />
               <ReportMetric label="Total Debt" value={financialState.totalDebt} href="/debt" />
@@ -1459,7 +1455,7 @@ function SettingFeatureRow({ title, description, checked, onChange }: { title: s
 
 const widgetOptions = [
   { id: "total-cash", label: "Total Cash" },
-  { id: "money-snapshot", label: "Spendable Cash" },
+  { id: "money-snapshot", label: "Spendable / Safe" },
   { id: "protected-savings", label: "Protected Savings" },
   { id: "command", label: "Command Center" },
   { id: "balance", label: "Money Snapshot" },
@@ -1508,8 +1504,7 @@ function summaryForSection(section: SectionKey, financialState: ReturnType<typeo
   return {
     money: [
       { label: "Total Cash", value: financialState.totalCash },
-      { label: "Spendable Cash", value: financialState.spendableCash },
-      { label: "Safe To Spend", value: financialState.safeToSpend },
+      { label: "Spendable / Safe", value: Math.min(financialState.spendableCash, financialState.safeToSpend) },
       { label: "Protected Savings", value: financialState.protectedSavings },
       { label: "Available Savings", value: financialState.availableSavings },
       { label: "Weekly Income", value: financialState.weeklyIncome },

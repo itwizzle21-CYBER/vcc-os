@@ -155,7 +155,7 @@ export function computeFinancialState(data: AppData): FinancialState {
     cashFlow: [
       { label: "Week", income: weeklyIncome, spending: weeklySpending },
       { label: "Month", income: monthlyIncome, spending: monthlySpending },
-      { label: "Safe", income: safeToSpend, spending: billsPressure },
+      { label: "Spendable / Safe", income: safeToSpend, spending: billsPressure },
     ],
     categorySummary,
   };
