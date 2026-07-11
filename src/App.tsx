@@ -59,6 +59,7 @@ export default function App() {
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/transactions" && <TransactionsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/car-payment" && <CarPaymentPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
@@ -712,6 +713,37 @@ function ModulePage({
   );
 }
 
+function CarPaymentPage(props: Omit<Parameters<typeof ModulePage>[0], "section" | "header">) {
+  const paidPercent = Math.round(props.financialState.carPaymentPaidPercent);
+  const remaining = props.financialState.carPaymentRemainingTotal;
+  const original = props.financialState.carPaymentOriginalTotal;
+
+  return (
+    <ModulePage
+      {...props}
+      section="carPayment"
+      header={
+        <section className="car-payment-hero">
+          <div>
+            <p className="eyebrow">Auto Loan</p>
+            <h2>{remaining > 0 ? `${formatCurrency(remaining)} left` : "Add your car payment details"}</h2>
+            <p>
+              {original > 0
+                ? `${paidPercent}% paid down from ${formatCurrency(original)}.`
+                : "Track the vehicle, lender, balance, monthly payment, due date, APR, and payoff notes."}
+            </p>
+          </div>
+          <div className="car-payment-progress-card">
+            <span>{paidPercent}% paid</span>
+            <i><b style={{ width: `${Math.max(0, Math.min(100, paidPercent))}%` }} /></i>
+            <small>{formatCurrency(props.financialState.carPaymentMonthlyTotal)} monthly total</small>
+          </div>
+        </section>
+      }
+    />
+  );
+}
+
 function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">) {
   const [inventoryTab, setInventoryTab] = useState("all");
   const [inventorySearch, setInventorySearch] = useState("");
@@ -1296,6 +1328,7 @@ const sectionResetOptions: Array<{ key: SectionKey; label: string }> = [
   { key: "goals", label: "Goals" },
   { key: "inventory", label: "Inventory" },
   { key: "debt", label: "Debt" },
+  { key: "carPayment", label: "Car Payment" },
   { key: "income", label: "Income" },
 ];
 
@@ -1417,6 +1450,13 @@ function summaryForSection(section: SectionKey, financialState: ReturnType<typeo
       { label: "Minimum Payments", value: financialState.minimumPayments },
       { label: "Next Payoff", value: financialState.nextPayoff },
       { label: "Debt-Free %", value: `${financialState.debtFreePercent.toFixed(0)}%` },
+    ],
+    carPayment: [
+      { label: "Remaining Total", value: financialState.carPaymentRemainingTotal, tone: "warn" as const },
+      { label: "Original Total", value: financialState.carPaymentOriginalTotal },
+      { label: "Monthly Payment", value: financialState.carPaymentMonthlyTotal },
+      { label: "Paid Off", value: `${financialState.carPaymentPaidPercent.toFixed(0)}%` },
+      { label: "Next Vehicle", value: financialState.nextCarPayment },
     ],
     savings: [
       { label: "Protected Savings", value: financialState.protectedSavings },

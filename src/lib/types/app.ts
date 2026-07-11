@@ -4,6 +4,7 @@ export type SectionKey =
   | "income"
   | "transactions"
   | "debt"
+  | "carPayment"
   | "savings"
   | "inventory"
   | "goals";
@@ -99,6 +100,11 @@ export interface FinancialState {
   minimumPayments: number;
   nextPayoff: string;
   debtFreePercent: number;
+  carPaymentOriginalTotal: number;
+  carPaymentRemainingTotal: number;
+  carPaymentPaidPercent: number;
+  carPaymentMonthlyTotal: number;
+  nextCarPayment: string;
   emergencyFund: number;
   goalSavings: number;
   goalsComplete: number;

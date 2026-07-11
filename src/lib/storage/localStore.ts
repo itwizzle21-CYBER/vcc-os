@@ -132,6 +132,8 @@ function isLegacySampleRow(section: SectionKey, row: SpreadsheetRow): boolean {
         matchesSeed(row, "debt-1", cells.name, "Credit card", cells.balance, 8250) ||
         matchesSeed(row, "debt-2", cells.name, "Car note", cells.balance, 10200)
       );
+    case "carPayment":
+      return false;
     case "savings":
       return (
         matchesSeed(row, "sav-1", cells.name, "Protected Savings", cells.balance, 12800) ||

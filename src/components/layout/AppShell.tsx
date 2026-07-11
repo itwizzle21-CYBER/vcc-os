@@ -2,6 +2,7 @@ import {
   BarChart3,
   Bell,
   Boxes,
+  Car,
   CheckCircle2,
   CircleDollarSign,
   ChevronDown,
@@ -35,6 +36,7 @@ const nav = [
   { path: "/reports", label: "Reports", icon: FileBarChart },
   { path: "/income", label: "Income", icon: CircleDollarSign },
   { path: "/debt", label: "Debt", icon: CreditCard },
+  { path: "/car-payment", label: "Car Payment", icon: Car },
   { path: "/missions", label: "Missions", icon: CheckCircle2 },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
@@ -288,6 +290,7 @@ function buildSearchResults(data: AppData, query: string) {
     income: "/income",
     transactions: "/transactions",
     debt: "/debt",
+    carPayment: "/car-payment",
     savings: "/savings",
     inventory: "/inventory",
     goals: "/goals",

@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Boxes,
+  Car,
   CheckCircle2,
   CreditCard,
   ListChecks,
@@ -31,6 +32,11 @@ interface DashboardModuleCardProps {
   value: string;
   detail: string;
   metrics: Array<[string, string]>;
+  progress?: {
+    label: string;
+    value: number;
+    detail: string;
+  };
 }
 
 export default function Dashboard({
@@ -122,6 +128,25 @@ export default function Dashboard({
         ["Estimated Finish", financialState.estimatedFinish],
       ],
     },
+    {
+      href: "/car-payment",
+      tone: "blue",
+      icon: <Car size={22} />,
+      title: "Car Payment",
+      value: formatWholeCurrency(financialState.carPaymentRemainingTotal),
+      detail: "Remaining total left",
+      metrics: [
+        ["Monthly Payment", formatWholeCurrency(financialState.carPaymentMonthlyTotal)],
+        ["Original Total", formatWholeCurrency(financialState.carPaymentOriginalTotal)],
+        ["Paid Off", `${Math.round(financialState.carPaymentPaidPercent)}%`],
+        ["Next Vehicle", financialState.nextCarPayment],
+      ],
+      progress: {
+        label: "Payoff Progress",
+        value: financialState.carPaymentPaidPercent,
+        detail: `${formatWholeCurrency(financialState.carPaymentRemainingTotal)} left`,
+      },
+    },
   ];
 
   return (
@@ -201,6 +226,7 @@ function DashboardModuleCard({
   value,
   detail,
   metrics,
+  progress,
 }: DashboardModuleCardProps) {
   return (
     <a href={href} className="base-panel dashboard-module-card">
@@ -213,6 +239,16 @@ function DashboardModuleCard({
         <strong>{value}</strong>
         <em>{detail}</em>
       </div>
+      {progress && (
+        <div className="dashboard-card-progress" aria-label={`${progress.label}: ${Math.round(progress.value)}%`}>
+          <div>
+            <span>{progress.label}</span>
+            <strong>{Math.round(progress.value)}%</strong>
+          </div>
+          <i><b style={{ width: `${Math.max(0, Math.min(100, progress.value))}%` }} /></i>
+          <small>{progress.detail}</small>
+        </div>
+      )}
       <dl>
         {metrics.map(([label, metric]) => (
           <div key={label}>

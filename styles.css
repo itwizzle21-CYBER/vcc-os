@@ -333,8 +333,9 @@ textarea {
   position: absolute;
   inset: 0;
   opacity: 0;
-  background: rgba(0, 0, 0, 0.46);
-  backdrop-filter: blur(7px);
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.62)),
+    rgba(0, 0, 0, 0.38);
   transition: opacity var(--dur-base) var(--ease-out);
 }
 
@@ -356,8 +357,7 @@ textarea {
   box-shadow: -24px 0 70px rgba(0, 0, 0, 0.36);
   padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
   transform: translateX(102%);
-  transition: transform var(--dur-base) var(--ease-out);
-  backdrop-filter: blur(24px) saturate(135%);
+  transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out);
   overflow-y: auto;
 }
 
@@ -771,9 +771,19 @@ textarea {
   display: grid;
   gap: 0.85rem;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  background: color-mix(in srgb, var(--surface) 98%, var(--bg));
   padding: 1rem;
-  backdrop-filter: blur(14px);
+}
+
+.spreadsheet-toolbar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1rem;
+  left: 0;
+  height: 1rem;
+  pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 54%, transparent), transparent);
 }
 
 .toolbar-controls {
@@ -1720,6 +1730,67 @@ td input[readonly] {
   background: linear-gradient(90deg, #25d39b, #24d099);
 }
 
+.car-payment-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+  gap: 1rem;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 0.95rem;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 58%),
+    color-mix(in srgb, var(--surface) 94%, var(--bg));
+  box-shadow: var(--shadow-raised);
+  padding: 1rem;
+}
+
+.car-payment-hero h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 3vw, 2.15rem);
+  line-height: 1.05;
+}
+
+.car-payment-hero p:not(.eyebrow) {
+  max-width: 46rem;
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+}
+
+.car-payment-progress-card {
+  display: grid;
+  gap: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  border-radius: 0.85rem;
+  background: var(--surface-2);
+  padding: 0.9rem;
+}
+
+.car-payment-progress-card span {
+  color: var(--text);
+  font-size: 1.15rem;
+  font-weight: 950;
+}
+
+.car-payment-progress-card i {
+  display: block;
+  height: 0.75rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.car-payment-progress-card b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--good));
+}
+
+.car-payment-progress-card small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
 .reports-grid {
   display: grid;
   gap: 0.85rem;
@@ -2353,7 +2424,7 @@ td input[readonly] {
 :root[data-surface="glass"] .buy-next-panel,
 :root[data-surface="glass"] .sidebar,
 :root[data-surface="glass"] .mobile-drawer {
-  backdrop-filter: blur(22px) saturate(130%);
+  background-color: color-mix(in srgb, var(--surface) 94%, var(--bg));
 }
 
 :root[data-surface="neumorphic"] .dashboard-widget,
@@ -2802,13 +2873,11 @@ td input[readonly] {
 .dashboard-shell::before {
   top: 63px;
   background: linear-gradient(180deg, rgba(9, 11, 15, 0.92), rgba(9, 11, 15, 0));
-  backdrop-filter: blur(2px);
 }
 
 .dashboard-shell::after {
   bottom: 0;
   background: linear-gradient(0deg, rgba(9, 11, 15, 0.92), rgba(9, 11, 15, 0));
-  backdrop-filter: blur(2px);
 }
 
 .dashboard-shell .sensor-strip {
@@ -3366,6 +3435,49 @@ td input[readonly] {
   line-height: 1;
 }
 
+.dashboard-card-progress {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid rgba(100, 183, 255, 0.16);
+  border-radius: 0.8rem;
+  background: rgba(100, 183, 255, 0.07);
+  padding: 0.72rem;
+}
+
+.dashboard-card-progress div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.dashboard-card-progress span,
+.dashboard-card-progress small {
+  color: #8e9299;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.dashboard-card-progress strong {
+  color: #f5f5f7;
+  font-size: 0.86rem;
+}
+
+.dashboard-card-progress i {
+  display: block;
+  height: 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-card-progress b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #64b7ff, #27d79a);
+}
+
 .dashboard-module-card dl {
   display: grid;
   gap: 0.48rem;
@@ -3672,6 +3784,10 @@ td input[readonly] {
     text-align: left;
   }
 
+  .car-payment-hero {
+    grid-template-columns: 1fr;
+  }
+
   .base44-dashboard .panel-heading {
     align-items: flex-start;
   }
@@ -3897,9 +4013,19 @@ td input[readonly] {
   z-index: 40;
   margin: -1rem -1rem 1rem;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
   padding: 1rem;
-  backdrop-filter: blur(20px) saturate(135%);
+}
+
+.topbar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1rem;
+  left: 0;
+  height: 1rem;
+  pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 60%, transparent), transparent);
 }
 
 .topbar h1 {
@@ -4940,9 +5066,19 @@ td input:focus {
   align-items: start;
   justify-content: space-around;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(18, 19, 24, 0.92);
+  background: rgba(18, 19, 24, 0.96);
   padding: 0.45rem 0.75rem env(safe-area-inset-bottom);
-  backdrop-filter: blur(18px);
+}
+
+.mobile-bottom-nav::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: -1.2rem;
+  left: 0;
+  height: 1.2rem;
+  pointer-events: none;
+  background: linear-gradient(0deg, rgba(18, 19, 24, 0.84), transparent);
 }
 
 .mobile-bottom-nav a {
