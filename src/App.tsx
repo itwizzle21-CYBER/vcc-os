@@ -115,7 +115,7 @@ function MoneyPage({
         </div>
       </section>
 
-      <PaycheckPlanner data={data} onChange={onChange} />
+      <PaycheckPlanner data={data} onChange={onChange} showHistory={false} />
 
       <section className="money-simple-inputs">
         <Spreadsheet
@@ -129,7 +129,99 @@ function MoneyPage({
           addLabel="Add Money Row"
         />
       </section>
+
+      <MoneyPaymentHistory data={data} financialState={financialState} />
     </div>
+  );
+}
+
+function MoneyPaymentHistory({
+  data,
+  financialState,
+}: {
+  data: AppData;
+  financialState: ReturnType<typeof computeFinancialState>;
+}) {
+  const currentSnapshotHasValue = [
+    financialState.totalCash,
+    financialState.spendableCash,
+    financialState.safeToSpend,
+    financialState.protectedSavings,
+    financialState.borrowedMoney,
+  ].some((value) => Math.abs(value) > 0.01);
+
+  return (
+    <section className="money-history-panel" aria-label="Money Snapshot payment history">
+      <div className="money-history-heading">
+        <div>
+          <p className="eyebrow">Payment History</p>
+          <h2>Money Snapshot Records</h2>
+        </div>
+        <span>{currentSnapshotHasValue ? "Auto-synced" : "Waiting for snapshot data"}</span>
+      </div>
+
+      <div className="money-history-list">
+        {currentSnapshotHasValue && (
+          <article className="money-history-record current">
+            <div>
+              <span>Current Snapshot</span>
+              <strong>{formatCurrency(financialState.totalCash)}</strong>
+              <small>{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</small>
+            </div>
+            <dl>
+              <div>
+                <dt>Spendable</dt>
+                <dd>{formatCurrency(financialState.spendableCash)}</dd>
+              </div>
+              <div>
+                <dt>Safe To Spend</dt>
+                <dd>{formatCurrency(financialState.safeToSpend)}</dd>
+              </div>
+              <div>
+                <dt>Protected</dt>
+                <dd>{formatCurrency(financialState.protectedSavings)}</dd>
+              </div>
+              <div>
+                <dt>Borrowed</dt>
+                <dd>{formatCurrency(financialState.borrowedMoney)}</dd>
+              </div>
+            </dl>
+          </article>
+        )}
+
+        {data.paycheckHistory.map((row) => (
+          <article className="money-history-record" key={row.id}>
+            <div>
+              <span>Locked Week</span>
+              <strong>{formatCurrency(toNumber(row.remaining))}</strong>
+              <small>{row.payDate || "No pay date"}</small>
+            </div>
+            <dl>
+              <div>
+                <dt>Paycheck</dt>
+                <dd>{formatCurrency(toNumber(row.income))}</dd>
+              </div>
+              <div>
+                <dt>SpotMe</dt>
+                <dd>{formatCurrency(toNumber(row.spotMe))}</dd>
+              </div>
+              <div>
+                <dt>MyPay</dt>
+                <dd>{formatCurrency(toNumber(row.myPay))}</dd>
+              </div>
+              <div>
+                <dt>Week</dt>
+                <dd>{row.weekStart && row.weekEnd ? `${row.weekStart} to ${row.weekEnd}` : "Not set"}</dd>
+              </div>
+            </dl>
+          </article>
+        ))}
+
+        {!currentSnapshotHasValue && data.paycheckHistory.length === 0 && (
+          <p className="empty-copy">Add Money Snapshot inputs or lock a paycheck week to create read-only payment history records.</p>
+        )}
+      </div>
+    </section>
   );
 }
 

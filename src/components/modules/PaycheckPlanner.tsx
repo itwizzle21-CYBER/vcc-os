@@ -5,9 +5,11 @@ import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner } from "..
 export default function PaycheckPlanner({
   data,
   onChange,
+  showHistory = true,
 }: {
   data: AppData;
   onChange: (data: AppData) => void;
+  showHistory?: boolean;
 }) {
   const [selected, setSelected] = useState<PaycheckHistoryRow | null>(null);
   const planner = data.paycheckPlanner;
@@ -75,42 +77,33 @@ export default function PaycheckPlanner({
         )}
       </div>
 
-      <div className="history-panel">
-        <p className="eyebrow">Paycheck History</p>
-        <div className="history-list">
-          {data.paycheckHistory.map((row) => (
-            <button type="button" key={row.id} onClick={() => setSelected(row)}>
-              <span>{row.payDate}</span>
-              <strong>{formatCurrency(toNumber(row.income))}</strong>
-              <small>{formatCurrency(toNumber(row.remaining))} remaining</small>
-            </button>
-          ))}
-          {data.paycheckHistory.length === 0 && <p className="empty-copy">No locked weeks yet.</p>}
-        </div>
-        {selected && (
-          <div className="week-detail">
-            <h3>Week Detail</h3>
-            <p>Paycheck: {formatCurrency(toNumber(selected.income))}</p>
-            <p>SpotMe: {formatCurrency(toNumber(selected.spotMe))}</p>
-            <p>MyPay: {formatCurrency(toNumber(selected.myPay))}</p>
-            <p>Remaining: {formatCurrency(toNumber(selected.remaining))}</p>
-            <p>
-              {selected.weekStart} to {selected.weekEnd}
-            </p>
-            <button type="button" onClick={() => updatePlanner({
-              paycheckAmount: selected.income,
-              payDate: selected.payDate,
-              weekStart: selected.weekStart,
-              weekEnd: selected.weekEnd,
-              spotMeRepayment: selected.spotMe,
-              myPayRepayment: selected.myPay,
-              locked: false,
-            })}>
-              Edit/Unlock
-            </button>
+      {showHistory && (
+        <div className="history-panel">
+          <p className="eyebrow">Payment History</p>
+          <div className="history-list">
+            {data.paycheckHistory.map((row) => (
+              <button type="button" key={row.id} onClick={() => setSelected(row)}>
+                <span>{row.payDate}</span>
+                <strong>{formatCurrency(toNumber(row.income))}</strong>
+                <small>{formatCurrency(toNumber(row.remaining))} remaining</small>
+              </button>
+            ))}
+            {data.paycheckHistory.length === 0 && <p className="empty-copy">No locked weeks yet.</p>}
           </div>
-        )}
-      </div>
+          {selected && (
+            <div className="week-detail">
+              <h3>Week Detail</h3>
+              <p>Paycheck: {formatCurrency(toNumber(selected.income))}</p>
+              <p>SpotMe: {formatCurrency(toNumber(selected.spotMe))}</p>
+              <p>MyPay: {formatCurrency(toNumber(selected.myPay))}</p>
+              <p>Remaining: {formatCurrency(toNumber(selected.remaining))}</p>
+              <p>
+                {selected.weekStart} to {selected.weekEnd}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
