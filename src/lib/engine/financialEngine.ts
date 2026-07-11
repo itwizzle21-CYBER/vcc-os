@@ -13,16 +13,39 @@ export function computeFinancialState(data: AppData): FinancialState {
   const goals = data.sections.goals.filter((row) => !isBlankRow(row.cells));
   const inventory = data.sections.inventory.filter((row) => !isBlankRow(row.cells));
 
-  const moneyAmount = (label: string) => {
-    const found = money.find((row) => (row.cells.label || "").toLowerCase().includes(label.toLowerCase()));
-    return toNumber(found?.cells.amount);
-  };
-  const operatingCash = moneyAmount("operating");
+  const moneyRows = money.map((row) => ({
+    row,
+    amount: toNumber(row.cells.amount),
+    section: moneySection(row),
+  }));
+  const cashMoney = moneyRows
+    .filter((item) => item.section === "cash")
+    .reduce((sum, item) => sum + positive(item.amount), 0);
+  const protectedMoney = moneyRows
+    .filter((item) => item.section === "protectedSavings")
+    .reduce((sum, item) => sum + positive(item.amount), 0);
+  const availableSavingsMoney = moneyRows
+    .filter((item) => item.section === "availableSavings")
+    .reduce((sum, item) => sum + positive(item.amount), 0);
+  const borrowedMoney = moneyRows
+    .filter((item) => item.section === "borrowed")
+    .reduce((sum, item) => sum + Math.abs(item.amount), 0);
+  const repaymentImpact = toNumber(data.paycheckPlanner.spotMeRepayment) + toNumber(data.paycheckPlanner.myPayRepayment);
+  const plannerRemainingCash = data.paycheckPlanner.locked
+    ? Math.max(0, toNumber(data.paycheckPlanner.paycheckAmount) - repaymentImpact)
+    : 0;
+  const latestHistoryRemainingCash = data.paycheckHistory.reduce(
+    (max, row) => Math.max(max, positive(toNumber(row.remaining))),
+    0
+  );
+  const operatingCash = cashMoney || Math.max(plannerRemainingCash, latestHistoryRemainingCash);
   const protectedSavings = savings
     .filter((row) => (row.cells.protected || "").toLowerCase().startsWith("y") || row.cells.name.toLowerCase().includes("protected"))
-    .reduce((sum, row) => sum + toNumber(row.cells.balance), moneyAmount("protected"));
-  const totalCash = money.reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
-  const borrowedMoney = moneyAmount("spotme") + moneyAmount("mypay") + moneyAmount("borrowed");
+    .reduce((sum, row) => sum + toNumber(row.cells.balance), protectedMoney);
+  const availableSavings = savings
+    .filter((row) => !(row.cells.protected || "").toLowerCase().startsWith("y"))
+    .reduce((sum, row) => sum + toNumber(row.cells.balance), availableSavingsMoney);
+  const totalCash = operatingCash + protectedSavings + availableSavings;
   const lockedIncome = data.paycheckPlanner.locked ? toNumber(data.paycheckPlanner.paycheckAmount) : 0;
   const extraIncome = income.reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
   const transactionIncome = transactions
@@ -31,8 +54,7 @@ export function computeFinancialState(data: AppData): FinancialState {
   const weeklyIncome = lockedIncome || extraIncome || transactionIncome;
   const monthlyIncome = weeklyIncome * 4.33;
   const receivedIncome = data.paycheckHistory.reduce((sum, row) => sum + toNumber(row.income), 0) + transactionIncome;
-  const repaymentImpact = toNumber(data.paycheckPlanner.spotMeRepayment) + toNumber(data.paycheckPlanner.myPayRepayment);
-  const spendableCash = Math.max(0, operatingCash + weeklyIncome - repaymentImpact);
+  const spendableCash = Math.max(0, cashMoney > 0 ? operatingCash + weeklyIncome - repaymentImpact : operatingCash);
 
   const today = new Date();
   const billsDueToday = bills.filter((row) => isSameDay(row.cells.dueDate, today) && !isPaid(row)).length;
@@ -74,9 +96,6 @@ export function computeFinancialState(data: AppData): FinancialState {
     .filter((row) => !isPaid(row))
     .sort((a, b) => (a.cells.dueDate || "").localeCompare(b.cells.dueDate || ""))[0];
 
-  const availableSavings = savings
-    .filter((row) => !(row.cells.protected || "").toLowerCase().startsWith("y"))
-    .reduce((sum, row) => sum + toNumber(row.cells.balance), 0);
   const emergencyFund = savings.find((row) => row.cells.name.toLowerCase().includes("emergency"));
   const goalSavings = goals.reduce((sum, row) => sum + toNumber(row.cells.current), 0);
   const completeGoals = goals.filter((row) => toNumber(row.cells.current) >= toNumber(row.cells.target) && toNumber(row.cells.target) > 0).length;
@@ -144,6 +163,18 @@ export function computeFinancialState(data: AppData): FinancialState {
 
 function positive(value: number): number {
   return value > 0 ? value : 0;
+}
+
+function moneySection(row: SpreadsheetRow): "cash" | "protectedSavings" | "availableSavings" | "borrowed" {
+  const value = `${row.cells.section || ""} ${row.cells.label || ""} ${row.cells.notes || ""}`.toLowerCase();
+  if (includesAny(value, ["spotme", "my pay", "mypay", "borrow", "advance", "owed", "credit usage"])) return "borrowed";
+  if (includesAny(value, ["protected", "emergency", "reserve"])) return "protectedSavings";
+  if (includesAny(value, ["saving", "hysa", "vault"])) return "availableSavings";
+  return "cash";
+}
+
+function includesAny(value: string, needles: string[]): boolean {
+  return needles.some((needle) => value.includes(needle));
 }
 
 function isPaid(row: SpreadsheetRow): boolean {
