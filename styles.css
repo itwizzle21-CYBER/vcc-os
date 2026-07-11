@@ -3099,14 +3099,14 @@ td input[readonly] {
 .mission-banner::before {
   position: absolute;
   inset: 0;
-  opacity: 0.75;
+  opacity: 0.92;
   background:
-    linear-gradient(115deg, transparent 0 26%, rgba(255, 255, 255, 0.16) 27%, transparent 31% 58%, rgba(255, 255, 255, 0.12) 59%, transparent 64%),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 8px);
+    linear-gradient(115deg, transparent 0 24%, rgba(255, 255, 255, 0.24) 26%, transparent 32% 56%, rgba(255, 255, 255, 0.2) 59%, transparent 66%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0 1px, transparent 1px 8px);
   background-size: 18rem 100%, 11px 11px;
   content: "";
   pointer-events: none;
-  mix-blend-mode: soft-light;
+  mix-blend-mode: overlay;
   animation: mission-texture-drift 9s linear infinite;
 }
 
