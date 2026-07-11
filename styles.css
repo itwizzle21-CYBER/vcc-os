@@ -2142,6 +2142,17 @@ td input[readonly] {
   display: grid;
   gap: 0.3rem;
   margin-top: 0.65rem;
+  color: inherit;
+}
+
+.mission-row:hover {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--border));
+  transform: translateY(-1px);
+}
+
+.mission-row:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 78%, white);
+  outline-offset: 3px;
 }
 
 .alert-row span,
@@ -3265,17 +3276,29 @@ td input[readonly] {
 
 .dashboard-mission-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.75rem;
   align-items: start;
   border-top: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 0.65rem;
   padding-top: 0.65rem;
+  color: inherit;
 }
 
 .dashboard-mission-row:first-child,
 .dashboard-alert-row:first-child {
   border-top: 0;
   padding-top: 0;
+}
+
+.dashboard-mission-row:hover {
+  color: inherit;
+  transform: translateX(2px);
+}
+
+.dashboard-mission-row:focus-visible {
+  outline: 3px solid rgba(100, 183, 255, 0.72);
+  outline-offset: 3px;
 }
 
 .dashboard-mission-row div,
@@ -3298,6 +3321,11 @@ td input[readonly] {
   font-size: 0.84rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+.dashboard-mission-row > svg {
+  margin-top: 0.18rem;
+  color: #64b7ff;
 }
 
 .stack-priority {

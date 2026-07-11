@@ -46,16 +46,19 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
       {
         title: "Protect Spendable / Safe",
         detail: `Keep spendable cash above ${formatCurrency(financialState.billsPressure)} until bills clear.`,
+        href: "/money",
         priority: financialState.billsPressure > 0 ? "High" : "Medium",
       },
       {
         title: "Clear borrowed money",
         detail: `SpotMe/MyPay/advances currently reduce the cash plan by ${formatCurrency(financialState.borrowedMoney)}.`,
+        href: "/money",
         priority: financialState.borrowedMoney > 0 ? "High" : "Low",
       },
       {
         title: "Restock Buy Next",
         detail: `${financialState.buyNextCount} inventory row${financialState.buyNextCount === 1 ? "" : "s"} are below minimum.`,
+        href: "/inventory",
         priority: financialState.buyNextCount > 0 ? "Medium" : "Low",
       },
     ],

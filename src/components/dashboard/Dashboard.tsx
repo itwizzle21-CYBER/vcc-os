@@ -182,13 +182,14 @@ export default function Dashboard({
           </div>
           <div className="dashboard-mission-stack">
             {decisionState.missionStack.map((mission) => (
-              <div key={mission.title} className="dashboard-mission-row">
+              <a key={mission.title} href={mission.href} className="dashboard-mission-row">
                 <div>
                   <strong>{mission.title}</strong>
                   <span>{mission.detail}</span>
                 </div>
                 <em className={`stack-priority priority-${mission.priority.toLowerCase()}`}>{mission.priority}</em>
-              </div>
+                <ArrowRight size={16} />
+              </a>
             ))}
           </div>
         </article>

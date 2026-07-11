@@ -130,5 +130,10 @@ export interface DecisionState {
     priority: "Critical" | "High" | "Medium" | "Low";
   };
   priorityAlerts: Array<{ title: string; detail: string; tone: "warning" | "info" | "success" }>;
-  missionStack: Array<{ title: string; detail: string; priority: "High" | "Medium" | "Low" }>;
+  missionStack: Array<{
+    title: string;
+    detail: string;
+    href: DecisionState["todayMission"]["href"];
+    priority: "High" | "Medium" | "Low";
+  }>;
 }

@@ -1075,11 +1075,11 @@ function MissionsPage({ decisionState }: { decisionState: ReturnType<typeof comp
         <div className="panel">
           <p className="eyebrow">Mission Stack</p>
           {decisionState.missionStack.map((mission) => (
-            <div key={mission.title} className="mission-row">
+            <a key={mission.title} href={mission.href} className="mission-row">
               <strong>{mission.title}</strong>
               <span>{mission.detail}</span>
               <em>{mission.priority}</em>
-            </div>
+            </a>
           ))}
         </div>
       </section>
