@@ -3,6 +3,12 @@ import type { AppData, DecisionState, FinancialState } from "../types/app";
 
 export function computeDecisionEngine(financialState: FinancialState, data: AppData): DecisionState {
   const spendableSafe = mergedSpendable(financialState);
+  const spendableTarget = Math.max(1, financialState.billsPressure);
+  const spendableProgress = financialState.billsPressure > 0
+    ? Math.min(100, (spendableSafe / spendableTarget) * 100)
+    : 100;
+  const borrowedProgress = financialState.borrowedMoney > 0 ? 0 : 100;
+  const inventoryProgress = financialState.buyNextCount > 0 ? 0 : 100;
   const alerts: DecisionState["priorityAlerts"] = [];
   if (financialState.overdueBills > 0) {
     alerts.push({
@@ -47,18 +53,27 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
         title: "Protect Spendable / Safe",
         detail: `Keep spendable cash above ${formatCurrency(financialState.billsPressure)} until bills clear.`,
         href: "/money",
+        target: financialState.billsPressure > 0 ? `${formatCurrency(spendableSafe)} / ${formatCurrency(spendableTarget)}` : "No bill pressure",
+        progress: spendableProgress,
+        completed: spendableProgress >= 100,
         priority: financialState.billsPressure > 0 ? "High" : "Medium",
       },
       {
         title: "Clear borrowed money",
         detail: `SpotMe/MyPay/advances currently reduce the cash plan by ${formatCurrency(financialState.borrowedMoney)}.`,
         href: "/money",
+        target: financialState.borrowedMoney > 0 ? `${formatCurrency(financialState.borrowedMoney)} left` : "Cleared",
+        progress: borrowedProgress,
+        completed: financialState.borrowedMoney <= 0,
         priority: financialState.borrowedMoney > 0 ? "High" : "Low",
       },
       {
         title: "Restock Buy Next",
         detail: `${financialState.buyNextCount} inventory row${financialState.buyNextCount === 1 ? "" : "s"} are below minimum.`,
         href: "/inventory",
+        target: financialState.buyNextCount > 0 ? `${financialState.buyNextCount} remaining` : "All stocked",
+        progress: inventoryProgress,
+        completed: financialState.buyNextCount <= 0,
         priority: financialState.buyNextCount > 0 ? "Medium" : "Low",
       },
     ],

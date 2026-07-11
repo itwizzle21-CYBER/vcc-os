@@ -3,7 +3,9 @@ import {
   ArrowRight,
   Boxes,
   Car,
+  Check,
   CheckCircle2,
+  Circle,
   CreditCard,
   ListChecks,
   PiggyBank,
@@ -182,10 +184,15 @@ export default function Dashboard({
           </div>
           <div className="dashboard-mission-stack">
             {decisionState.missionStack.map((mission) => (
-              <a key={mission.title} href={mission.href} className="dashboard-mission-row">
+              <a key={mission.title} href={mission.href} className={`dashboard-mission-row ${mission.completed ? "complete" : "active"}`}>
+                <span className="mission-check-indicator" aria-hidden="true">
+                  {mission.completed ? <Check size={14} /> : <Circle size={14} />}
+                </span>
                 <div>
                   <strong>{mission.title}</strong>
                   <span>{mission.detail}</span>
+                  <small>{mission.target}</small>
+                  <i aria-hidden="true"><b style={{ width: `${Math.max(0, Math.min(100, mission.progress))}%` }} /></i>
                 </div>
                 <em className={`stack-priority priority-${mission.priority.toLowerCase()}`}>{mission.priority}</em>
                 <ArrowRight size={16} />

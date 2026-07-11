@@ -134,6 +134,9 @@ export interface DecisionState {
     title: string;
     detail: string;
     href: DecisionState["todayMission"]["href"];
+    target: string;
+    progress: number;
+    completed: boolean;
     priority: "High" | "Medium" | "Low";
   }>;
 }

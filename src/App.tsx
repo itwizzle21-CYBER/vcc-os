@@ -1075,9 +1075,11 @@ function MissionsPage({ decisionState }: { decisionState: ReturnType<typeof comp
         <div className="panel">
           <p className="eyebrow">Mission Stack</p>
           {decisionState.missionStack.map((mission) => (
-            <a key={mission.title} href={mission.href} className="mission-row">
+            <a key={mission.title} href={mission.href} className={`mission-row ${mission.completed ? "complete" : "active"}`}>
               <strong>{mission.title}</strong>
               <span>{mission.detail}</span>
+              <small>{mission.completed ? "Checked" : mission.target}</small>
+              <i aria-hidden="true"><b style={{ width: `${Math.max(0, Math.min(100, mission.progress))}%` }} /></i>
               <em>{mission.priority}</em>
             </a>
           ))}
