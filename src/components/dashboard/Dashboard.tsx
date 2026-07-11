@@ -50,12 +50,12 @@ export default function Dashboard({
       tone: "blue",
       icon: <Wallet size={22} />,
       title: "Money Snapshot",
-      value: formatWholeCurrency(financialState.totalCash),
+      value: formatExactCurrency(financialState.totalCash),
       detail: "Current cash position",
       metrics: [
-        ["Spendable / Safe", formatWholeCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend))],
-        ["Protected Savings", formatWholeCurrency(financialState.protectedSavings)],
-        ["Borrowed Money", formatWholeCurrency(financialState.borrowedMoney)],
+        ["Spendable / Safe", formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend))],
+        ["Protected Savings", formatExactCurrency(financialState.protectedSavings)],
+        ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
       ],
     },
     {
@@ -277,5 +277,14 @@ function formatWholeCurrency(value: number) {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
+function formatExactCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number.isFinite(value) ? value : 0);
 }
