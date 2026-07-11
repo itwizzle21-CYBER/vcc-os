@@ -4600,21 +4600,24 @@ td input:focus {
 }
 
 .reference-shell .spreadsheet-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
   padding: 0;
+  max-height: clamp(30rem, calc(100svh - 9rem), 46rem);
 }
 
 .reference-shell .spreadsheet-toolbar {
-  position: sticky;
-  top: 4rem;
+  position: relative;
+  top: auto;
   z-index: 15;
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) auto;
+  grid-template-columns: minmax(10rem, 0.75fr) minmax(0, 1fr);
   align-items: end;
   gap: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: #17181d;
-  padding: 1rem 1.25rem;
+  padding: 0.85rem 1rem;
 }
 
 .reference-shell .spreadsheet-toolbar .eyebrow {
@@ -4630,7 +4633,7 @@ td input:focus {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.65rem;
+  gap: 0.5rem;
 }
 
 .reference-shell .toolbar-controls label,
@@ -4676,10 +4679,12 @@ td input:focus {
   border-radius: 0.65rem;
   background: rgba(255, 255, 255, 0.055);
   color: #ffffff;
-  padding: 0 0.75rem;
+  padding: 0 0.7rem;
 }
 
 .reference-shell .table-wrap {
+  min-height: 0;
+  overflow: auto;
   background: transparent;
 }
 
@@ -4784,8 +4789,8 @@ td input:focus {
 
   .reference-shell .inventory-tabs {
     display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    overflow: visible;
     scrollbar-width: none;
   }
 
@@ -4805,15 +4810,75 @@ td input:focus {
     justify-content: stretch;
   }
 
-  .reference-shell .spreadsheet-toolbar {
-    grid-template-columns: 1fr;
-    top: 3.5rem;
+  .reference-shell .bills-inline-stats,
+  .reference-shell .transactions-inline-stats,
+  .reference-shell .inventory-inline-stats,
+  .reference-shell .savings-inline-stats,
+  .reference-shell .goals-inline-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
   }
 
+  .reference-shell .spreadsheet-toolbar {
+    grid-template-columns: 1fr;
+    top: auto;
+    padding: 0.85rem;
+  }
+
+  .reference-shell .spreadsheet-panel {
+    max-height: calc(100svh - 8.5rem);
+  }
+
+  .reference-shell .spreadsheet-panel table,
   .reference-shell .money-simple-inputs table {
     min-width: 0;
   }
 
+  .reference-shell .spreadsheet-panel thead {
+    display: none;
+  }
+
+  .reference-shell .spreadsheet-panel tbody,
+  .reference-shell .spreadsheet-panel tr,
+  .reference-shell .spreadsheet-panel td {
+    display: block;
+    width: 100%;
+  }
+
+  .reference-shell .spreadsheet-panel tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.65rem;
+  }
+
+  .reference-shell .spreadsheet-panel td {
+    display: grid;
+    grid-template-columns: minmax(6rem, 0.42fr) minmax(0, 1fr);
+    gap: 0.65rem;
+    align-items: center;
+    border-bottom: 0;
+    padding: 0.25rem 0;
+  }
+
+  .reference-shell .spreadsheet-panel td::before {
+    color: rgba(255, 255, 255, 0.46);
+    content: attr(data-label);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .reference-shell .spreadsheet-panel .row-actions {
+    position: static;
+    display: flex;
+    justify-content: flex-end;
+    padding-bottom: 0.35rem;
+  }
+
+  .reference-shell .spreadsheet-panel .row-actions::before {
+    display: none;
+  }
+
+  .reference-shell .spreadsheet-panel td input,
   .reference-shell .money-simple-inputs td input {
     min-width: 0;
   }
