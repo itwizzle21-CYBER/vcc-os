@@ -1116,13 +1116,6 @@ td input[readonly] {
   padding: 0.85rem;
 }
 
-.money-history-record.current {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent 58%),
-    var(--surface-2);
-}
-
 .money-history-record > div:first-child,
 .money-history-record dl div {
   display: grid;

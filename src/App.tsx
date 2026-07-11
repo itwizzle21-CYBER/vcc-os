@@ -130,26 +130,16 @@ function MoneyPage({
         />
       </section>
 
-      <MoneyPaymentHistory data={data} financialState={financialState} />
+      <MoneyPaymentHistory data={data} />
     </div>
   );
 }
 
 function MoneyPaymentHistory({
   data,
-  financialState,
 }: {
   data: AppData;
-  financialState: ReturnType<typeof computeFinancialState>;
 }) {
-  const spendableSafe = Math.min(financialState.spendableCash, financialState.safeToSpend);
-  const currentSnapshotHasValue = [
-    financialState.totalCash,
-    spendableSafe,
-    financialState.protectedSavings,
-    financialState.borrowedMoney,
-  ].some((value) => Math.abs(value) > 0.01);
-
   return (
     <section className="money-history-panel" aria-label="Money Snapshot payment history">
       <div className="money-history-heading">
@@ -157,34 +147,10 @@ function MoneyPaymentHistory({
           <p className="eyebrow">Payment History</p>
           <h2>Money Snapshot Records</h2>
         </div>
-        <span>{currentSnapshotHasValue ? "Auto-synced" : "Waiting for snapshot data"}</span>
+        <span>{data.paycheckHistory.length ? `${data.paycheckHistory.length} locked` : "No records yet"}</span>
       </div>
 
       <div className="money-history-list">
-        {currentSnapshotHasValue && (
-          <article className="money-history-record current">
-            <div>
-              <span>Current Snapshot</span>
-              <strong>{formatCurrency(financialState.totalCash)}</strong>
-              <small>{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</small>
-            </div>
-            <dl>
-              <div>
-                <dt>Spendable / Safe</dt>
-                <dd>{formatCurrency(spendableSafe)}</dd>
-              </div>
-              <div>
-                <dt>Protected</dt>
-                <dd>{formatCurrency(financialState.protectedSavings)}</dd>
-              </div>
-              <div>
-                <dt>Borrowed</dt>
-                <dd>{formatCurrency(financialState.borrowedMoney)}</dd>
-              </div>
-            </dl>
-          </article>
-        )}
-
         {data.paycheckHistory.map((row) => (
           <article className="money-history-record" key={row.id}>
             <div>
@@ -213,8 +179,8 @@ function MoneyPaymentHistory({
           </article>
         ))}
 
-        {!currentSnapshotHasValue && data.paycheckHistory.length === 0 && (
-          <p className="empty-copy">Add Money Snapshot inputs or lock a paycheck week to create read-only payment history records.</p>
+        {data.paycheckHistory.length === 0 && (
+          <p className="empty-copy">Lock a paycheck week to create read-only payment history records.</p>
         )}
       </div>
     </section>
