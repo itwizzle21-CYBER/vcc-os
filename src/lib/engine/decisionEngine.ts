@@ -39,6 +39,7 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
       ? `This week is locked. ${formatCurrency(financialState.safeToSpend)} is safe after repayments and bill pressure.`
       : `Plan the week before spending. Safe To Spend is ${formatCurrency(financialState.safeToSpend)} before the next locked paycheck.`,
     recommendedMove,
+    todayMission: chooseTodayMission(financialState),
     priorityAlerts: alerts.slice(0, 4),
     missionStack: [
       {
@@ -66,4 +67,76 @@ function chooseRecommendedMove(financialState: FinancialState): string {
   if (financialState.billsPressure > financialState.spendableCash * 0.5) return "Hold cash for bills due this week.";
   if (financialState.criticalItems > 0) return "Refill critical Buy Next items with the lowest-cost run.";
   return "Keep the week steady and avoid adding new fixed costs.";
+}
+
+function chooseTodayMission(financialState: FinancialState): DecisionState["todayMission"] {
+  if (financialState.overdueBills > 0) {
+    return {
+      title: "Stabilize overdue bills",
+      detail: `${financialState.overdueBills} overdue bill${financialState.overdueBills === 1 ? "" : "s"} need a decision before new spending.`,
+      href: "/bills",
+      priority: "Critical",
+    };
+  }
+
+  if (financialState.billsDueToday > 0) {
+    return {
+      title: "Clear today's bills",
+      detail: `${financialState.billsDueToday} bill${financialState.billsDueToday === 1 ? "" : "s"} due today with ${formatCurrency(financialState.billsPressure)} in bill pressure.`,
+      href: "/bills",
+      priority: "High",
+    };
+  }
+
+  if (financialState.borrowedMoney > 0) {
+    return {
+      title: "Reduce borrowed cash drag",
+      detail: `${formatCurrency(financialState.borrowedMoney)} is lowering the Safe To Spend number.`,
+      href: "/money",
+      priority: "High",
+    };
+  }
+
+  if (financialState.billsPressure > financialState.spendableCash * 0.5 && financialState.billsPressure > 0) {
+    return {
+      title: "Protect cash for bills",
+      detail: `${formatCurrency(financialState.billsPressure)} is reserved pressure against ${formatCurrency(financialState.spendableCash)} spendable cash.`,
+      href: "/bills",
+      priority: "High",
+    };
+  }
+
+  if (financialState.criticalItems > 0) {
+    return {
+      title: "Restock critical inventory",
+      detail: `${financialState.criticalItems} critical item${financialState.criticalItems === 1 ? "" : "s"} should be handled from Buy Next.`,
+      href: "/inventory",
+      priority: "Medium",
+    };
+  }
+
+  if (financialState.totalDebt > 0 && financialState.minimumPayments > 0) {
+    return {
+      title: "Keep debt progress moving",
+      detail: `${formatCurrency(financialState.minimumPayments)} in minimum payments is the next debt checkpoint.`,
+      href: "/debt",
+      priority: "Medium",
+    };
+  }
+
+  if (financialState.goalCompletionPercent < 100 && financialState.closestGoal !== "None") {
+    return {
+      title: "Advance the closest goal",
+      detail: `${financialState.closestGoal} is the nearest goal signal from the current data.`,
+      href: "/goals",
+      priority: "Low",
+    };
+  }
+
+  return {
+    title: "Hold the week steady",
+    detail: `Safe To Spend is ${formatCurrency(financialState.safeToSpend)}. Avoid adding fixed costs today.`,
+    href: "/money",
+    priority: "Low",
+  };
 }

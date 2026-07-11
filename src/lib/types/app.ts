@@ -117,6 +117,12 @@ export interface FinancialState {
 export interface DecisionState {
   todayBriefing: string;
   recommendedMove: string;
+  todayMission: {
+    title: string;
+    detail: string;
+    href: "/" | "/money" | "/bills" | "/inventory" | "/savings" | "/debt" | "/goals" | "/transactions";
+    priority: "Critical" | "High" | "Medium" | "Low";
+  };
   priorityAlerts: Array<{ title: string; detail: string; tone: "warning" | "info" | "success" }>;
   missionStack: Array<{ title: string; detail: string; priority: "High" | "Medium" | "Low" }>;
 }

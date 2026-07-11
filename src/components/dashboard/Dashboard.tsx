@@ -1,6 +1,10 @@
 import {
+  AlertTriangle,
   ArrowRight,
   Boxes,
+  CheckCircle2,
+  CreditCard,
+  ListChecks,
   PiggyBank,
   ReceiptText,
   Target,
@@ -9,7 +13,6 @@ import {
   Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { formatCurrency } from "../../lib/calculations/currency";
 import type { AppData, DecisionState, FinancialState, UserSettings } from "../../lib/types/app";
 
 interface DashboardProps {
@@ -32,7 +35,9 @@ interface DashboardModuleCardProps {
 
 export default function Dashboard({
   financialState,
+  decisionState,
 }: DashboardProps) {
+  const missionIcon = iconForMission(decisionState.todayMission.href);
   const moduleCards: DashboardModuleCardProps[] = [
     {
       href: "/money",
@@ -126,19 +131,58 @@ export default function Dashboard({
         <span>System Active</span>
       </div>
 
-      <a href="/missions" className="mission-banner">
+      <a href={decisionState.todayMission.href} className="mission-banner">
         <div>
           <p><Zap size={16} /> Today&apos;s Mission</p>
           <div className="mission-banner-body">
-            <span><ReceiptText size={29} /></span>
+            <span>{missionIcon}</span>
             <div>
-              <h2>Pay New Bill</h2>
-              <small>{missionDetail(financialState)}</small>
+              <h2>{decisionState.todayMission.title}</h2>
+              <small>{decisionState.todayMission.detail}</small>
             </div>
           </div>
+          <strong className="mission-briefing">{decisionState.todayBriefing}</strong>
         </div>
+        <span className={`mission-priority priority-${decisionState.todayMission.priority.toLowerCase()}`}>
+          {decisionState.todayMission.priority}
+        </span>
         <ArrowRight size={25} />
       </a>
+
+      <section className="dashboard-intelligence-grid" aria-label="Decision Engine priority output">
+        <article className="base-panel dashboard-intelligence-panel">
+          <div className="dashboard-intelligence-heading">
+            <span><ListChecks size={18} /></span>
+            <h2>Mission Stack</h2>
+          </div>
+          <div className="dashboard-mission-stack">
+            {decisionState.missionStack.map((mission) => (
+              <div key={mission.title} className="dashboard-mission-row">
+                <div>
+                  <strong>{mission.title}</strong>
+                  <span>{mission.detail}</span>
+                </div>
+                <em className={`stack-priority priority-${mission.priority.toLowerCase()}`}>{mission.priority}</em>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="base-panel dashboard-intelligence-panel">
+          <div className="dashboard-intelligence-heading">
+            <span><AlertTriangle size={18} /></span>
+            <h2>Priority Alerts</h2>
+          </div>
+          <div className="dashboard-alert-stack">
+            {decisionState.priorityAlerts.map((alert) => (
+              <div key={alert.title} className={`dashboard-alert-row ${alert.tone}`}>
+                <strong>{alert.title}</strong>
+                <span>{alert.detail}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
 
       <section className="dashboard-module-grid" aria-label="VCC dashboard modules">
         {moduleCards.map((card) => (
@@ -181,9 +225,15 @@ function DashboardModuleCard({
   );
 }
 
-function missionDetail(financialState: FinancialState) {
-  const dueToday = financialState.billsDueToday > 0 ? financialState.billsPressure : 0;
-  return `Due today \u00b7 ${formatCurrency(dueToday)}`;
+function iconForMission(href: DecisionState["todayMission"]["href"]) {
+  if (href === "/bills") return <ReceiptText size={29} />;
+  if (href === "/inventory") return <Boxes size={29} />;
+  if (href === "/savings") return <PiggyBank size={29} />;
+  if (href === "/debt") return <CreditCard size={29} />;
+  if (href === "/goals") return <Target size={29} />;
+  if (href === "/transactions") return <TrendingDown size={29} />;
+  if (href === "/money") return <Wallet size={29} />;
+  return <CheckCircle2 size={29} />;
 }
 
 function formatWholeCurrency(value: number) {
