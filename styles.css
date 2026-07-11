@@ -145,32 +145,6 @@ textarea {
     var(--bg);
 }
 
-.sensor-strip {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 80;
-  width: 100%;
-  height: 3px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-}
-
-.sensor-strip::after {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 -30%;
-  width: 30%;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  animation: sensor-scan 3.2s linear infinite;
-}
-
-@keyframes sensor-scan {
-  to {
-    transform: translateX(440%);
-  }
-}
-
 .sidebar {
   display: none;
 }
@@ -2974,10 +2948,6 @@ td input[readonly] {
   background: linear-gradient(0deg, rgba(9, 11, 15, 0.92), rgba(9, 11, 15, 0));
 }
 
-.dashboard-shell .sensor-strip {
-  display: none;
-}
-
 .dashboard-top-nav {
   position: sticky;
   top: 0;
@@ -2988,79 +2958,38 @@ td input[readonly] {
   min-height: 63px;
   border: 1px solid #24262c;
   border-radius: 0.45rem 0.45rem 0 0;
-  background: #1a1b20;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
+    rgba(18, 19, 24, 0.9);
   padding: 0 1.5rem;
 }
 
 .dashboard-top-nav::after {
   position: absolute;
   right: 0;
-  bottom: -1px;
   left: 0;
-  height: 2px;
-  overflow: hidden;
-  background:
-    linear-gradient(90deg, transparent 0%, rgba(39, 215, 154, 0.25) 22%, rgba(86, 165, 255, 0.9) 50%, rgba(39, 215, 154, 0.25) 78%, transparent 100%);
-  box-shadow: 0 0 18px rgba(86, 165, 255, 0.32);
+  bottom: 0;
+  height: 1.9rem;
+  background: linear-gradient(0deg, rgba(9, 11, 15, 0.72), rgba(9, 11, 15, 0));
   content: "";
-  transform-origin: left center;
-  animation: heartbeat-sensor 2.4s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .dashboard-top-nav::before {
   position: absolute;
-  right: 1.15rem;
-  bottom: 0.55rem;
-  width: min(18rem, 24vw);
-  height: 1.2rem;
-  opacity: 0.72;
+  inset: 0;
+  opacity: 0.78;
   background:
-    linear-gradient(90deg, transparent 0 4%, rgba(39, 215, 154, 0.75) 4% 5%, transparent 5% 12%, rgba(39, 215, 154, 0.75) 12% 13%, transparent 13% 20%, rgba(86, 165, 255, 0.95) 20% 22%, transparent 22% 32%, rgba(39, 215, 154, 0.75) 32% 33%, transparent 33% 44%, rgba(39, 215, 154, 0.75) 44% 45%, transparent 45% 100%);
-  background-size: 6.5rem 100%;
+    linear-gradient(90deg, rgba(86, 165, 255, 0.12), transparent 32%, rgba(255, 255, 255, 0.07) 58%, transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 62%);
   content: "";
-  filter: drop-shadow(0 0 8px rgba(39, 215, 154, 0.55));
-  animation: heartbeat-wave 1.65s linear infinite;
   pointer-events: none;
 }
 
-@keyframes heartbeat-sensor {
-  0%, 100% {
-    opacity: 0.36;
-    transform: scaleX(0.38);
-  }
-
-  12% {
-    opacity: 1;
-    transform: scaleX(1);
-  }
-
-  18% {
-    opacity: 0.5;
-    transform: scaleX(0.62);
-  }
-
-  30% {
-    opacity: 0.88;
-    transform: scaleX(0.92);
-  }
-
-  56% {
-    opacity: 0.3;
-    transform: scaleX(0.46);
-  }
-}
-
-@keyframes heartbeat-wave {
-  from {
-    background-position-x: 0;
-  }
-
-  to {
-    background-position-x: 6.5rem;
-  }
-}
-
 .dashboard-top-brand {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -3081,6 +3010,8 @@ td input[readonly] {
 }
 
 .dashboard-top-nav nav {
+  position: relative;
+  z-index: 1;
   display: flex;
   min-width: 0;
   align-items: center;
@@ -3114,6 +3045,8 @@ td input[readonly] {
 }
 
 .dashboard-mobile-menu-trigger {
+  position: relative;
+  z-index: 1;
   display: none;
   width: 44px;
   min-height: 44px;
@@ -3170,6 +3103,7 @@ td input[readonly] {
 }
 
 .mission-banner {
+  position: relative;
   display: flex;
   min-height: 122px;
   align-items: center;
@@ -3180,6 +3114,32 @@ td input[readonly] {
   color: white;
   padding: 1.35rem 1.45rem;
   transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease;
+  overflow: hidden;
+}
+
+.mission-banner::before {
+  position: absolute;
+  inset: 0;
+  opacity: 0.75;
+  background:
+    linear-gradient(115deg, transparent 0 26%, rgba(255, 255, 255, 0.16) 27%, transparent 31% 58%, rgba(255, 255, 255, 0.12) 59%, transparent 64%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 8px);
+  background-size: 18rem 100%, 11px 11px;
+  content: "";
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  animation: mission-texture-drift 9s linear infinite;
+}
+
+@keyframes mission-texture-drift {
+  to {
+    background-position: 18rem 0, 22px 22px;
+  }
+}
+
+.mission-banner > * {
+  position: relative;
+  z-index: 1;
 }
 
 .mission-banner:hover {
@@ -3902,10 +3862,6 @@ td input[readonly] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sensor-strip::after {
-    animation: none;
-  }
-
   .dashboard-widget {
     transition: none;
   }
@@ -4500,7 +4456,6 @@ td input:focus {
   background: #090b0f;
 }
 
-.reference-shell .sensor-strip,
 .reference-shell .sidebar {
   display: none;
 }

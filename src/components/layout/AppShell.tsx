@@ -76,7 +76,6 @@ export default function AppShell({
 
   return (
     <div className={`app-shell reference-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}>
-      <div className="sensor-strip" aria-hidden="true" />
       <header className="dashboard-top-nav">
         <a className="dashboard-top-brand" href="/">
           <span><Zap size={20} /></span>
