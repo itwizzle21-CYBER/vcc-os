@@ -2927,27 +2927,6 @@ td input[readonly] {
   background: #090b0f;
 }
 
-.dashboard-shell::before,
-.dashboard-shell::after {
-  position: fixed;
-  right: 0;
-  left: 0;
-  z-index: 70;
-  height: 4.75rem;
-  pointer-events: none;
-  content: "";
-}
-
-.dashboard-shell::before {
-  top: 63px;
-  background: linear-gradient(180deg, rgba(9, 11, 15, 0.92), rgba(9, 11, 15, 0));
-}
-
-.dashboard-shell::after {
-  bottom: 0;
-  background: linear-gradient(0deg, rgba(9, 11, 15, 0.92), rgba(9, 11, 15, 0));
-}
-
 .dashboard-top-nav {
   position: sticky;
   top: 0;
@@ -3746,10 +3725,6 @@ td input[readonly] {
     padding-inline: 1rem;
   }
 
-  .dashboard-shell::before {
-    top: 56px;
-  }
-
   .dashboard-top-nav::before {
     display: none;
   }
@@ -4065,17 +4040,6 @@ td input[readonly] {
   border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
   background: color-mix(in srgb, var(--bg) 96%, transparent);
   padding: 1rem;
-}
-
-.topbar::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  bottom: -1rem;
-  left: 0;
-  height: 1rem;
-  pointer-events: none;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 60%, transparent), transparent);
 }
 
 .topbar h1 {
@@ -5118,17 +5082,6 @@ td input:focus {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(18, 19, 24, 0.96);
   padding: 0.45rem 0.75rem env(safe-area-inset-bottom);
-}
-
-.mobile-bottom-nav::before {
-  content: "";
-  position: absolute;
-  right: 0;
-  top: -1.2rem;
-  left: 0;
-  height: 1.2rem;
-  pointer-events: none;
-  background: linear-gradient(0deg, rgba(18, 19, 24, 0.84), transparent);
 }
 
 .mobile-bottom-nav a {
