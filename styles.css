@@ -902,6 +902,32 @@ td input:focus {
   background: var(--accent-soft);
 }
 
+input.calendar-input,
+input[type="date"] {
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+input.calendar-input::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(1) opacity(0.74);
+}
+
+:root[data-theme="light"] input.calendar-input,
+:root[data-theme="light"] input[type="date"],
+.theme-light input.calendar-input,
+.theme-light input[type="date"] {
+  color-scheme: light;
+}
+
+:root[data-theme="light"] input.calendar-input::-webkit-calendar-picker-indicator,
+:root[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
+.theme-light input.calendar-input::-webkit-calendar-picker-indicator,
+.theme-light input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
 td input[readonly] {
   color: var(--muted);
 }

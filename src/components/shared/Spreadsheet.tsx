@@ -238,6 +238,7 @@ export default function Spreadsheet({
                   const computed = getComputedCell?.(row, column.key);
                   const readOnly = column.readOnly || typeof computed === "string";
                   const value = computed ?? row.cells[column.key] ?? "";
+                  const inputType = column.type === "date" ? "date" : column.type === "number" ? "number" : "text";
                   if (config.key === "inventory" && column.key === "alert") {
                     const tone = value.toLowerCase();
                     return (
@@ -258,6 +259,8 @@ export default function Spreadsheet({
                   return (
                     <td key={column.key} data-label={column.label}>
                       <input
+                        type={inputType}
+                        className={column.type === "date" ? "calendar-input" : undefined}
                         data-row-index={rowIndex}
                         data-column-index={columnIndex}
                         data-row-id={row.id}
@@ -267,6 +270,9 @@ export default function Spreadsheet({
                         aria-readonly={readOnly}
                         onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value)}
                         onChange={(event) => updateCell(row.id, column.key, event.target.value)}
+                        onClick={(event) => {
+                          if (column.type === "date" && !readOnly) openDatePicker(event.currentTarget);
+                        }}
                         onBlur={(event) => {
                           commitCell(row.id, column.key, event.currentTarget.value);
                           activeCellRef.current = null;
@@ -289,4 +295,14 @@ function formatLooseCurrency(value: string): string {
   const number = Number(value.replace(/[$,\s]/g, ""));
   if (!Number.isFinite(number)) return value;
   return formatCurrency(number);
+}
+
+function openDatePicker(input: HTMLInputElement) {
+  if (typeof input.showPicker === "function") {
+    try {
+      input.showPicker();
+    } catch {
+      // Browser blocks showPicker in some non-user-gesture paths; native focus still works.
+    }
+  }
 }

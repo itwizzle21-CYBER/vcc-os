@@ -131,7 +131,26 @@ function PlannerInput({
   return (
     <label>
       <span>{label}</span>
-      <input type={type} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} />
+      <input
+        type={type}
+        className={type === "date" ? "calendar-input" : undefined}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        onClick={(event) => {
+          if (type === "date" && !disabled) openDatePicker(event.currentTarget);
+        }}
+      />
     </label>
   );
+}
+
+function openDatePicker(input: HTMLInputElement) {
+  if (typeof input.showPicker === "function") {
+    try {
+      input.showPicker();
+    } catch {
+      // Native focus still exposes the browser date picker if showPicker is blocked.
+    }
+  }
 }
