@@ -11,6 +11,7 @@ interface SpreadsheetProps {
   onRowsChange: (section: SectionKey, rows: SpreadsheetRow[]) => void;
   onResetSection: (section: SectionKey) => void;
   getComputedCell?: (row: SpreadsheetRow, columnKey: string) => string | undefined;
+  inputLists?: Partial<Record<string, string>>;
   preventDuplicateKey?: string;
   addLabel?: string;
 }
@@ -23,6 +24,7 @@ export default function Spreadsheet({
   onRowsChange,
   onResetSection,
   getComputedCell,
+  inputLists,
   preventDuplicateKey,
   addLabel = "Add Row",
 }: SpreadsheetProps) {
@@ -266,6 +268,7 @@ export default function Spreadsheet({
                         data-row-id={row.id}
                         data-column-key={column.key}
                         value={value}
+                        list={!readOnly ? inputLists?.[column.key] : undefined}
                         readOnly={readOnly}
                         aria-readonly={readOnly}
                         onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value)}

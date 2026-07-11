@@ -12,6 +12,36 @@ import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, resetAllData, resetSection, saveAppData } from "./lib/storage/localStore";
 import type { AppData, SectionKey, SpreadsheetRow } from "./lib/types/app";
 
+const worldwideTransactionCategories = [
+  "Income",
+  "Housing",
+  "Utilities",
+  "Groceries",
+  "Restaurants",
+  "Transportation",
+  "Fuel",
+  "Travel",
+  "Healthcare",
+  "Insurance",
+  "Debt Payments",
+  "Savings",
+  "Investments",
+  "Education",
+  "Childcare",
+  "Pets",
+  "Subscriptions",
+  "Entertainment",
+  "Shopping",
+  "Personal Care",
+  "Taxes",
+  "Fees",
+  "Gifts & Donations",
+  "Business",
+  "Transfers",
+  "Other",
+  "Uncategorized",
+];
+
 export default function App() {
   const [data, setData] = useState<AppData>(() => loadAppData());
   const path = normalizePath(window.location.pathname);
@@ -325,20 +355,23 @@ function TransactionsPage({
   resetSection: (section: SectionKey) => void;
 }) {
   const [transactionSearch, setTransactionSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const transactionRows = data.sections.transactions.map(normalizeTransactionRow);
   const visibleTransactionRows = transactionRows.filter((row) => {
-    if (isBlankRow(row.cells)) return !transactionSearch.trim() && typeFilter === "all" && dateFilter === "all";
+    if (isBlankRow(row.cells)) return !transactionSearch.trim() && categoryFilter === "all" && typeFilter === "all" && dateFilter === "all";
     const type = transactionType(row);
+    const category = transactionCategory(row);
     const query = transactionSearch.trim().toLowerCase();
+    const matchesCategory = categoryFilter === "all" || category.toLowerCase() === categoryFilter.toLowerCase();
     const matchesType = typeFilter === "all" || type === typeFilter;
     const matchesSearch = !query || [row.cells.description, row.cells.category, row.cells.account, row.cells.notes]
       .join(" ")
       .toLowerCase()
       .includes(query);
     const matchesDate = dateFilter === "all" || transactionDateMatches(row.cells.date, dateFilter);
-    return matchesType && matchesSearch && matchesDate;
+    return matchesCategory && matchesType && matchesSearch && matchesDate;
   });
   const visibleTransactionIds = new Set(visibleTransactionRows.map((row) => row.id));
   const visibleFilledRows = visibleTransactionRows.filter((row) => !isBlankRow(row.cells));
@@ -377,6 +410,17 @@ function TransactionsPage({
           </label>
           <div className="transactions-filter-controls">
             <label>
+              <span>Worldwide Category</span>
+              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                <option value="all">All Categories</option>
+                {worldwideTransactionCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
               <span>Type</span>
               <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
                 <option value="all">All Types</option>
@@ -400,6 +444,7 @@ function TransactionsPage({
           <strong className="income">+{formatCurrency(incomeTotal)}</strong>
           <strong className="expense">-{formatCurrency(expenseTotal)}</strong>
           <em>{formatCurrency(transferTotal)} transfers</em>
+          <em>{categoryFilter === "all" ? "All categories" : categoryFilter}</em>
           <em>{recurringCount} recurring</em>
         </div>
       </section>
@@ -430,8 +475,14 @@ function TransactionsPage({
         onRowsChange={updateVisibleTransactionRows}
         onResetSection={resetSection}
         getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
+        inputLists={{ category: "worldwide-transaction-categories" }}
         addLabel="Add Transaction"
       />
+      <datalist id="worldwide-transaction-categories">
+        {worldwideTransactionCategories.map((category) => (
+          <option key={category} value={category} />
+        ))}
+      </datalist>
     </div>
   );
 }
@@ -1639,6 +1690,10 @@ function transactionType(row: SpreadsheetRow): "income" | "expense" | "transfer"
   if (value.includes("transfer")) return "transfer";
   if (value.includes("income") || toNumber(row.cells.amount) > 0) return "income";
   return "expense";
+}
+
+function transactionCategory(row: SpreadsheetRow): string {
+  return String(row.cells.category || "Uncategorized").trim() || "Uncategorized";
 }
 
 function transactionDateMatches(dateText: string, filter: string): boolean {
