@@ -51,10 +51,12 @@ export function computeFinancialState(data: AppData): FinancialState {
   const transactionIncome = transactions
     .filter((row) => row.cells.category.toLowerCase().includes("income") || toNumber(row.cells.amount) > 0)
     .reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
+  const transactionNet = transactions.reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
+  const plannedIncome = lockedIncome || extraIncome;
   const weeklyIncome = lockedIncome || extraIncome || transactionIncome;
   const monthlyIncome = weeklyIncome * 4.33;
   const receivedIncome = data.paycheckHistory.reduce((sum, row) => sum + toNumber(row.income), 0) + transactionIncome;
-  const spendableCash = Math.max(0, cashMoney > 0 ? operatingCash + weeklyIncome - repaymentImpact : operatingCash);
+  const spendableCash = Math.max(0, cashMoney > 0 ? operatingCash + plannedIncome + transactionNet - repaymentImpact : operatingCash + transactionNet);
 
   const today = new Date();
   const billsDueToday = bills.filter((row) => isSameDay(row.cells.dueDate, today) && !isPaid(row)).length;

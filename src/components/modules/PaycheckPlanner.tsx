@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatCurrency, toNumber, weekBounds } from "../../lib/calculations/currency";
-import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner, SpreadsheetRow } from "../../lib/types/app";
+import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner } from "../../lib/types/app";
 
 export default function PaycheckPlanner({
   data,
@@ -41,20 +41,11 @@ export default function PaycheckPlanner({
       if (row.cells.weekStart || row.cells.weekEnd) return row;
       return { ...row, cells: { ...row.cells, weekStart: planner.weekStart, weekEnd: planner.weekEnd } };
     });
-    const snapshotTransactionIds = moneySnapshotTransactionIds(planner);
-    const snapshotTransactions = buildMoneySnapshotTransactions(planner);
     onChange({
       ...data,
       paycheckPlanner: { ...planner, locked: true },
       paycheckHistory: [historyRow, ...data.paycheckHistory.filter((row) => row.payDate !== planner.payDate)],
-      sections: {
-        ...data.sections,
-        money: moneyRows,
-        transactions: [
-          ...snapshotTransactions,
-          ...data.sections.transactions.filter((row) => !snapshotTransactionIds.has(row.id)),
-        ],
-      },
+      sections: { ...data.sections, money: moneyRows },
     });
   }
 
@@ -115,53 +106,6 @@ export default function PaycheckPlanner({
       )}
     </section>
   );
-}
-
-function buildMoneySnapshotTransactions(planner: Planner): SpreadsheetRow[] {
-  const rows = [
-    moneySnapshotTransaction(planner, "income", "Money Snapshot Paycheck", "income", "Income", planner.paycheckAmount),
-    moneySnapshotTransaction(planner, "spotme", "SpotMe Repayment", "expense", "Debt Payments", negativeAmount(planner.spotMeRepayment)),
-    moneySnapshotTransaction(planner, "mypay", "MyPay Repayment", "expense", "Debt Payments", negativeAmount(planner.myPayRepayment)),
-  ];
-  return rows.filter((row) => toNumber(row.cells.amount) !== 0);
-}
-
-function moneySnapshotTransaction(
-  planner: Planner,
-  idSuffix: string,
-  description: string,
-  type: string,
-  category: string,
-  amount: string
-): SpreadsheetRow {
-  const weekLabel = planner.weekStart && planner.weekEnd ? `${planner.weekStart} to ${planner.weekEnd}` : "locked week";
-  return {
-    id: moneySnapshotTransactionId(planner, idSuffix),
-    cells: {
-      description,
-      type,
-      category,
-      amount,
-      date: planner.payDate,
-      account: "Money Snapshot",
-      recurring: "No",
-      notes: `[Money Snapshot] ${weekLabel}`,
-    },
-  };
-}
-
-function moneySnapshotTransactionIds(planner: Planner): Set<string> {
-  return new Set(["income", "spotme", "mypay"].map((suffix) => moneySnapshotTransactionId(planner, suffix)));
-}
-
-function moneySnapshotTransactionId(planner: Planner, suffix: string): string {
-  const key = planner.payDate || planner.weekStart || "current";
-  return `money-snapshot-${key.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${suffix}`;
-}
-
-function negativeAmount(value: string): string {
-  const amount = Math.abs(toNumber(value));
-  return amount ? String(-amount) : "";
 }
 
 function PlannerInput({
