@@ -1,5 +1,5 @@
 import { getInventoryAlert } from "./inventoryEngine";
-import { isBlankRow, toNumber } from "../calculations/currency";
+import { isBlankRow, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
 export function computeFinancialState(data: AppData): FinancialState {
@@ -51,9 +51,14 @@ export function computeFinancialState(data: AppData): FinancialState {
   const transactionIncome = transactions
     .filter((row) => row.cells.category.toLowerCase().includes("income") || toNumber(row.cells.amount) > 0)
     .reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
-  const transactionNet = transactions.reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
+  const payWeek = activePayWeek(data);
+  const currentWeekTransactions = transactions.filter((row) => isWithinDateRange(row.cells.date, payWeek.start, payWeek.end));
+  const currentWeekTransactionIncome = currentWeekTransactions
+    .filter((row) => row.cells.category.toLowerCase().includes("income") || toNumber(row.cells.amount) > 0)
+    .reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
+  const transactionNet = currentWeekTransactions.reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
   const plannedIncome = lockedIncome || extraIncome;
-  const weeklyIncome = lockedIncome || extraIncome || transactionIncome;
+  const weeklyIncome = lockedIncome || extraIncome || currentWeekTransactionIncome;
   const monthlyIncome = weeklyIncome * 4.33;
   const receivedIncome = data.paycheckHistory.reduce((sum, row) => sum + toNumber(row.income), 0) + transactionIncome;
   const spendableCash = Math.max(0, cashMoney > 0 ? operatingCash + plannedIncome + transactionNet - repaymentImpact : operatingCash + transactionNet);
@@ -187,6 +192,21 @@ function parseDate(value: string): Date | null {
   if (!value) return null;
   const parsed = new Date(`${value}T12:00:00`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function activePayWeek(data: AppData): { start: string; end: string } {
+  if (data.paycheckPlanner.weekStart && data.paycheckPlanner.weekEnd) {
+    return { start: data.paycheckPlanner.weekStart, end: data.paycheckPlanner.weekEnd };
+  }
+  return weekBounds(data.paycheckPlanner.payDate);
+}
+
+function isWithinDateRange(value: string, startText: string, endText: string): boolean {
+  const date = parseDate(value);
+  const start = parseDate(startText);
+  const end = parseDate(endText);
+  if (!date || !start || !end) return false;
+  return date >= start && date <= end;
 }
 
 function isSameDay(value: string, today: Date): boolean {
