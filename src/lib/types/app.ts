@@ -90,6 +90,7 @@ export interface FinancialState {
   receivedIncome: number;
   weeklySpending: number;
   monthlySpending: number;
+  transactionWeekNet: number;
   largestExpense: string;
   lastTransaction: string;
   billsDueToday: number;

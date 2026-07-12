@@ -52,10 +52,11 @@ export default function Dashboard({
       tone: "blue",
       icon: <Wallet size={22} />,
       title: "Money Snapshot",
-      value: formatExactCurrency(financialState.totalCash),
-      detail: "Current cash position",
+      value: formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend)),
+      detail: "Spendable this week",
       metrics: [
-        ["Spendable / Safe", formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend))],
+        ["Total Cash", formatExactCurrency(financialState.totalCash)],
+        ["Week Transactions", formatExactCurrency(financialState.transactionWeekNet)],
         ["Protected Savings", formatExactCurrency(financialState.protectedSavings)],
         ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
       ],
@@ -96,6 +97,7 @@ export default function Dashboard({
       value: formatWholeCurrency(financialState.monthlySpending),
       detail: "Monthly spending",
       metrics: [
+        ["Week Impact", formatExactCurrency(financialState.transactionWeekNet)],
         ["Weekly Spending", formatWholeCurrency(financialState.weeklySpending)],
         ["Monthly Spending", formatWholeCurrency(financialState.monthlySpending)],
         ["Largest Expense", financialState.largestExpense],

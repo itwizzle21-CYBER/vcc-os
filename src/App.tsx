@@ -444,6 +444,7 @@ function TransactionsPage({
           <strong className="income">+{formatCurrency(incomeTotal)}</strong>
           <strong className="expense">-{formatCurrency(expenseTotal)}</strong>
           <em>{formatCurrency(transferTotal)} transfers</em>
+          <em>Week impact {formatCurrency(financialState.transactionWeekNet)}</em>
           <em>{categoryFilter === "all" ? "All categories" : categoryFilter}</em>
           <em>{recurringCount} recurring</em>
         </div>
@@ -1544,6 +1545,7 @@ function summaryForSection(section: SectionKey, financialState: ReturnType<typeo
       { label: "Paycheck Status", value: "Planner ready" },
     ],
     transactions: [
+      { label: "Week Impact", value: financialState.transactionWeekNet, tone: financialState.transactionWeekNet < 0 ? "bad" as const : "good" as const },
       { label: "Weekly Spending", value: financialState.weeklySpending },
       { label: "Monthly Spending", value: financialState.monthlySpending },
       { label: "Weekly Income", value: financialState.weeklyIncome },

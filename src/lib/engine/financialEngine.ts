@@ -73,7 +73,9 @@ export function computeFinancialState(data: AppData): FinancialState {
   const safeToSpend = Math.max(0, spendableCash - billsPressure - borrowedMoney);
 
   const expenseRows = transactions.filter((row) => toNumber(row.cells.amount) < 0 || !row.cells.category.toLowerCase().includes("income"));
-  const weeklySpending = expenseRows.filter((row) => isWithinDays(row.cells.date, today, 7)).reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+  const weeklySpending = currentWeekTransactions
+    .filter((row) => toNumber(row.cells.amount) < 0 || !row.cells.category.toLowerCase().includes("income"))
+    .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
   const monthlySpending = expenseRows.filter((row) => isWithinDays(row.cells.date, today, 31)).reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
   const largest = [...expenseRows].sort((a, b) => Math.abs(toNumber(b.cells.amount)) - Math.abs(toNumber(a.cells.amount)))[0];
   const last = [...transactions].sort((a, b) => (b.cells.date || "").localeCompare(a.cells.date || ""))[0];
@@ -131,6 +133,7 @@ export function computeFinancialState(data: AppData): FinancialState {
     receivedIncome,
     weeklySpending,
     monthlySpending,
+    transactionWeekNet: transactionNet,
     largestExpense: largest ? `${largest.cells.description || "Expense"} (${largest.cells.amount})` : "None",
     lastTransaction: last ? `${last.cells.description || "Transaction"} (${last.cells.amount})` : "None",
     billsDueToday,
