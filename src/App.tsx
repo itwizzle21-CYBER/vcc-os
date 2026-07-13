@@ -1,4 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  BellRing,
+  BrainCircuit,
+  Check,
+  ChevronDown,
+  Database,
+  Download,
+  HardDrive,
+  Info,
+  LayoutDashboard,
+  MonitorCog,
+  Palette,
+  RotateCcw,
+  Save,
+  ShieldCheck,
+  SlidersHorizontal,
+  Upload,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import AppShell from "./components/layout/AppShell";
 import Dashboard from "./components/dashboard/Dashboard";
 import PaycheckPlanner from "./components/modules/PaycheckPlanner";
@@ -1275,149 +1295,207 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
     reader.readAsText(file);
   }
 
+  const accountName = data.settings.accountName || "Local Account";
+  const initials = accountName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "VC";
+
   return (
-    <div className="settings-page">
-      <section className="panel settings-hero">
-        <div>
-          <p className="eyebrow">Account</p>
-          <h2>{data.settings.accountName || "Local Account"}</h2>
-          <p>Profile, local mode, appearance, notifications, density, and data controls.</p>
+    <div className="settings-page premium-settings">
+      <header className="settings-account-header">
+        <div className="settings-account-identity">
+          <span className="settings-avatar" aria-hidden="true">{initials}</span>
+          <div>
+            <p className="settings-kicker">Personal workspace</p>
+            <h2>{accountName}</h2>
+            <p>{data.settings.profileLabel || "Local Profile"}</p>
+          </div>
         </div>
-        <div className="settings-status-grid">
-          <span>{data.settings.localMode ? "Local Mode On" : "Cloud Mode Ready"}</span>
-          <span>{data.settings.notificationsEnabled ? "Notifications On" : "Notifications Off"}</span>
-          <span>{data.settings.density} density</span>
+        <div className="settings-account-state" aria-label="Account status">
+          <span><ShieldCheck size={15} /> {data.settings.localMode ? "Local first" : "Cloud ready"}</span>
+          <span><Save size={15} /> Changes save automatically</span>
         </div>
-      </section>
+      </header>
 
-      <section className="panel settings-card">
-        <SettingsCardHeader tone="blue" title="Profile" subtitle="Your local account information" />
-        <div className="settings-grid">
-          <SettingInput label="Greeting name" value={data.settings.accountName} onChange={(accountName) => onChange({ ...data, settings: { ...data.settings, accountName } })} />
-          <SettingInput label="Profile label" value={data.settings.profileLabel} onChange={(profileLabel) => onChange({ ...data, settings: { ...data.settings, profileLabel } })} />
-          <SettingToggle label="VCC Local Mode" checked={data.settings.localMode} onChange={(localMode) => onChange({ ...data, settings: { ...data.settings, localMode } })} />
-          <SettingToggle label="Notifications" checked={data.settings.notificationsEnabled} onChange={(notificationsEnabled) => onChange({ ...data, settings: { ...data.settings, notificationsEnabled } })} />
-        </div>
-      </section>
+      <div className="settings-layout">
+        <aside className="settings-navigation">
+          <p>Settings</p>
+          <nav aria-label="Settings sections">
+            {settingsNavigation.map(({ href, label, icon: Icon }) => (
+              <a key={href} href={href}>
+                <Icon size={17} aria-hidden="true" />
+                <span>{label}</span>
+              </a>
+            ))}
+          </nav>
+          <div className="settings-storage-note">
+            <HardDrive size={17} aria-hidden="true" />
+            <span><strong>Stored on this device</strong><small>Your financial workspace stays local.</small></span>
+          </div>
+        </aside>
 
-      <section className="panel settings-card">
-        <SettingsCardHeader tone="purple" title="Appearance" subtitle="Customize the look and feel" />
-        <div className="settings-grid">
-          <SettingSelect label="Theme mode" value={data.settings.theme} options={["dark", "midnight", "slate", "light"]} onChange={(theme) => onChange({ ...data, settings: { ...data.settings, theme: theme as AppData["settings"]["theme"] } })} />
-          <SettingSelect label="Accent color" value={data.settings.accent} options={["blue", "green", "gold", "purple", "red"]} onChange={(accent) => onChange({ ...data, settings: { ...data.settings, accent: accent as AppData["settings"]["accent"] } })} />
-          <SettingSelect label="Layout density" value={data.settings.density} options={["comfortable", "compact", "ultra"]} onChange={(density) => onChange({ ...data, settings: { ...data.settings, density: density as AppData["settings"]["density"] } })} />
-          <SettingSelect label="Surface style" value={data.settings.surfaceStyle} options={["glass", "neumorphic", "minimal"]} onChange={(surfaceStyle) => onChange({ ...data, settings: { ...data.settings, surfaceStyle: surfaceStyle as AppData["settings"]["surfaceStyle"] } })} />
-          <SettingToggle label="Confirm before reset" checked={data.settings.confirmBeforeReset} onChange={(confirmBeforeReset) => onChange({ ...data, settings: { ...data.settings, confirmBeforeReset } })} />
-        </div>
-      </section>
+        <div className="settings-content">
+          <SettingsSection id="settings-profile" icon={UserRound} title="Profile & privacy" description="Control how this workspace identifies you and where it stores data.">
+            <div className="settings-field-grid">
+              <SettingInput label="Greeting name" description="Shown across your dashboard and briefings." value={data.settings.accountName} onChange={(accountName) => onChange({ ...data, settings: { ...data.settings, accountName } })} />
+              <SettingInput label="Profile label" description="A short name for this local workspace." value={data.settings.profileLabel} onChange={(profileLabel) => onChange({ ...data, settings: { ...data.settings, profileLabel } })} />
+            </div>
+            <SettingFeatureRow title="Local-first mode" description="Keep this VCC workspace and its data on this device." checked={data.settings.localMode} onChange={(localMode) => onChange({ ...data, settings: { ...data.settings, localMode } })} />
+          </SettingsSection>
 
-      <section className="panel settings-card">
-        <SettingsCardHeader tone="green" title="Smart Features" subtitle="Financial intelligence controls" />
-        <div className="settings-row-list">
-          {smartFeatures.map((feature) => (
-            <SettingFeatureRow
-              key={feature.key}
-              title={feature.label}
-              description={feature.description}
-              checked={featurePrefs[feature.key] !== false}
-              onChange={(checked) => updateFeature(feature.key, checked)}
-            />
-          ))}
-        </div>
-      </section>
+          <SettingsSection id="settings-appearance" icon={Palette} title="Appearance" description="Choose a focused visual system that feels right for daily use.">
+            <SettingControlRow label="Theme" description="Set the overall brightness and contrast.">
+              <SettingSegmented label="Theme" value={data.settings.theme} options={[
+                { value: "dark", label: "Dark" },
+                { value: "midnight", label: "Midnight" },
+                { value: "slate", label: "Slate" },
+                { value: "light", label: "Light" },
+              ]} onChange={(theme) => onChange({ ...data, settings: { ...data.settings, theme: theme as AppData["settings"]["theme"] } })} />
+            </SettingControlRow>
+            <SettingControlRow label="Accent" description="Used for focus, selection, and key actions.">
+              <AccentPicker value={data.settings.accent} onChange={(accent) => onChange({ ...data, settings: { ...data.settings, accent: accent as AppData["settings"]["accent"] } })} />
+            </SettingControlRow>
+            <SettingControlRow label="Layout density" description="Adjust spacing without changing your data.">
+              <SettingSegmented label="Layout density" value={data.settings.density} options={[
+                { value: "comfortable", label: "Comfortable" },
+                { value: "compact", label: "Compact" },
+                { value: "ultra", label: "Dense" },
+              ]} onChange={(density) => onChange({ ...data, settings: { ...data.settings, density: density as AppData["settings"]["density"] } })} />
+            </SettingControlRow>
+            <SettingControlRow label="Surface" description="Change panel depth and translucency.">
+              <SettingSegmented label="Surface style" value={data.settings.surfaceStyle} options={[
+                { value: "glass", label: "Glass" },
+                { value: "neumorphic", label: "Depth" },
+                { value: "minimal", label: "Minimal" },
+              ]} onChange={(surfaceStyle) => onChange({ ...data, settings: { ...data.settings, surfaceStyle: surfaceStyle as AppData["settings"]["surfaceStyle"] } })} />
+            </SettingControlRow>
+          </SettingsSection>
 
-      <section className="panel settings-card">
-        <SettingsCardHeader tone="gold" title="Notifications" subtitle="Stay informed about bills, alerts, and weekly status" />
-        <div className="settings-row-list">
-          <SettingFeatureRow title="Bill Reminders" description="Alert before bills are due" checked={featurePrefs.billReminders !== false} onChange={(checked) => updateFeature("billReminders", checked)} />
-          <SettingFeatureRow title="Overdue Alerts" description="Warn when bills become overdue" checked={featurePrefs.overdueAlerts !== false} onChange={(checked) => updateFeature("overdueAlerts", checked)} />
-          <SettingFeatureRow title="Weekly Summary" description="Show weekly financial digest signals" checked={featurePrefs.weeklySummary !== false} onChange={(checked) => updateFeature("weeklySummary", checked)} />
-        </div>
-      </section>
+          <SettingsSection id="settings-intelligence" icon={BrainCircuit} title="Intelligence" description="Decide which financial signals VCC calculates for you.">
+            <div className="settings-row-list">
+              {smartFeatures.map((feature) => (
+                <SettingFeatureRow key={feature.key} title={feature.label} description={feature.description} checked={featurePrefs[feature.key] !== false} onChange={(checked) => updateFeature(feature.key, checked)} />
+              ))}
+            </div>
+          </SettingsSection>
 
-      <section className="panel settings-card">
-        <SettingsCardHeader tone="purple" title="Dashboard Widgets" subtitle="Choose what appears" />
-        <p className="settings-copy">Drag widgets on the dashboard to reorder them. Hidden widgets stay available here.</p>
-        <div className="widget-settings-grid">
-          {widgetOptions.map((widget) => (
-            <SettingToggle
-              key={widget.id}
-              label={widget.label}
-              checked={!data.settings.hiddenWidgets.includes(widget.id)}
-              onChange={(visible) => onChange({
-                ...data,
-                settings: {
-                  ...data.settings,
-                  hiddenWidgets: visible
-                    ? data.settings.hiddenWidgets.filter((id) => id !== widget.id)
-                    : [...data.settings.hiddenWidgets, widget.id],
-                },
-              })}
-            />
-          ))}
-        </div>
-      </section>
+          <SettingsSection id="settings-notifications" icon={BellRing} title="Notifications" description="Keep important deadlines visible without adding noise.">
+            <SettingFeatureRow title="Allow notifications" description="Master control for reminders and account alerts." checked={data.settings.notificationsEnabled} onChange={(notificationsEnabled) => onChange({ ...data, settings: { ...data.settings, notificationsEnabled } })} />
+            <div className="settings-row-list settings-dependent-rows" aria-disabled={!data.settings.notificationsEnabled}>
+              <SettingFeatureRow title="Bill reminders" description="Alert before bills are due." checked={featurePrefs.billReminders !== false} disabled={!data.settings.notificationsEnabled} onChange={(checked) => updateFeature("billReminders", checked)} />
+              <SettingFeatureRow title="Overdue alerts" description="Warn when bills become overdue." checked={featurePrefs.overdueAlerts !== false} disabled={!data.settings.notificationsEnabled} onChange={(checked) => updateFeature("overdueAlerts", checked)} />
+              <SettingFeatureRow title="Weekly summary" description="Show a concise weekly financial digest." checked={featurePrefs.weeklySummary !== false} disabled={!data.settings.notificationsEnabled} onChange={(checked) => updateFeature("weeklySummary", checked)} />
+            </div>
+          </SettingsSection>
 
-      <section className="panel settings-card">
-        <SettingsCardHeader tone="green" title="Data Management" subtitle="Export, import, or reset your local VCC data" />
-        <div className="settings-status-grid">
-          <span>Money rows: {data.sections.money.length}</span>
-          <span>Bills rows: {data.sections.bills.length}</span>
-          <span>Transactions rows: {data.sections.transactions.length}</span>
-          <span>Inventory rows: {data.sections.inventory.length}</span>
-        </div>
-        <div className="settings-actions">
-          <button type="button" onClick={exportData}>Export Data</button>
-          <label>
-            <span>Import Data</span>
-            <input aria-label="Import VCC data" type="file" accept="application/json,.json" onChange={(event) => importData(event.target.files?.[0])} />
-          </label>
-        </div>
-        <div className="settings-reset-grid">
-          {sectionResetOptions.map((section) => (
-            <button
-              key={section.key}
-              type="button"
-              onClick={() => {
-                if (!data.settings.confirmBeforeReset || window.confirm(`Reset ${section.label} to zero rows?`)) {
-                  onChange(resetSection(data, section.key));
-                }
-              }}
-            >
-              Reset {section.label}
-            </button>
-          ))}
-        </div>
-      </section>
+          <SettingsSection id="settings-dashboard" icon={LayoutDashboard} title="Dashboard" description="Choose the modules that stay visible in your command center.">
+            <div className="settings-widget-grid">
+              {widgetOptions.map((widget) => (
+                <SettingToggle
+                  key={widget.id}
+                  label={widget.label}
+                  checked={!data.settings.hiddenWidgets.includes(widget.id)}
+                  onChange={(visible) => onChange({
+                    ...data,
+                    settings: {
+                      ...data.settings,
+                      hiddenWidgets: visible
+                        ? data.settings.hiddenWidgets.filter((id) => id !== widget.id)
+                        : [...data.settings.hiddenWidgets, widget.id],
+                    },
+                  })}
+                />
+              ))}
+            </div>
+          </SettingsSection>
 
-      <section className="panel danger-panel">
-        <p className="eyebrow">Data Controls</p>
-        <h2>Reset All Data To Zero</h2>
-        <p>Clears all spreadsheet rows and leaves every section empty until you add new rows.</p>
-        <button
-          type="button"
-          onClick={() => {
-            if (!data.settings.confirmBeforeReset || window.confirm("Reset all VCC OS data to zero? This clears local spreadsheet values.")) {
-              onChange({ ...resetAllData(), settings: data.settings });
-            }
-          }}
-        >
-          Zero All Data
-        </button>
-      </section>
+          <SettingsSection id="settings-data" icon={Database} title="Data & storage" description="Move, protect, or reset the information stored in this browser.">
+            <div className="settings-data-stats" aria-label="Stored row counts">
+              <span><strong>{data.sections.money.length}</strong><small>Money</small></span>
+              <span><strong>{data.sections.bills.length}</strong><small>Bills</small></span>
+              <span><strong>{data.sections.transactions.length}</strong><small>Transactions</small></span>
+              <span><strong>{data.sections.inventory.length}</strong><small>Inventory</small></span>
+            </div>
+            <div className="settings-transfer-row">
+              <div>
+                <strong>Backup & restore</strong>
+                <small>Export a portable JSON backup or restore one you trust.</small>
+              </div>
+              <div className="settings-actions">
+                <button type="button" onClick={exportData}><Download size={16} /> Export</button>
+                <label className="settings-import-button">
+                  <Upload size={16} />
+                  <span>Import</span>
+                  <input className="settings-file-input" aria-label="Import VCC data" type="file" accept="application/json,.json" onChange={(event) => importData(event.target.files?.[0])} />
+                </label>
+              </div>
+            </div>
+            <SettingFeatureRow title="Confirm before reset" description="Require a confirmation before destructive data actions." checked={data.settings.confirmBeforeReset} onChange={(confirmBeforeReset) => onChange({ ...data, settings: { ...data.settings, confirmBeforeReset } })} />
+            <details className="settings-advanced">
+              <summary><span><RotateCcw size={16} /> Advanced reset controls</span><ChevronDown size={17} aria-hidden="true" /></summary>
+              <p>Reset one area without affecting the rest of your workspace.</p>
+              <div className="settings-reset-grid">
+                {sectionResetOptions.map((section) => (
+                  <button
+                    key={section.key}
+                    type="button"
+                    onClick={() => {
+                      if (!data.settings.confirmBeforeReset || window.confirm(`Reset ${section.label} to zero rows?`)) {
+                        onChange(resetSection(data, section.key));
+                      }
+                    }}
+                  >
+                    Reset {section.label}
+                  </button>
+                ))}
+              </div>
+            </details>
+            <div className="settings-danger-zone">
+              <div>
+                <strong>Reset all financial data</strong>
+                <small>Clears every spreadsheet row. Your appearance and account preferences stay intact.</small>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!data.settings.confirmBeforeReset || window.confirm("Reset all VCC OS data to zero? This clears local spreadsheet values.")) {
+                    onChange({ ...resetAllData(), settings: data.settings });
+                  }
+                }}
+              >
+                Reset all data
+              </button>
+            </div>
+          </SettingsSection>
 
-      <section className="panel settings-card">
-        <SettingsCardHeader tone="red" title="Sign Out" subtitle="Local mode does not require an online sign-out" />
-        <p className="settings-copy">VCC-OS is running as a local-first workspace in this build.</p>
-      </section>
-
-      <section className="panel settings-card">
-        <SettingsCardHeader tone="blue" title="About VCC-OS" subtitle="Vitality Command Center Operating System" />
-        <p className="settings-copy">A personal finance command center for intelligence, automation, and clearer decisions.</p>
-      </section>
+          <SettingsSection id="settings-about" icon={Info} title="About VCC-OS" description="Vitality Command Center Operating System.">
+            <div className="settings-about-row">
+              <div className="settings-product-mark" aria-hidden="true"><MonitorCog size={22} /></div>
+              <div>
+                <strong>VCC-OS</strong>
+                <small>Personal finance intelligence, automation, and clearer decisions.</small>
+              </div>
+              <span>Local build · v{data.version}</span>
+            </div>
+          </SettingsSection>
+        </div>
+      </div>
     </div>
   );
 }
+
+const settingsNavigation: Array<{ href: string; label: string; icon: LucideIcon }> = [
+  { href: "#settings-profile", label: "Profile & privacy", icon: UserRound },
+  { href: "#settings-appearance", label: "Appearance", icon: SlidersHorizontal },
+  { href: "#settings-intelligence", label: "Intelligence", icon: BrainCircuit },
+  { href: "#settings-notifications", label: "Notifications", icon: BellRing },
+  { href: "#settings-dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "#settings-data", label: "Data & storage", icon: Database },
+  { href: "#settings-about", label: "About", icon: Info },
+];
 
 const smartFeatures = [
   { key: "decisionEngine", label: "Decision Engine", description: "Generate spending recommendations" },
@@ -1449,27 +1527,75 @@ function loadFeaturePrefs(): Record<string, boolean> {
   }
 }
 
-function SettingsCardHeader({ tone, title, subtitle }: { tone: "blue" | "purple" | "green" | "gold" | "red"; title: string; subtitle: string }) {
+function SettingsSection({ id, icon: Icon, title, description, children }: { id: string; icon: LucideIcon; title: string; description: string; children: React.ReactNode }) {
   return (
-    <div className="settings-card-header">
-      <span className={tone}>{title.slice(0, 1)}</span>
-      <div>
-        <h2>{title}</h2>
-        <p>{subtitle}</p>
+    <section className="settings-section" id={id}>
+      <header className="settings-section-header">
+        <span className="settings-section-icon"><Icon size={19} aria-hidden="true" /></span>
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+      </header>
+      <div className="settings-section-body">
+        {children}
       </div>
+    </section>
+  );
+}
+
+function SettingFeatureRow({ title, description, checked, disabled = false, onChange }: { title: string; description: string; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className={`settings-feature-row${disabled ? " is-disabled" : ""}`}>
+      <span className="settings-row-copy">
+        <strong>{title}</strong>
+        <small>{description}</small>
+      </span>
+      <span className="vcc-switch">
+        <input aria-label={title} type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
+        <span className="vcc-switch-track" aria-hidden="true"><span /></span>
+      </span>
+    </label>
+  );
+}
+
+function SettingControlRow({ label, description, children }: { label: string; description: string; children: React.ReactNode }) {
+  return (
+    <div className="settings-control-row">
+      <div className="settings-row-copy">
+        <strong>{label}</strong>
+        <small>{description}</small>
+      </div>
+      {children}
     </div>
   );
 }
 
-function SettingFeatureRow({ title, description, checked, onChange }: { title: string; description: string; checked: boolean; onChange: (checked: boolean) => void }) {
+function SettingSegmented({ label, value, options, onChange }: { label: string; value: string; options: Array<{ value: string; label: string }>; onChange: (value: string) => void }) {
   return (
-    <label className="settings-feature-row">
-      <span>
-        <strong>{title}</strong>
-        <small>{description}</small>
-      </span>
-      <input aria-label={title} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-    </label>
+    <div className="settings-segmented" role="group" aria-label={label}>
+      {options.map((option) => (
+        <button key={option.value} type="button" className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)}>
+          {value === option.value && <Check size={14} aria-hidden="true" />}
+          <span>{option.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const accentOptions = ["blue", "green", "gold", "purple", "red"] as const;
+
+function AccentPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="settings-accent-picker" role="radiogroup" aria-label="Accent color">
+      {accentOptions.map((accent) => (
+        <button key={accent} type="button" className={value === accent ? "is-selected" : ""} role="radio" aria-checked={value === accent} aria-label={`${titleCase(accent)} accent`} title={`${titleCase(accent)} accent`} onClick={() => onChange(accent)}>
+          <span className={`accent-swatch ${accent}`} aria-hidden="true" />
+          {value === accent && <Check size={13} aria-hidden="true" />}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -1487,10 +1613,10 @@ const widgetOptions = [
   { id: "objectives", label: "Objective Stack" },
 ];
 
-function SettingInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function SettingInput({ label, description, value, onChange }: { label: string; description: string; value: string; onChange: (value: string) => void }) {
   return (
-    <label>
-      <span>{label}</span>
+    <label className="settings-text-field">
+      <span className="settings-row-copy"><strong>{label}</strong><small>{description}</small></span>
       <input aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
@@ -1500,22 +1626,10 @@ function SettingToggle({ label, checked, onChange }: { label: string; checked: b
   return (
     <label className="setting-toggle">
       <span>{label}</span>
-      <input aria-label={label} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-    </label>
-  );
-}
-
-function SettingSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
-  return (
-    <label>
-      <span>{label}</span>
-      <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <span className="vcc-switch">
+        <input aria-label={label} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+        <span className="vcc-switch-track" aria-hidden="true"><span /></span>
+      </span>
     </label>
   );
 }
