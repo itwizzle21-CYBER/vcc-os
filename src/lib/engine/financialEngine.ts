@@ -1,4 +1,5 @@
 import { getInventoryAlert } from "./inventoryEngine";
+import { signedTransactionAmount, transactionType } from "./transactionEngine";
 import { isBlankRow, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
@@ -49,14 +50,14 @@ export function computeFinancialState(data: AppData): FinancialState {
   const lockedIncome = data.paycheckPlanner.locked ? toNumber(data.paycheckPlanner.paycheckAmount) : 0;
   const extraIncome = income.reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
   const transactionIncome = transactions
-    .filter((row) => row.cells.category.toLowerCase().includes("income") || toNumber(row.cells.amount) > 0)
-    .reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
+    .filter((row) => transactionType(row) === "income")
+    .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const payWeek = activePayWeek(data);
   const currentWeekTransactions = transactions.filter((row) => isWithinDateRange(row.cells.date, payWeek.start, payWeek.end));
   const currentWeekTransactionIncome = currentWeekTransactions
-    .filter((row) => row.cells.category.toLowerCase().includes("income") || toNumber(row.cells.amount) > 0)
-    .reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
-  const transactionNet = currentWeekTransactions.reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
+    .filter((row) => transactionType(row) === "income")
+    .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
+  const transactionNet = currentWeekTransactions.reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const plannedIncome = lockedIncome || extraIncome;
   const weeklyIncome = lockedIncome || extraIncome || currentWeekTransactionIncome;
   const monthlyIncome = weeklyIncome * 4.33;
@@ -72,11 +73,11 @@ export function computeFinancialState(data: AppData): FinancialState {
     .reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
   const safeToSpend = Math.max(0, spendableCash - billsPressure - borrowedMoney);
 
-  const expenseRows = transactions.filter((row) => toNumber(row.cells.amount) < 0 || !row.cells.category.toLowerCase().includes("income"));
+  const expenseRows = transactions.filter((row) => transactionType(row) === "expense");
   const weeklySpending = currentWeekTransactions
-    .filter((row) => toNumber(row.cells.amount) < 0 || !row.cells.category.toLowerCase().includes("income"))
-    .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
-  const monthlySpending = expenseRows.filter((row) => isWithinDays(row.cells.date, today, 31)).reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+    .filter((row) => transactionType(row) === "expense")
+    .reduce((sum, row) => sum + Math.abs(signedTransactionAmount(row)), 0);
+  const monthlySpending = expenseRows.filter((row) => isSameMonth(row.cells.date, today)).reduce((sum, row) => sum + Math.abs(signedTransactionAmount(row)), 0);
   const largest = [...expenseRows].sort((a, b) => Math.abs(toNumber(b.cells.amount)) - Math.abs(toNumber(a.cells.amount)))[0];
   const last = [...transactions].sort((a, b) => (b.cells.date || "").localeCompare(a.cells.date || ""))[0];
   const categorySummary = Object.entries(
@@ -215,6 +216,11 @@ function isWithinDateRange(value: string, startText: string, endText: string): b
 function isSameDay(value: string, today: Date): boolean {
   const date = parseDate(value);
   return !!date && date.toDateString() === today.toDateString();
+}
+
+function isSameMonth(value: string, reference: Date): boolean {
+  const date = parseDate(value);
+  return !!date && date.getMonth() === reference.getMonth() && date.getFullYear() === reference.getFullYear();
 }
 
 function isPast(value: string, today: Date): boolean {

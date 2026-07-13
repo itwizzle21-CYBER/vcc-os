@@ -296,7 +296,7 @@ textarea {
 }
 
 .settings-navigation a:focus-visible,
-.settings-section-toggle:focus-visible,
+.settings-section-trigger:focus-visible,
 .settings-segmented button:focus-visible,
 .settings-accent-picker button:focus-visible,
 .settings-actions button:focus-visible,
@@ -358,10 +358,19 @@ textarea {
 }
 
 .settings-section-header {
+  margin-bottom: 0.95rem;
+}
+
+.settings-section-trigger {
   display: flex;
+  width: 100%;
   align-items: flex-start;
   gap: 0.75rem;
-  margin-bottom: 0.95rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  text-align: left;
 }
 
 .settings-section-icon {
@@ -376,24 +385,25 @@ textarea {
   color: var(--accent);
 }
 
-.settings-section-header h2,
-.settings-section-header p {
-  margin: 0;
+.settings-section-heading {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
 }
 
-.settings-section-header h2 {
+.settings-section-heading > span {
   font-size: 1rem;
+  font-weight: 800;
   line-height: 1.3;
 }
 
-.settings-section-header p {
-  margin-top: 0.25rem;
+.settings-section-heading small {
   color: var(--muted);
   font-size: 0.8rem;
   line-height: 1.45;
 }
 
-.settings-section-toggle {
+.settings-section-chevron {
   display: none;
 }
 
@@ -1004,12 +1014,29 @@ textarea {
     margin-bottom: 0;
   }
 
-  .settings-section:not(.is-mobile-open) .settings-section-header p,
+  .settings-section:not(.is-mobile-open) .settings-section-heading small,
   .settings-section:not(.is-mobile-open) .settings-section-body {
     display: none;
   }
 
-  .settings-section-toggle {
+  .settings-section-trigger {
+    min-height: 3.55rem;
+    align-items: center;
+    border-radius: 8px;
+    padding: 0.45rem;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+
+  .settings-section-trigger:hover {
+    background: color-mix(in srgb, var(--surface-2) 44%, transparent);
+  }
+
+  .settings-section-trigger:active {
+    transform: scale(0.99);
+  }
+
+  .settings-section-chevron {
     display: grid;
     width: 2.65rem;
     height: 2.65rem;
@@ -1020,24 +1047,19 @@ textarea {
     border-radius: 8px;
     background: color-mix(in srgb, var(--surface-2) 82%, transparent);
     color: var(--muted);
-    padding: 0;
-    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-out);
+    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
   }
 
-  .settings-section-toggle:hover {
+  .settings-section-trigger:hover .settings-section-chevron {
     border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
     color: var(--text);
   }
 
-  .settings-section-toggle:active {
-    transform: scale(0.96);
-  }
-
-  .settings-section-toggle svg {
+  .settings-section-chevron svg {
     transition: transform var(--dur-base) var(--ease-out);
   }
 
-  .settings-section.is-mobile-open .settings-section-toggle svg {
+  .settings-section.is-mobile-open .settings-section-chevron svg {
     transform: rotate(180deg);
   }
 
@@ -1161,8 +1183,9 @@ textarea {
 
 @media (prefers-reduced-motion: reduce) {
   .settings-navigation a,
-  .settings-section-toggle,
-  .settings-section-toggle svg,
+  .settings-section-trigger,
+  .settings-section-chevron,
+  .settings-section-chevron svg,
   .settings-feature-row,
   .settings-segmented button,
   .settings-accent-picker button,
@@ -7042,5 +7065,122 @@ body {
 
   .premium-settings .settings-navigation nav {
     padding-inline: 0;
+  }
+}
+
+/* Profile-aware dashboard greeting */
+.dashboard-greeting {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.65rem;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.55rem;
+  border-left: 1px solid var(--vcc-line);
+  color: #ffffff;
+  padding: 0.15rem 0.2rem 0.15rem 0.8rem;
+}
+
+.dashboard-greeting-avatar {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: 0 0 2.2rem;
+  place-items: center;
+  border: 1px solid rgba(74, 163, 255, 0.42);
+  border-radius: 50%;
+  background: rgba(74, 163, 255, 0.12);
+  color: #93c5fd;
+}
+
+.dashboard-greeting-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.05rem;
+  line-height: 1.1;
+}
+
+.dashboard-greeting-copy small {
+  color: var(--vcc-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.dashboard-greeting-copy strong {
+  max-width: 8rem;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-greeting:hover .dashboard-greeting-avatar {
+  border-color: rgba(103, 232, 249, 0.7);
+  background: rgba(74, 163, 255, 0.2);
+  color: #ffffff;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-greeting {
+    animation: dashboard-greeting-enter 360ms var(--ease-out) both;
+  }
+}
+
+@keyframes dashboard-greeting-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 64rem) {
+  .dashboard-greeting {
+    margin-left: auto;
+    border-left: 0;
+    padding-left: 0.2rem;
+  }
+
+  .dashboard-greeting + .dashboard-mobile-menu-trigger {
+    margin-left: 0;
+  }
+}
+
+@media (min-width: 64.01rem) and (max-width: 96rem) {
+  .dashboard-top-nav nav a:not(.active) {
+    width: 2.5rem;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .dashboard-top-nav nav a:not(.active) span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 22rem) {
+  .dashboard-top-brand strong {
+    display: none;
+  }
+
+  .dashboard-greeting-copy strong {
+    max-width: 5.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-greeting {
+    animation: none;
   }
 }

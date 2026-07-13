@@ -72,6 +72,8 @@ export default function AppShell({
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const results = useMemo(() => buildSearchResults(data, query), [data, query]);
   const isDashboard = normalize(currentPath) === "/";
+  const greeting = timeGreeting();
+  const firstName = (settings.accountName || "there").trim().split(/\s+/)[0];
 
   useEffect(() => {
     function closeOnAway(event: MouseEvent) {
@@ -129,6 +131,15 @@ export default function AppShell({
             );
           })}
         </nav>
+        {isDashboard && (
+          <a className="dashboard-greeting" href="/settings" aria-label={`Open ${settings.accountName || "account"} profile`}>
+            <span className="dashboard-greeting-avatar"><UserCircle size={19} aria-hidden="true" /></span>
+            <span className="dashboard-greeting-copy">
+              <small>{greeting},</small>
+              <strong>{firstName}</strong>
+            </span>
+          </a>
+        )}
         <button
           className="dashboard-mobile-menu-trigger"
           type="button"
@@ -307,6 +318,13 @@ export default function AppShell({
 
 function normalize(path: string) {
   return path === "/debts" ? "/debt" : path;
+}
+
+function timeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
 }
 
 function titleForPath(path: string, settings: UserSettings) {

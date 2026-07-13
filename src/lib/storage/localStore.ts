@@ -55,6 +55,9 @@ export function resetAllData(): AppData {
     ...data,
     settings: {
       ...data.settings,
+      accountName: "",
+      profileLabel: "",
+      notificationsEnabled: false,
       hiddenWidgets: [BLANK_RESET_MARKER],
     },
   };

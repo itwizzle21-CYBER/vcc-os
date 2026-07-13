@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "lint": "eslint src App.tsx CommandCenterCard.tsx Dashboard.tsx DailyBriefingCard.tsx TodaysMissionCard.tsx MoneySnapshotCard.tsx PriorityAlertsCard.tsx BuyNextCard.tsx GoalProgressCard.tsx BillsCard.tsx DebtCard.tsx SavingsCard.tsx TransactionsPage.tsx data.ts decisionEngine.ts decisionEngine.test.ts transactionEngine.ts main.tsx vite.config.ts --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run decisionEngine.test.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

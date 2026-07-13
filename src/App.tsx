@@ -28,6 +28,7 @@ import { formatCurrency, isBlankRow, toNumber } from "./lib/calculations/currenc
 import { computeDecisionEngine } from "./lib/engine/decisionEngine";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
+import { signedTransactionAmount, transactionType } from "./lib/engine/transactionEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, resetAllData, resetSection, saveAppData } from "./lib/storage/localStore";
 import type { AppData, SectionKey, SpreadsheetRow } from "./lib/types/app";
@@ -400,7 +401,7 @@ function TransactionsPage({
     .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
   const expenseTotal = visibleFilledRows
     .filter((row) => transactionType(row) === "expense")
-    .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+    .reduce((sum, row) => sum + Math.abs(signedTransactionAmount(row)), 0);
   const transferTotal = visibleFilledRows
     .filter((row) => transactionType(row) === "transfer")
     .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
@@ -1455,18 +1456,20 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </details>
             <div className="settings-danger-zone">
               <div>
-                <strong>Reset all financial data</strong>
-                <small>Clears every spreadsheet row. Your appearance and account preferences stay intact.</small>
+                <strong>Reset VCC to a blank state</strong>
+                <small>Clears every row, planner value, history item, account label, and preference.</small>
               </div>
               <button
                 type="button"
                 onClick={() => {
-                  if (!data.settings.confirmBeforeReset || window.confirm("Reset all VCC OS data to zero? This clears local spreadsheet values.")) {
-                    onChange({ ...resetAllData(), settings: data.settings });
+                  if (!data.settings.confirmBeforeReset || window.confirm("Reset all VCC OS data and settings to a blank state? This cannot be undone.")) {
+                    localStorage.removeItem("vcc-os-smart-features");
+                    setFeaturePrefs(Object.fromEntries(smartFeatures.map((feature) => [feature.key, true])));
+                    onChange(resetAllData());
                   }
                 }}
               >
-                Reset all data
+                Reset VCC to blank
               </button>
             </div>
           </SettingsSection>
@@ -1529,24 +1532,37 @@ function loadFeaturePrefs(): Record<string, boolean> {
 
 function SettingsSection({ id, icon: Icon, title, description, children, defaultOpen = false }: { id: string; icon: LucideIcon; title: string; description: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [mobileOpen, setMobileOpen] = useState(defaultOpen);
+  const [mobileLayout, setMobileLayout] = useState(() => window.matchMedia("(max-width: 57.999rem)").matches);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 57.999rem)");
+    const handleChange = (event: MediaQueryListEvent) => setMobileLayout(event.matches);
+    setMobileLayout(media.matches);
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
+
+  const expanded = !mobileLayout || mobileOpen;
 
   return (
     <section className={`settings-section${mobileOpen ? " is-mobile-open" : ""}`} id={id}>
       <header className="settings-section-header">
-        <span className="settings-section-icon"><Icon size={19} aria-hidden="true" /></span>
-        <div>
-          <h2>{title}</h2>
-          <p>{description}</p>
-        </div>
         <button
-          className="settings-section-toggle"
+          className="settings-section-trigger"
           type="button"
-          aria-expanded={mobileOpen}
+          aria-expanded={expanded}
           aria-controls={`${id}-content`}
-          aria-label={`${mobileOpen ? "Collapse" : "Expand"} ${title}`}
-          onClick={() => setMobileOpen((open) => !open)}
+          aria-label={mobileLayout ? `${mobileOpen ? "Collapse" : "Expand"} ${title}` : title}
+          onClick={() => {
+            if (mobileLayout) setMobileOpen((open) => !open);
+          }}
         >
-          <ChevronDown size={18} aria-hidden="true" />
+          <span className="settings-section-icon"><Icon size={19} aria-hidden="true" /></span>
+          <span className="settings-section-heading">
+            <span>{title}</span>
+            <small>{description}</small>
+          </span>
+          <span className="settings-section-chevron" aria-hidden="true"><ChevronDown size={18} /></span>
         </button>
       </header>
       <div className="settings-section-body" id={`${id}-content`}>
@@ -1811,13 +1827,6 @@ function normalizeGoalRow(row: SpreadsheetRow): SpreadsheetRow {
       autoAlert: row.cells.autoAlert || "",
     },
   };
-}
-
-function transactionType(row: SpreadsheetRow): "income" | "expense" | "transfer" {
-  const value = `${row.cells.type || ""} ${row.cells.category || ""}`.toLowerCase();
-  if (value.includes("transfer")) return "transfer";
-  if (value.includes("income") || toNumber(row.cells.amount) > 0) return "income";
-  return "expense";
 }
 
 function transactionCategory(row: SpreadsheetRow): string {
