@@ -1248,6 +1248,10 @@ function titleCase(value: string): string {
 
 function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppData) => void }) {
   const [featurePrefs, setFeaturePrefs] = useState<Record<string, boolean>>(() => loadFeaturePrefs());
+  const [openSection, setOpenSection] = useState<string | null>(() => {
+    const hash = window.location.hash.slice(1);
+    return settingsNavigation.some(({ href }) => href === `#${hash}`) ? hash : "settings-profile";
+  });
 
   function updateFeature(key: string, value: boolean) {
     const next = { ...featurePrefs, [key]: value };
@@ -1304,29 +1308,39 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
     .map((part) => part[0]?.toUpperCase())
     .join("") || "VC";
 
+  function openSettingsSection(id: string) {
+    setOpenSection(id);
+    window.history.replaceState(null, "", `${window.location.pathname}#${id}`);
+    window.requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function toggleSettingsSection(id: string) {
+    setOpenSection((current) => {
+      const next = current === id ? null : id;
+      window.history.replaceState(null, "", next ? `${window.location.pathname}#${next}` : window.location.pathname);
+      return next;
+    });
+  }
+
   return (
     <div className="settings-page premium-settings">
-      <header className="settings-account-header">
-        <div className="settings-account-identity">
-          <span className="settings-avatar" aria-hidden="true">{initials}</span>
-          <div>
-            <p className="settings-kicker">Personal workspace</p>
-            <h2>{accountName}</h2>
-            <p>{data.settings.profileLabel || "Local Profile"}</p>
-          </div>
-        </div>
-        <div className="settings-account-state" aria-label="Account status">
-          <span><ShieldCheck size={15} /> {data.settings.localMode ? "Local first" : "Cloud ready"}</span>
-          <span><Save size={15} /> Changes save automatically</span>
-        </div>
-      </header>
-
       <div className="settings-layout">
         <aside className="settings-navigation">
           <p>Settings</p>
           <nav aria-label="Settings sections">
             {settingsNavigation.map(({ href, label, icon: Icon }) => (
-              <a key={href} href={href}>
+              <a
+                key={href}
+                href={href}
+                className={openSection === href.slice(1) ? "is-active" : undefined}
+                aria-current={openSection === href.slice(1) ? "location" : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  openSettingsSection(href.slice(1));
+                }}
+              >
                 <Icon size={17} aria-hidden="true" />
                 <span>{label}</span>
               </a>
@@ -1339,7 +1353,21 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
         </aside>
 
         <div className="settings-content">
-          <SettingsSection id="settings-profile" icon={UserRound} title="Profile & privacy" description="Control how this workspace identifies you and where it stores data." defaultOpen>
+          <SettingsSection id="settings-profile" icon={UserRound} title="Workspace & privacy" description="Manage your identity, profile, and local data preferences." open={openSection === "settings-profile"} onToggle={() => toggleSettingsSection("settings-profile")}>
+            <div className="settings-profile-overview">
+              <div className="settings-account-identity">
+                <span className="settings-avatar" aria-hidden="true">{initials}</span>
+                <div>
+                  <p className="settings-kicker">Personal workspace</p>
+                  <h2>{accountName}</h2>
+                  <p>{data.settings.profileLabel || "Local Profile"}</p>
+                </div>
+              </div>
+              <div className="settings-account-state" aria-label="Account status">
+                <span><ShieldCheck size={15} /> {data.settings.localMode ? "Local first" : "Cloud ready"}</span>
+                <span><Save size={15} /> Changes save automatically</span>
+              </div>
+            </div>
             <div className="settings-field-grid">
               <SettingInput label="Greeting name" description="Shown across your dashboard and briefings." value={data.settings.accountName} onChange={(accountName) => onChange({ ...data, settings: { ...data.settings, accountName } })} />
               <SettingInput label="Profile label" description="A short name for this local workspace." value={data.settings.profileLabel} onChange={(profileLabel) => onChange({ ...data, settings: { ...data.settings, profileLabel } })} />
@@ -1347,7 +1375,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             <SettingFeatureRow title="Local-first mode" description="Keep this VCC workspace and its data on this device." checked={data.settings.localMode} onChange={(localMode) => onChange({ ...data, settings: { ...data.settings, localMode } })} />
           </SettingsSection>
 
-          <SettingsSection id="settings-appearance" icon={Palette} title="Appearance" description="Choose a focused visual system that feels right for daily use.">
+          <SettingsSection id="settings-appearance" icon={Palette} title="Appearance" description="Choose a focused visual system that feels right for daily use." open={openSection === "settings-appearance"} onToggle={() => toggleSettingsSection("settings-appearance")}>
             <SettingControlRow label="Theme" description="Set the overall brightness and contrast.">
               <SettingSegmented label="Theme" value={data.settings.theme} options={[
                 { value: "dark", label: "Dark" },
@@ -1375,7 +1403,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </SettingControlRow>
           </SettingsSection>
 
-          <SettingsSection id="settings-intelligence" icon={BrainCircuit} title="Intelligence" description="Decide which financial signals VCC calculates for you.">
+          <SettingsSection id="settings-intelligence" icon={BrainCircuit} title="Intelligence" description="Decide which financial signals VCC calculates for you." open={openSection === "settings-intelligence"} onToggle={() => toggleSettingsSection("settings-intelligence")}>
             <div className="settings-row-list">
               {smartFeatures.map((feature) => (
                 <SettingFeatureRow key={feature.key} title={feature.label} description={feature.description} checked={featurePrefs[feature.key] !== false} onChange={(checked) => updateFeature(feature.key, checked)} />
@@ -1383,7 +1411,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </div>
           </SettingsSection>
 
-          <SettingsSection id="settings-notifications" icon={BellRing} title="Notifications" description="Keep important deadlines visible without adding noise.">
+          <SettingsSection id="settings-notifications" icon={BellRing} title="Notifications" description="Keep important deadlines visible without adding noise." open={openSection === "settings-notifications"} onToggle={() => toggleSettingsSection("settings-notifications")}>
             <SettingFeatureRow title="Allow notifications" description="Master control for reminders and account alerts." checked={data.settings.notificationsEnabled} onChange={(notificationsEnabled) => onChange({ ...data, settings: { ...data.settings, notificationsEnabled } })} />
             <div className="settings-row-list settings-dependent-rows" aria-disabled={!data.settings.notificationsEnabled}>
               <SettingFeatureRow title="Bill reminders" description="Alert before bills are due." checked={featurePrefs.billReminders !== false} disabled={!data.settings.notificationsEnabled} onChange={(checked) => updateFeature("billReminders", checked)} />
@@ -1392,7 +1420,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </div>
           </SettingsSection>
 
-          <SettingsSection id="settings-dashboard" icon={LayoutDashboard} title="Dashboard" description="Choose the modules that stay visible in your command center.">
+          <SettingsSection id="settings-dashboard" icon={LayoutDashboard} title="Dashboard" description="Choose the modules that stay visible in your command center." open={openSection === "settings-dashboard"} onToggle={() => toggleSettingsSection("settings-dashboard")}>
             <div className="settings-widget-grid">
               {widgetOptions.map((widget) => (
                 <SettingToggle
@@ -1413,7 +1441,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </div>
           </SettingsSection>
 
-          <SettingsSection id="settings-data" icon={Database} title="Data & storage" description="Move, protect, or reset the information stored in this browser.">
+          <SettingsSection id="settings-data" icon={Database} title="Data & storage" description="Move, protect, or reset the information stored in this browser." open={openSection === "settings-data"} onToggle={() => toggleSettingsSection("settings-data")}>
             <div className="settings-data-stats" aria-label="Stored row counts">
               <span><strong>{data.sections.money.length}</strong><small>Money</small></span>
               <span><strong>{data.sections.bills.length}</strong><small>Bills</small></span>
@@ -1474,7 +1502,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </div>
           </SettingsSection>
 
-          <SettingsSection id="settings-about" icon={Info} title="About VCC-OS" description="Vitality Command Center Operating System.">
+          <SettingsSection id="settings-about" icon={Info} title="About VCC-OS" description="Vitality Command Center Operating System." open={openSection === "settings-about"} onToggle={() => toggleSettingsSection("settings-about")}>
             <div className="settings-about-row">
               <div className="settings-product-mark" aria-hidden="true"><MonitorCog size={22} /></div>
               <div>
@@ -1491,7 +1519,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
 }
 
 const settingsNavigation: Array<{ href: string; label: string; icon: LucideIcon }> = [
-  { href: "#settings-profile", label: "Profile & privacy", icon: UserRound },
+  { href: "#settings-profile", label: "Workspace & privacy", icon: UserRound },
   { href: "#settings-appearance", label: "Appearance", icon: SlidersHorizontal },
   { href: "#settings-intelligence", label: "Intelligence", icon: BrainCircuit },
   { href: "#settings-notifications", label: "Notifications", icon: BellRing },
@@ -1530,32 +1558,17 @@ function loadFeaturePrefs(): Record<string, boolean> {
   }
 }
 
-function SettingsSection({ id, icon: Icon, title, description, children, defaultOpen = false }: { id: string; icon: LucideIcon; title: string; description: string; children: React.ReactNode; defaultOpen?: boolean }) {
-  const [mobileOpen, setMobileOpen] = useState(defaultOpen);
-  const [mobileLayout, setMobileLayout] = useState(() => window.matchMedia("(max-width: 57.999rem)").matches);
-
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 57.999rem)");
-    const handleChange = (event: MediaQueryListEvent) => setMobileLayout(event.matches);
-    setMobileLayout(media.matches);
-    media.addEventListener("change", handleChange);
-    return () => media.removeEventListener("change", handleChange);
-  }, []);
-
-  const expanded = !mobileLayout || mobileOpen;
-
+function SettingsSection({ id, icon: Icon, title, description, children, open, onToggle }: { id: string; icon: LucideIcon; title: string; description: string; children: React.ReactNode; open: boolean; onToggle: () => void }) {
   return (
-    <section className={`settings-section${mobileOpen ? " is-mobile-open" : ""}`} id={id}>
+    <section className={`settings-section${open ? " is-open is-mobile-open" : ""}`} id={id}>
       <header className="settings-section-header">
         <button
           className="settings-section-trigger"
           type="button"
-          aria-expanded={expanded}
+          aria-expanded={open}
           aria-controls={`${id}-content`}
-          aria-label={mobileLayout ? `${mobileOpen ? "Collapse" : "Expand"} ${title}` : title}
-          onClick={() => {
-            if (mobileLayout) setMobileOpen((open) => !open);
-          }}
+          aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
+          onClick={onToggle}
         >
           <span className="settings-section-icon"><Icon size={19} aria-hidden="true" /></span>
           <span className="settings-section-heading">
@@ -1565,7 +1578,7 @@ function SettingsSection({ id, icon: Icon, title, description, children, default
           <span className="settings-section-chevron" aria-hidden="true"><ChevronDown size={18} /></span>
         </button>
       </header>
-      <div className="settings-section-body" id={`${id}-content`}>
+      <div className="settings-section-body" id={`${id}-content`} hidden={!open}>
         {children}
       </div>
     </section>
