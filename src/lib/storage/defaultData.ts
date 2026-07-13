@@ -122,7 +122,253 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
 };
 
 export function createStarterData(): AppData {
-  return createZeroData();
+  const data = createZeroData();
+  return {
+    ...data,
+    sections: {
+      ...data.sections,
+      money: [
+        row("money-cash-1", {
+          label: "Chime Checking",
+          amount: "$2,840.32",
+          section: "cash",
+          weekStart: "2026-07-12",
+          weekEnd: "2026-07-18",
+          notes: "Primary operating cash",
+        }),
+        row("money-cash-2", {
+          label: "Cash App",
+          amount: "$640.00",
+          section: "cash",
+          weekStart: "2026-07-12",
+          weekEnd: "2026-07-18",
+          notes: "Fast access spending",
+        }),
+        row("money-savings-1", {
+          label: "Emergency Fund",
+          amount: "$12,800.00",
+          section: "savings",
+          notes: "Protected savings",
+        }),
+        row("money-borrowed-1", {
+          label: "SpotMe / MyPay",
+          amount: "$450.00",
+          section: "borrowed",
+          notes: "Repay from next paycheck",
+        }),
+        row("money-credit-1", {
+          label: "Credit Usage",
+          amount: "$1,250.00",
+          section: "credit",
+          notes: "Current revolving usage",
+        }),
+      ],
+      bills: [
+        row("bill-electric", {
+          name: "Electric bill",
+          category: "utilities",
+          dueDate: "2026-07-12",
+          amount: "$186.42",
+          status: "upcoming",
+          autopay: "No",
+          priority: "critical",
+          notes: "Pay today",
+        }),
+        row("bill-credit-card", {
+          name: "Credit card minimum",
+          category: "loans",
+          dueDate: "2026-07-14",
+          amount: "$450.00",
+          status: "upcoming",
+          autopay: "No",
+          priority: "high",
+          notes: "Avoid interest pressure",
+        }),
+        row("bill-insurance", {
+          name: "Car insurance",
+          category: "insurance",
+          dueDate: "2026-07-17",
+          amount: "$214.80",
+          status: "upcoming",
+          autopay: "Yes",
+          priority: "high",
+          notes: "Autopay scheduled",
+        }),
+        row("bill-streaming", {
+          name: "Streaming bundle",
+          category: "subscriptions",
+          dueDate: "2026-07-21",
+          amount: "$34.99",
+          status: "upcoming",
+          autopay: "Yes",
+          priority: "low",
+          notes: "Review bundle",
+        }),
+      ],
+      income: [
+        row("income-paycheck", {
+          source: "Primary paycheck",
+          amount: "$1,200.00",
+          date: "2026-07-12",
+          type: "paycheck",
+          notes: "Weekly income",
+        }),
+        row("income-side", {
+          source: "Side income",
+          amount: "$250.00",
+          date: "2026-07-10",
+          type: "contract",
+          notes: "Variable income",
+        }),
+      ],
+      transactions: [
+        row("txn-paycheck", {
+          description: "Primary paycheck",
+          type: "income",
+          category: "Income",
+          amount: "$1,200.00",
+          date: "2026-07-12",
+          account: "Chime Checking",
+          recurring: "Yes",
+          notes: "Main deposit",
+        }),
+        row("txn-groceries", {
+          description: "Groceries",
+          type: "expense",
+          category: "Groceries",
+          amount: "-$72.15",
+          date: "2026-07-11",
+          account: "Chime Checking",
+          recurring: "No",
+          notes: "Weekly food run",
+        }),
+        row("txn-gas", {
+          description: "Fuel",
+          type: "expense",
+          category: "Fuel",
+          amount: "-$48.00",
+          date: "2026-07-10",
+          account: "Cash App",
+          recurring: "No",
+          notes: "Commute",
+        }),
+        row("txn-savings", {
+          description: "Emergency fund transfer",
+          type: "transfer",
+          category: "Savings",
+          amount: "-$300.00",
+          date: "2026-07-09",
+          account: "Chime Checking",
+          recurring: "Yes",
+          notes: "Protected savings",
+        }),
+      ],
+      debt: [
+        row("debt-credit-card", {
+          name: "Credit card",
+          balance: "$8,250.00",
+          minimum: "$450.00",
+          rate: "21.9%",
+          priority: "High",
+        }),
+        row("debt-personal-loan", {
+          name: "Personal loan",
+          balance: "$4,900.00",
+          minimum: "$180.00",
+          rate: "10.3%",
+          priority: "Normal",
+        }),
+      ],
+      carPayment: [
+        row("car-current", {
+          vehicle: "Current vehicle",
+          lender: "Auto lender",
+          originalBalance: "$18,500.00",
+          remainingBalance: "$10,200.00",
+          monthlyPayment: "$385.00",
+          dueDate: "2026-07-19",
+          apr: "6.9%",
+          status: "active",
+          notes: "Track payoff progress",
+        }),
+      ],
+      savings: [
+        row("sav-emergency", {
+          name: "Emergency Fund",
+          balance: "$12,800.00",
+          protected: "Yes",
+          target: "$18,000.00",
+          interestRate: "4.25",
+          institution: "High Yield Bank",
+          type: "high_yield",
+          notes: "Six-month target",
+        }),
+        row("sav-move", {
+          name: "Move Out Fund",
+          balance: "$3,200.00",
+          protected: "No",
+          target: "$15,000.00",
+          interestRate: "3.9",
+          institution: "Credit Union",
+          type: "money_market",
+          notes: "Housing goal",
+        }),
+      ],
+      inventory: [
+        row("inv-milk", { item: "Milk", qty: "0", minNeeded: "1", cost: "$4.50", notes: "Buy next" }),
+        row("inv-bread", { item: "Bread", qty: "0", minNeeded: "1", cost: "$3.25", notes: "Buy next" }),
+        row("inv-eggs", { item: "Eggs", qty: "1", minNeeded: "2", cost: "$5.99", notes: "Low stock" }),
+        row("inv-paper", { item: "Toilet paper", qty: "2", minNeeded: "4", cost: "$12.99", notes: "Household" }),
+      ],
+      goals: [
+        row("goal-emergency", {
+          name: "Emergency Fund",
+          current: "$12,800.00",
+          target: "$18,000.00",
+          deadline: "2026-11-15",
+          category: "emergency_fund",
+          priority: "high",
+          status: "active",
+        }),
+        row("goal-vehicle", {
+          name: "Vehicle Fund",
+          current: "$5,600.00",
+          target: "$25,000.00",
+          deadline: "2027-12-31",
+          category: "car",
+          priority: "medium",
+          status: "active",
+        }),
+        row("goal-debt-free", {
+          name: "Debt Free",
+          current: "$5,000.00",
+          target: "$18,450.00",
+          deadline: "2028-07-01",
+          category: "other",
+          priority: "critical",
+          status: "active",
+        }),
+      ],
+    },
+    paycheckPlanner: {
+      paycheckAmount: "$1,200.00",
+      payDate: "2026-07-12",
+      weekStart: "2026-07-12",
+      weekEnd: "2026-07-18",
+      spotMeRepayment: "$120.00",
+      myPayRepayment: "$330.00",
+      locked: true,
+    },
+    settings: {
+      ...data.settings,
+      accountName: "Alex",
+      profileLabel: "Command Profile",
+      theme: "midnight",
+      accent: "blue",
+      density: "compact",
+      surfaceStyle: "glass",
+    },
+  };
 }
 
 export function createZeroData(): AppData {
@@ -165,4 +411,8 @@ export function createZeroData(): AppData {
       sidebarCollapsed: false,
     },
   };
+}
+
+function row(id: string, cells: Record<string, string>) {
+  return { id, cells };
 }

@@ -5315,3 +5315,461 @@ td input:focus {
     display: flex;
   }
 }
+
+/* Sprint 0.7 Base44 architecture parity pass */
+:root {
+  --vcc-bg: #080b12;
+  --vcc-panel: rgba(17, 22, 33, 0.78);
+  --vcc-panel-strong: rgba(21, 27, 40, 0.94);
+  --vcc-line: rgba(148, 163, 184, 0.16);
+  --vcc-line-strong: rgba(125, 211, 252, 0.28);
+  --vcc-text: #f8fafc;
+  --vcc-muted: #93a4b8;
+  --vcc-blue: #4aa3ff;
+  --vcc-cyan: #67e8f9;
+  --vcc-green: #34d399;
+  --vcc-amber: #fbbf24;
+  --vcc-red: #fb7185;
+  --vcc-purple: #a78bfa;
+}
+
+html,
+body {
+  background: var(--vcc-bg);
+}
+
+.reference-shell {
+  min-height: 100svh;
+  background:
+    linear-gradient(180deg, rgba(9, 14, 25, 0.98), rgba(8, 11, 18, 1) 42rem),
+    var(--vcc-bg);
+  color: var(--vcc-text);
+}
+
+.reference-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.38), transparent 72%);
+}
+
+.reference-shell .sidebar {
+  display: none;
+}
+
+.reference-shell .workspace {
+  width: min(100% - 2rem, 1280px);
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.reference-shell.dashboard-shell .workspace {
+  padding-top: 1.5rem;
+}
+
+.dashboard-top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  display: flex;
+  min-height: 4.25rem;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--vcc-line);
+  background: rgba(8, 11, 18, 0.86);
+  padding: 0.65rem max(1rem, calc((100vw - 1280px) / 2));
+  backdrop-filter: blur(18px);
+}
+
+.dashboard-top-nav::before,
+.dashboard-top-nav::after {
+  display: none;
+}
+
+.dashboard-top-brand {
+  display: inline-flex;
+  min-width: max-content;
+  align-items: center;
+  gap: 0.65rem;
+  color: #ffffff;
+}
+
+.dashboard-top-brand span,
+.mobile-brand span {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid rgba(103, 232, 249, 0.45);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  color: #ffffff;
+  box-shadow: 0 0 24px rgba(37, 99, 235, 0.32);
+}
+
+.dashboard-top-brand strong {
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.dashboard-top-nav nav {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.dashboard-top-nav nav a {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: rgba(226, 232, 240, 0.72);
+  padding: 0 0.72rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dashboard-top-nav nav a:hover,
+.dashboard-top-nav nav a.active {
+  border-color: var(--vcc-line-strong);
+  background: rgba(74, 163, 255, 0.13);
+  color: #ffffff;
+}
+
+.dashboard-mobile-menu-trigger {
+  display: none;
+  width: 2.5rem;
+  min-height: 2.5rem;
+  place-items: center;
+  border: 1px solid var(--vcc-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.reference-shell .topbar {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.reference-shell .topbar h1 {
+  margin: 0;
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.base44-dashboard {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-status-line {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 2.1rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(52, 211, 153, 0.24);
+  border-radius: 8px;
+  background: rgba(52, 211, 153, 0.08);
+  color: #bbf7d0;
+  padding: 0 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.dashboard-status-line i {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--vcc-green);
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.85);
+}
+
+.mission-banner {
+  min-height: 12rem;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.82), rgba(6, 182, 212, 0.52)),
+    #0f172a;
+  box-shadow: 0 24px 70px rgba(14, 165, 233, 0.16);
+  padding: clamp(1.1rem, 3vw, 1.8rem);
+}
+
+.mission-banner::before {
+  display: none;
+}
+
+.mission-banner p {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mission-banner h2 {
+  max-width: 52rem;
+  font-size: clamp(1.55rem, 4vw, 2.9rem);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.mission-banner-body > span {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.mission-briefing {
+  display: block;
+  max-width: 56rem;
+  margin-top: 1rem !important;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.98rem;
+  font-weight: 650;
+}
+
+.mission-priority,
+.stack-priority {
+  border-radius: 8px;
+}
+
+.dashboard-intelligence-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(22rem, 0.9fr);
+  gap: 1rem;
+}
+
+.base-panel,
+.reference-shell .panel,
+.reference-shell .spreadsheet-panel,
+.reference-shell .planner-panel,
+.reference-shell .buy-next-panel,
+.reference-shell .money-history-panel,
+.reference-shell .bills-command-panel,
+.reference-shell .transactions-command-panel,
+.reference-shell .inventory-command-panel,
+.reference-shell .savings-command-panel,
+.reference-shell .goals-command-panel,
+.reference-shell .reports-command-panel,
+.reference-shell .settings-card,
+.reference-shell .settings-hero,
+.reference-shell .danger-panel {
+  border: 1px solid var(--vcc-line);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.022)),
+    var(--vcc-panel);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+}
+
+.dashboard-intelligence-panel {
+  padding: 1rem;
+}
+
+.dashboard-intelligence-heading span,
+.dashboard-module-head > span {
+  border-radius: 8px;
+}
+
+.dashboard-mission-row,
+.dashboard-alert-row {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.dashboard-module-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.dashboard-module-card {
+  min-height: 17rem;
+  padding: 1rem;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.dashboard-module-card:hover {
+  border-color: var(--vcc-line-strong);
+  background:
+    linear-gradient(180deg, rgba(74, 163, 255, 0.105), rgba(255, 255, 255, 0.025)),
+    var(--vcc-panel-strong);
+  transform: translateY(-2px);
+}
+
+.dashboard-module-title small,
+.dashboard-module-card dt,
+.reference-shell .eyebrow {
+  color: var(--vcc-muted);
+  letter-spacing: 0.05em;
+}
+
+.dashboard-module-title strong {
+  color: #ffffff;
+  font-size: clamp(1.65rem, 3vw, 2.15rem);
+}
+
+.dashboard-module-card dd {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.reference-shell .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.reference-shell .summary-card {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.reference-shell .money-hero-panel {
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid rgba(74, 163, 255, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.34), rgba(8, 11, 18, 0.18)),
+    var(--vcc-panel);
+  padding: 1.2rem;
+}
+
+.reference-shell .money-hero-panel h2,
+.reference-shell .bills-command-panel h2,
+.reference-shell .transactions-command-panel h2,
+.reference-shell .inventory-command-panel h2,
+.reference-shell .savings-command-panel h2,
+.reference-shell .goals-command-panel h2,
+.reference-shell .reports-command-panel h2,
+.reference-shell .panel h2 {
+  font-size: clamp(1.35rem, 2.6vw, 2.25rem);
+  letter-spacing: 0;
+}
+
+.reference-shell .money-hero-metrics {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.reference-shell .money-hero-metrics span {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.reference-shell .spreadsheet-toolbar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.018)),
+    rgba(17, 22, 33, 0.95);
+}
+
+.reference-shell .toolbar-controls button,
+.reference-shell .settings-actions button,
+.reference-shell .settings-reset-grid button {
+  color: #dbeafe;
+}
+
+.reference-shell .toolbar-controls button:first-of-type {
+  border-color: rgba(74, 163, 255, 0.34);
+  background: rgba(74, 163, 255, 0.18);
+  color: #ffffff;
+}
+
+.reference-shell th {
+  color: rgba(203, 213, 225, 0.64);
+  text-transform: uppercase;
+}
+
+.reference-shell td input:focus {
+  border-radius: 6px;
+  background: rgba(74, 163, 255, 0.1);
+  outline: 1px solid rgba(74, 163, 255, 0.42);
+}
+
+.reference-shell .bills-status-tabs button.active,
+.reference-shell .inventory-tabs button.active,
+.reference-shell .goals-status-tabs button.active,
+.reference-shell .reports-period-tabs button.active {
+  border-color: rgba(103, 232, 249, 0.3);
+  background: rgba(74, 163, 255, 0.2);
+}
+
+.mobile-drawer {
+  border-radius: 8px 0 0 8px;
+  background: rgba(10, 14, 23, 0.98);
+}
+
+.mobile-bottom-nav {
+  background: rgba(8, 11, 18, 0.94);
+  backdrop-filter: blur(18px);
+}
+
+.mobile-bottom-nav a {
+  border-radius: 8px;
+}
+
+.mobile-bottom-nav a.active {
+  background: rgba(74, 163, 255, 0.14);
+  color: #bfdbfe;
+}
+
+@media (max-width: 76rem) {
+  .dashboard-top-nav nav {
+    display: none;
+  }
+
+  .dashboard-mobile-menu-trigger {
+    display: grid;
+    margin-left: auto;
+  }
+
+  .reference-shell .workspace,
+  .reference-shell.dashboard-shell .workspace {
+    width: min(100% - 1.25rem, 46rem);
+    padding: 1rem 0 6rem;
+  }
+
+  .dashboard-intelligence-grid,
+  .dashboard-module-grid,
+  .reference-shell .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mission-banner {
+    min-height: 0;
+  }
+
+  .reference-shell .topbar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .reference-shell .top-actions {
+    grid-column: 1 / -1;
+  }
+
+  .reference-shell .money-hero-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 76.01rem) and (max-width: 98rem) {
+  .dashboard-module-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

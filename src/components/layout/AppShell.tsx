@@ -41,7 +41,8 @@ const nav = [
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
-const dashboardNav = nav.filter((item) => !["/income", "/debt", "/missions"].includes(item.path));
+const primaryPaths = ["/", "/money", "/bills", "/inventory", "/transactions", "/savings", "/goals", "/reports", "/settings"];
+const dashboardNav = nav.filter((item) => primaryPaths.includes(item.path));
 const bottomNav = dashboardNav.slice(0, 5);
 
 export default function AppShell({

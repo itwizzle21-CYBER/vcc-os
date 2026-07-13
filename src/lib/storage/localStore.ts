@@ -1,7 +1,7 @@
 import type { AppData, SectionKey, SpreadsheetRow } from "../types/app";
 import { isBlankRow, toNumber } from "../calculations/currency";
 import { normalizeInventoryRow } from "../engine/inventoryEngine";
-import { createZeroData, sectionConfigs } from "./defaultData";
+import { createStarterData, createZeroData, sectionConfigs } from "./defaultData";
 
 const STORAGE_KEY = "vcc-os:data:v2";
 const LEGACY_KEYS = ["vcc-os:data", "vcc_os_data", "vccData", "vcc-os-financial-state"];
@@ -20,9 +20,9 @@ export function loadAppData(): AppData {
     }
   }
 
-  const empty = createZeroData();
-  saveAppData(empty);
-  return empty;
+  const starter = createStarterData();
+  saveAppData(starter);
+  return starter;
 }
 
 export function saveAppData(data: AppData) {
