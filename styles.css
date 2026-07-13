@@ -296,6 +296,7 @@ textarea {
 }
 
 .settings-navigation a:focus-visible,
+.settings-section-toggle:focus-visible,
 .settings-segmented button:focus-visible,
 .settings-accent-picker button:focus-visible,
 .settings-actions button:focus-visible,
@@ -390,6 +391,10 @@ textarea {
   color: var(--muted);
   font-size: 0.8rem;
   line-height: 1.45;
+}
+
+.settings-section-toggle {
+  display: none;
 }
 
 .settings-section-body {
@@ -989,6 +994,53 @@ textarea {
     scroll-margin-top: 4.8rem;
   }
 
+  .settings-section:not(.is-mobile-open) {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .settings-section:not(.is-mobile-open) .settings-section-header {
+    align-items: center;
+    margin-bottom: 0;
+  }
+
+  .settings-section:not(.is-mobile-open) .settings-section-header p,
+  .settings-section:not(.is-mobile-open) .settings-section-body {
+    display: none;
+  }
+
+  .settings-section-toggle {
+    display: grid;
+    width: 2.65rem;
+    height: 2.65rem;
+    flex: 0 0 2.65rem;
+    margin-left: auto;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--surface-2) 82%, transparent);
+    color: var(--muted);
+    padding: 0;
+    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-out);
+  }
+
+  .settings-section-toggle:hover {
+    border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
+    color: var(--text);
+  }
+
+  .settings-section-toggle:active {
+    transform: scale(0.96);
+  }
+
+  .settings-section-toggle svg {
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+
+  .settings-section.is-mobile-open .settings-section-toggle svg {
+    transform: rotate(180deg);
+  }
+
   .settings-control-row {
     align-items: flex-start;
     flex-direction: column;
@@ -1109,6 +1161,8 @@ textarea {
 
 @media (prefers-reduced-motion: reduce) {
   .settings-navigation a,
+  .settings-section-toggle,
+  .settings-section-toggle svg,
   .settings-feature-row,
   .settings-segmented button,
   .settings-accent-picker button,

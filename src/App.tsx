@@ -1338,7 +1338,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
         </aside>
 
         <div className="settings-content">
-          <SettingsSection id="settings-profile" icon={UserRound} title="Profile & privacy" description="Control how this workspace identifies you and where it stores data.">
+          <SettingsSection id="settings-profile" icon={UserRound} title="Profile & privacy" description="Control how this workspace identifies you and where it stores data." defaultOpen>
             <div className="settings-field-grid">
               <SettingInput label="Greeting name" description="Shown across your dashboard and briefings." value={data.settings.accountName} onChange={(accountName) => onChange({ ...data, settings: { ...data.settings, accountName } })} />
               <SettingInput label="Profile label" description="A short name for this local workspace." value={data.settings.profileLabel} onChange={(profileLabel) => onChange({ ...data, settings: { ...data.settings, profileLabel } })} />
@@ -1527,17 +1527,29 @@ function loadFeaturePrefs(): Record<string, boolean> {
   }
 }
 
-function SettingsSection({ id, icon: Icon, title, description, children }: { id: string; icon: LucideIcon; title: string; description: string; children: React.ReactNode }) {
+function SettingsSection({ id, icon: Icon, title, description, children, defaultOpen = false }: { id: string; icon: LucideIcon; title: string; description: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [mobileOpen, setMobileOpen] = useState(defaultOpen);
+
   return (
-    <section className="settings-section" id={id}>
+    <section className={`settings-section${mobileOpen ? " is-mobile-open" : ""}`} id={id}>
       <header className="settings-section-header">
         <span className="settings-section-icon"><Icon size={19} aria-hidden="true" /></span>
         <div>
           <h2>{title}</h2>
           <p>{description}</p>
         </div>
+        <button
+          className="settings-section-toggle"
+          type="button"
+          aria-expanded={mobileOpen}
+          aria-controls={`${id}-content`}
+          aria-label={`${mobileOpen ? "Collapse" : "Expand"} ${title}`}
+          onClick={() => setMobileOpen((open) => !open)}
+        >
+          <ChevronDown size={18} aria-hidden="true" />
+        </button>
       </header>
-      <div className="settings-section-body">
+      <div className="settings-section-body" id={`${id}-content`}>
         {children}
       </div>
     </section>
