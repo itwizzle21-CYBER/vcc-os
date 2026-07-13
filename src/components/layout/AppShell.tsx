@@ -43,8 +43,7 @@ const nav = [
 
 const primaryPaths = ["/", "/money", "/bills", "/inventory", "/transactions", "/savings", "/goals", "/reports", "/settings"];
 const dashboardNav = nav.filter((item) => primaryPaths.includes(item.path));
-const launcherArcStart = -165;
-const launcherArcEnd = -15;
+const launcherHoldDelay = 240;
 
 export default function AppShell({
   children,
@@ -69,13 +68,27 @@ export default function AppShell({
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLDivElement>(null);
   const suppressLauncherClickRef = useRef(false);
-  const launcherStartedOpenRef = useRef(false);
+  const launcherHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const launcherPointerRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    activated: boolean;
+    moved: boolean;
+    selectedPath: string;
+  } | null>(null);
   const results = useMemo(() => buildSearchResults(data, query), [data, query]);
   const isDashboard = normalize(currentPath) === "/";
   const greeting = timeGreeting();
   const accountName = settings.accountName.trim();
   const firstName = accountName.split(/\s+/)[0];
   const showDashboardProfile = isDashboard && Boolean(accountName);
+  const currentLauncherIndex = Math.max(
+    nav.findIndex((item) => normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts")),
+    0,
+  );
+  const launcherTargetIndex = nav.findIndex((item) => item.path === launcherTarget);
+  const selectedLauncherIndex = launcherTargetIndex >= 0 ? launcherTargetIndex : currentLauncherIndex;
 
   useEffect(() => {
     function closeOnAway(event: MouseEvent) {
@@ -106,6 +119,10 @@ export default function AppShell({
     };
   }, []);
 
+  useEffect(() => () => {
+    if (launcherHoldTimerRef.current) clearTimeout(launcherHoldTimerRef.current);
+  }, []);
+
   useEffect(() => {
     if (!mobileMenuOpen) return;
     setLauncherOpen(false);
@@ -118,43 +135,80 @@ export default function AppShell({
     };
   }, [mobileMenuOpen]);
 
-  function updateLauncherTarget(clientX: number, clientY: number) {
-    const element = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-launcher-path]");
-    setLauncherTarget(element?.dataset.launcherPath || null);
+  function clearLauncherHoldTimer() {
+    if (!launcherHoldTimerRef.current) return;
+    clearTimeout(launcherHoldTimerRef.current);
+    launcherHoldTimerRef.current = null;
+  }
+
+  function updateLauncherTarget(clientX: number) {
+    const edgeInset = 18;
+    const usableWidth = Math.max(window.innerWidth - edgeInset * 2, 1);
+    const progress = Math.min(Math.max((clientX - edgeInset) / usableWidth, 0), 1);
+    const targetIndex = Math.round(progress * (nav.length - 1));
+    const targetPath = nav[targetIndex].path;
+    if (launcherPointerRef.current) launcherPointerRef.current.selectedPath = targetPath;
+    setLauncherTarget(targetPath);
   }
 
   function handleLauncherPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    event.preventDefault();
-    launcherStartedOpenRef.current = launcherOpen;
-    setMobileMenuOpen(false);
-    setLauncherOpen(true);
-    setLauncherDragging(true);
-    setLauncherTarget(null);
+    clearLauncherHoldTimer();
+    const session = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      activated: false,
+      moved: false,
+      selectedPath: nav[currentLauncherIndex].path,
+    };
+    launcherPointerRef.current = session;
+    launcherHoldTimerRef.current = setTimeout(() => {
+      session.activated = true;
+      setMobileMenuOpen(false);
+      setLauncherOpen(true);
+      setLauncherDragging(true);
+      setLauncherTarget(session.selectedPath);
+    }, launcherHoldDelay);
   }
 
   function handleLauncherPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
-    if (!launcherDragging) return;
-    updateLauncherTarget(event.clientX, event.clientY);
+    const session = launcherPointerRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    const distance = Math.hypot(event.clientX - session.startX, event.clientY - session.startY);
+    if (!session.activated) {
+      if (distance > 9) clearLauncherHoldTimer();
+      return;
+    }
+    event.preventDefault();
+    if (distance > 7) session.moved = true;
+    if (session.moved) updateLauncherTarget(event.clientX);
   }
 
   function handleLauncherPointerUp(event: React.PointerEvent<HTMLButtonElement>) {
-    if (!launcherDragging) return;
-    event.currentTarget.releasePointerCapture(event.pointerId);
-    const targetPath = launcherTarget;
-    suppressLauncherClickRef.current = true;
+    const session = launcherPointerRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    clearLauncherHoldTimer();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    launcherPointerRef.current = null;
+    suppressLauncherClickRef.current = session.activated;
     setLauncherDragging(false);
-    setLauncherOpen(targetPath ? false : !launcherStartedOpenRef.current);
-    setLauncherTarget(null);
-    if (targetPath) window.location.href = targetPath;
+    if (session.activated) {
+      setLauncherOpen(false);
+      setLauncherTarget(null);
+      if (session.moved) window.location.href = session.selectedPath;
+    }
   }
 
   function handleLauncherPointerCancel(event: React.PointerEvent<HTMLButtonElement>) {
+    clearLauncherHoldTimer();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+    launcherPointerRef.current = null;
     setLauncherDragging(false);
+    setLauncherOpen(false);
     setLauncherTarget(null);
   }
 
@@ -354,17 +408,18 @@ export default function AppShell({
         </nav>
       </div>
       <div className={`mobile-quick-launcher${launcherOpen ? " is-open" : ""}${launcherDragging ? " is-dragging" : ""}`} ref={launcherRef}>
-        <div className="mobile-quick-launcher-menu" id="mobile-quick-launcher-menu" role="menu" aria-label="Quick page launcher">
+        <div className="mobile-quick-launcher-menu" id="mobile-quick-launcher-menu" role="menu" aria-label="Quick page launcher" aria-hidden={!launcherOpen}>
           {nav.map((item, index) => {
             const Icon = item.icon;
             const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
             const highlighted = launcherTarget === item.path;
-            const angle = launcherArcStart + ((launcherArcEnd - launcherArcStart) / Math.max(nav.length - 1, 1)) * index;
-            const radians = (angle * Math.PI) / 180;
-            const radius = index % 2 === 0 ? 132 : 104;
+            const offset = index - selectedLauncherIndex;
+            const distance = Math.abs(offset);
             const style = {
-              "--launcher-x": `${Math.cos(radians) * radius}px`,
-              "--launcher-y": `${Math.sin(radians) * radius}px`,
+              "--launcher-x": `${offset * 48}px`,
+              "--launcher-scale": highlighted ? 1.08 : distance === 1 ? 0.9 : 0.76,
+              "--launcher-opacity": highlighted ? 1 : distance === 1 ? 0.58 : distance === 2 ? 0.2 : 0,
+              "--launcher-delay": `${Math.min(distance, 3) * 22}ms`,
             } as CSSProperties;
             return (
               <a
@@ -373,16 +428,21 @@ export default function AppShell({
                 className={`${active ? "active" : ""}${highlighted ? " is-target" : ""}`}
                 data-launcher-path={item.path}
                 role="menuitem"
+                tabIndex={launcherOpen ? 0 : -1}
                 aria-current={active ? "page" : undefined}
                 style={style}
                 title={item.label}
                 onClick={() => setLauncherOpen(false)}
+                onFocus={() => setLauncherTarget(item.path)}
               >
-                <Icon size={17} aria-hidden="true" />
-                <span>{item.label}</span>
+                <Icon size={18} aria-hidden="true" />
+                <span className="mobile-quick-launcher-item-label">{item.label}</span>
               </a>
             );
           })}
+        </div>
+        <div className="mobile-quick-launcher-label" id="mobile-quick-launcher-label" aria-live="polite">
+          {nav[selectedLauncherIndex].label}
         </div>
         <button
           className="mobile-quick-launcher-button"
@@ -390,11 +450,13 @@ export default function AppShell({
           aria-label={launcherOpen ? "Close quick page launcher" : "Open quick page launcher"}
           aria-expanded={launcherOpen}
           aria-controls="mobile-quick-launcher-menu"
+          aria-describedby={launcherOpen ? "mobile-quick-launcher-label" : undefined}
           onClick={() => {
             if (suppressLauncherClickRef.current) {
               suppressLauncherClickRef.current = false;
               return;
             }
+            setLauncherTarget(nav[currentLauncherIndex].path);
             setLauncherOpen((open) => !open);
           }}
           onPointerDown={handleLauncherPointerDown}
@@ -402,7 +464,7 @@ export default function AppShell({
           onPointerUp={handleLauncherPointerUp}
           onPointerCancel={handleLauncherPointerCancel}
         >
-          <Zap size={22} aria-hidden="true" />
+          <Zap size={20} aria-hidden="true" />
         </button>
       </div>
     </div>
