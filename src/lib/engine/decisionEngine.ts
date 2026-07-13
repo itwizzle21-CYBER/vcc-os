@@ -1,5 +1,21 @@
-import { formatCurrency } from "../calculations/currency";
-import type { AppData, DecisionState, FinancialState } from "../types/app";
+import { formatCurrency, toNumber } from "../calculations/currency";
+import type { AppData, DecisionState, FinancialState, SpreadsheetRow } from "../types/app";
+
+export interface RankedBillRow {
+  row: SpreadsheetRow;
+  name: string;
+  category: string;
+  amount: number;
+  dueDate: string;
+  dueLabel: string;
+  status: string;
+  priority: string;
+  daysUntilDue: number;
+  urgencyScore: number;
+  impactScore: number;
+  score: number;
+  reason: string;
+}
 
 export function computeDecisionEngine(financialState: FinancialState, data: AppData): DecisionState {
   const spendableSafe = mergedSpendable(financialState);
@@ -78,6 +94,43 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
       },
     ],
   };
+}
+
+export function rankBillRows(rows: SpreadsheetRow[], today = new Date()): RankedBillRow[] {
+  return rows
+    .filter((row) => {
+      const name = row.cells.name?.trim();
+      const status = normalizeStatus(row.cells.status);
+      return Boolean(name) && status !== "paid" && status !== "cancelled";
+    })
+    .map((row) => {
+      const status = normalizeStatus(row.cells.status);
+      const priority = normalizePriority(row.cells.priority);
+      const amount = toNumber(row.cells.amount);
+      const daysUntilDue = daysBetween(row.cells.dueDate, today);
+      const effectiveStatus = daysUntilDue < 0 && status === "upcoming" ? "overdue" : status;
+      const urgencyScore = billUrgencyScore(daysUntilDue, effectiveStatus);
+      const impactScore = billImpactScore(priority, amount);
+      const score = Math.min(100, Math.round((urgencyScore * 0.58) + (impactScore * 0.32) + Math.min(amount / 20, 10)));
+      const dueLabel = describeBillDueDate(daysUntilDue);
+
+      return {
+        row,
+        name: row.cells.name,
+        category: row.cells.category || "Bills",
+        amount,
+        dueDate: row.cells.dueDate || "",
+        dueLabel,
+        status: effectiveStatus,
+        priority,
+        daysUntilDue,
+        urgencyScore,
+        impactScore,
+        score,
+        reason: buildBillReason(row.cells.name, dueLabel, priority, amount, effectiveStatus),
+      };
+    })
+    .sort((a, b) => b.score - a.score || a.daysUntilDue - b.daysUntilDue || b.amount - a.amount);
 }
 
 function chooseRecommendedMove(financialState: FinancialState): string {
@@ -164,4 +217,59 @@ function chooseTodayMission(financialState: FinancialState): DecisionState["toda
 
 function mergedSpendable(financialState: FinancialState): number {
   return Math.min(financialState.spendableCash, financialState.safeToSpend);
+}
+
+function normalizeStatus(status: string | undefined): string {
+  const value = String(status || "").trim().toLowerCase();
+  return value || "upcoming";
+}
+
+function normalizePriority(priority: string | undefined): string {
+  const value = String(priority || "").trim().toLowerCase();
+  if (["critical", "high", "medium", "low"].includes(value)) return value;
+  return "medium";
+}
+
+function daysBetween(dateText: string | undefined, today: Date): number {
+  if (!dateText) return 999;
+  const due = new Date(`${dateText}T12:00:00`);
+  if (Number.isNaN(due.getTime())) return 999;
+  const current = new Date(today);
+  current.setHours(12, 0, 0, 0);
+  return Math.ceil((due.getTime() - current.getTime()) / 86_400_000);
+}
+
+function billUrgencyScore(daysUntilDue: number, status: string): number {
+  if (status === "overdue" || status === "late" || daysUntilDue < 0) return 100 + Math.min(Math.abs(daysUntilDue) * 8, 40);
+  if (daysUntilDue === 0) return 95;
+  if (daysUntilDue === 1) return 88;
+  if (daysUntilDue <= 3) return 78;
+  if (daysUntilDue <= 7) return 62;
+  if (daysUntilDue <= 14) return 42;
+  return 20;
+}
+
+function billImpactScore(priority: string, amount: number): number {
+  const base = {
+    critical: 92,
+    high: 74,
+    medium: 50,
+    low: 24,
+  }[priority] || 50;
+  return base + Math.min(amount / 25, 24);
+}
+
+function describeBillDueDate(daysUntilDue: number): string {
+  if (daysUntilDue === 999) return "No due date";
+  if (daysUntilDue < 0) return `${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) === 1 ? "" : "s"} overdue`;
+  if (daysUntilDue === 0) return "Due today";
+  if (daysUntilDue === 1) return "Due tomorrow";
+  return `Due in ${daysUntilDue} days`;
+}
+
+function buildBillReason(name: string, dueLabel: string, priority: string, amount: number, status: string): string {
+  if (status === "overdue" || status === "late") {
+    return `${name} is ${dueLabel.toLowerCase()} with ${priority} priority at ${formatCurrency(amount)}.`;
+  }
+  return `${name} is ${dueLabel.toLowerCase()} with ${priority} priority at ${formatCurrency(amount)}.`;
 }

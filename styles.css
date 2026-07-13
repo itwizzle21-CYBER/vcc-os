@@ -2269,6 +2269,118 @@ td input[readonly] {
   color: var(--bad);
 }
 
+.bills-due-display {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(16rem, 0.8fr) minmax(12rem, 0.7fr);
+  gap: 1rem;
+  align-items: center;
+}
+
+.bills-due-primary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.bills-due-icon {
+  display: grid;
+  place-items: center;
+  width: 2.7rem;
+  height: 2.7rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-radius: 0.75rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.bills-due-primary h2 {
+  margin: 0.2rem 0 0;
+}
+
+.bills-due-primary .empty-copy {
+  margin: 0.35rem 0 0;
+}
+
+.bills-due-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.bills-due-metrics span {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-2);
+  padding: 0.65rem;
+}
+
+.bills-due-metrics small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.bills-due-metrics strong {
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.bills-due-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bills-due-list li {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--surface-2) 82%, transparent);
+  padding: 0.45rem 0.55rem;
+}
+
+.bills-due-list span {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.bills-due-list strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.84rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bills-due-list em {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .bills-insight-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
@@ -3848,8 +3960,22 @@ td input[readonly] {
   }
 
   .bills-filter-row,
+  .bills-due-display,
   .bills-insight-grid {
     grid-template-columns: 1fr;
+  }
+
+  .bills-due-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .bills-due-list li {
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+  }
+
+  .bills-due-list em {
+    grid-column: 2;
+    white-space: normal;
   }
 
   .bills-status-tabs {

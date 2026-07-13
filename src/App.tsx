@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BellRing,
   BrainCircuit,
+  CalendarClock,
   Check,
   ChevronDown,
   Database,
@@ -25,7 +26,7 @@ import PaycheckPlanner from "./components/modules/PaycheckPlanner";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import { formatCurrency, isBlankRow, toNumber } from "./lib/calculations/currency";
-import { computeDecisionEngine } from "./lib/engine/decisionEngine";
+import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { signedTransactionAmount, transactionType } from "./lib/engine/transactionEngine";
@@ -267,6 +268,8 @@ function BillsPage({
     return matchesStatus && matchesSearch;
   });
   const visibleBillIds = new Set(visibleBillRows.map((row) => row.id));
+  const rankedBills = rankBillRows(filledBillRows);
+  const dueBill = rankedBills[0];
   const billStats = {
     shown: visibleBillRows.filter((row) => !isBlankRow(row.cells)).length,
     total: filledBillRows.length,
@@ -328,6 +331,48 @@ function BillsPage({
           <strong className={billStats.overdue > 0 ? "bad" : ""}>{billStats.overdue} overdue</strong>
           <em>{billStats.autopay} autopay</em>
         </div>
+      </section>
+
+      <section className="bills-due-display panel" aria-label="Decision Engine bill order">
+        <div className="bills-due-primary">
+          <span className="bills-due-icon" aria-hidden="true">
+            <CalendarClock size={20} />
+          </span>
+          <div>
+            <p className="eyebrow">Decision Engine Order</p>
+            <h2>{dueBill ? dueBill.name : "No bill due next"}</h2>
+            <p className="empty-copy">
+              {dueBill ? dueBill.reason : "Paid and cancelled bills are out of the queue."}
+            </p>
+          </div>
+        </div>
+        {dueBill ? (
+          <>
+            <div className="bills-due-metrics">
+              <span>
+                <small>Due</small>
+                <strong>{dueBill.dueLabel}</strong>
+              </span>
+              <span>
+                <small>Amount</small>
+                <strong>{formatCurrency(dueBill.amount)}</strong>
+              </span>
+              <span>
+                <small>Score</small>
+                <strong>{dueBill.score}/100</strong>
+              </span>
+            </div>
+            <ol className="bills-due-list" aria-label="Next bills in order">
+              {rankedBills.slice(0, 3).map((bill, index) => (
+                <li key={bill.row.id}>
+                  <span>{index + 1}</span>
+                  <strong>{bill.name}</strong>
+                  <em>{bill.dueLabel}</em>
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : null}
       </section>
 
       <section className="bills-insight-grid">
