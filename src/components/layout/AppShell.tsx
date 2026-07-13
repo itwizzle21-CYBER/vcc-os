@@ -22,7 +22,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { AppData, UserSettings } from "../../lib/types/app";
 
 const nav = [
@@ -67,9 +67,14 @@ export default function AppShell({
 }) {
   const [brandOpen, setBrandOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [launcherOpen, setLauncherOpen] = useState(false);
+  const [launcherDragging, setLauncherDragging] = useState(false);
+  const [launcherTarget, setLauncherTarget] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const brandRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLDivElement>(null);
+  const suppressLauncherClickRef = useRef(false);
   const results = useMemo(() => buildSearchResults(data, query), [data, query]);
   const isDashboard = normalize(currentPath) === "/";
   const greeting = timeGreeting();
@@ -81,12 +86,20 @@ export default function AppShell({
     function closeOnAway(event: MouseEvent) {
       if (!brandRef.current?.contains(event.target as Node)) setBrandOpen(false);
       if (!mobileMenuRef.current?.contains(event.target as Node)) setMobileMenuOpen(false);
+      if (!launcherRef.current?.contains(event.target as Node)) {
+        setLauncherOpen(false);
+        setLauncherDragging(false);
+        setLauncherTarget(null);
+      }
     }
 
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setBrandOpen(false);
         setMobileMenuOpen(false);
+        setLauncherOpen(false);
+        setLauncherDragging(false);
+        setLauncherTarget(null);
       }
     }
 
@@ -100,12 +113,54 @@ export default function AppShell({
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
+    setLauncherOpen(false);
+    setLauncherDragging(false);
+    setLauncherTarget(null);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
   }, [mobileMenuOpen]);
+
+  function updateLauncherTarget(clientX: number, clientY: number) {
+    const element = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-launcher-path]");
+    setLauncherTarget(element?.dataset.launcherPath || null);
+  }
+
+  function handleLauncherPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    setMobileMenuOpen(false);
+    setLauncherOpen(true);
+    setLauncherDragging(true);
+    setLauncherTarget(null);
+  }
+
+  function handleLauncherPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
+    if (!launcherDragging) return;
+    updateLauncherTarget(event.clientX, event.clientY);
+  }
+
+  function handleLauncherPointerUp(event: React.PointerEvent<HTMLButtonElement>) {
+    if (!launcherDragging) return;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    const targetPath = launcherTarget;
+    suppressLauncherClickRef.current = true;
+    setLauncherDragging(false);
+    setLauncherOpen(false);
+    setLauncherTarget(null);
+    if (targetPath) window.location.href = targetPath;
+  }
+
+  function handleLauncherPointerCancel(event: React.PointerEvent<HTMLButtonElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setLauncherDragging(false);
+    setLauncherTarget(null);
+  }
 
   return (
     <div className={`app-shell reference-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}>
@@ -301,6 +356,54 @@ export default function AppShell({
             })}
           </div>
         </nav>
+      </div>
+      <div className={`mobile-quick-launcher${launcherOpen ? " is-open" : ""}${launcherDragging ? " is-dragging" : ""}`} ref={launcherRef}>
+        <div className="mobile-quick-launcher-menu" id="mobile-quick-launcher-menu" role="menu" aria-label="Quick page launcher">
+          {nav.map((item, index) => {
+            const Icon = item.icon;
+            const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
+            const highlighted = launcherTarget === item.path;
+            const style = {
+              "--launcher-index": index,
+              "--launcher-count": nav.length,
+            } as CSSProperties;
+            return (
+              <a
+                key={item.path}
+                href={item.path}
+                className={`${active ? "active" : ""}${highlighted ? " is-target" : ""}`}
+                data-launcher-path={item.path}
+                role="menuitem"
+                aria-current={active ? "page" : undefined}
+                style={style}
+                onClick={() => setLauncherOpen(false)}
+              >
+                <Icon size={17} aria-hidden="true" />
+                <span>{item.label}</span>
+              </a>
+            );
+          })}
+        </div>
+        <button
+          className="mobile-quick-launcher-button"
+          type="button"
+          aria-label={launcherOpen ? "Close quick page launcher" : "Open quick page launcher"}
+          aria-expanded={launcherOpen}
+          aria-controls="mobile-quick-launcher-menu"
+          onClick={() => {
+            if (suppressLauncherClickRef.current) {
+              suppressLauncherClickRef.current = false;
+              return;
+            }
+            setLauncherOpen((open) => !open);
+          }}
+          onPointerDown={handleLauncherPointerDown}
+          onPointerMove={handleLauncherPointerMove}
+          onPointerUp={handleLauncherPointerUp}
+          onPointerCancel={handleLauncherPointerCancel}
+        >
+          <Zap size={22} aria-hidden="true" />
+        </button>
       </div>
       <nav className="mobile-bottom-nav" aria-label="Primary bottom navigation">
         {bottomNav.map((item) => {
