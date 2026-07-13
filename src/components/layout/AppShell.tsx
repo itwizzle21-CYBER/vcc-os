@@ -43,14 +43,8 @@ const nav = [
 
 const primaryPaths = ["/", "/money", "/bills", "/inventory", "/transactions", "/savings", "/goals", "/reports", "/settings"];
 const dashboardNav = nav.filter((item) => primaryPaths.includes(item.path));
-const bottomNav = dashboardNav.slice(0, 5);
-const bottomNavLabels: Record<string, string> = {
-  "/": "Home",
-  "/money": "Money",
-  "/bills": "Bills",
-  "/inventory": "Stock",
-  "/transactions": "Activity",
-};
+const launcherArcStart = -165;
+const launcherArcEnd = -15;
 
 export default function AppShell({
   children,
@@ -75,6 +69,7 @@ export default function AppShell({
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLDivElement>(null);
   const suppressLauncherClickRef = useRef(false);
+  const launcherStartedOpenRef = useRef(false);
   const results = useMemo(() => buildSearchResults(data, query), [data, query]);
   const isDashboard = normalize(currentPath) === "/";
   const greeting = timeGreeting();
@@ -132,6 +127,7 @@ export default function AppShell({
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
+    launcherStartedOpenRef.current = launcherOpen;
     setMobileMenuOpen(false);
     setLauncherOpen(true);
     setLauncherDragging(true);
@@ -149,7 +145,7 @@ export default function AppShell({
     const targetPath = launcherTarget;
     suppressLauncherClickRef.current = true;
     setLauncherDragging(false);
-    setLauncherOpen(false);
+    setLauncherOpen(targetPath ? false : !launcherStartedOpenRef.current);
     setLauncherTarget(null);
     if (targetPath) window.location.href = targetPath;
   }
@@ -363,9 +359,12 @@ export default function AppShell({
             const Icon = item.icon;
             const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
             const highlighted = launcherTarget === item.path;
+            const angle = launcherArcStart + ((launcherArcEnd - launcherArcStart) / Math.max(nav.length - 1, 1)) * index;
+            const radians = (angle * Math.PI) / 180;
+            const radius = index % 2 === 0 ? 132 : 104;
             const style = {
-              "--launcher-index": index,
-              "--launcher-count": nav.length,
+              "--launcher-x": `${Math.cos(radians) * radius}px`,
+              "--launcher-y": `${Math.sin(radians) * radius}px`,
             } as CSSProperties;
             return (
               <a
@@ -376,6 +375,7 @@ export default function AppShell({
                 role="menuitem"
                 aria-current={active ? "page" : undefined}
                 style={style}
+                title={item.label}
                 onClick={() => setLauncherOpen(false)}
               >
                 <Icon size={17} aria-hidden="true" />
@@ -405,18 +405,6 @@ export default function AppShell({
           <Zap size={22} aria-hidden="true" />
         </button>
       </div>
-      <nav className="mobile-bottom-nav" aria-label="Primary bottom navigation">
-        {bottomNav.map((item) => {
-          const Icon = item.icon;
-          const active = normalize(currentPath) === item.path;
-          return (
-            <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
-              <Icon size={19} />
-              <span>{bottomNavLabels[item.path] || item.label}</span>
-            </a>
-          );
-        })}
-      </nav>
     </div>
   );
 }
