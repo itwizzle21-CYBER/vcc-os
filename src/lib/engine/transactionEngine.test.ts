@@ -58,4 +58,17 @@ describe("transaction engine", () => {
 
     expect(computeFinancialState(data).monthlySpending).toBe(90);
   });
+
+  it("formats known expenses as negative while preserving positive income", () => {
+    const data = createZeroData();
+    data.sections.transactions = [
+      transaction("groceries", "expense", "$125.00", "Groceries", "2026-07-13"),
+      transaction("paycheck", "income", "$500.00", "Income", "2026-07-14"),
+    ];
+
+    const state = computeFinancialState(data);
+
+    expect(state.largestExpense).toBe("groceries (-$125.00)");
+    expect(state.lastTransaction).toBe("paycheck ($500.00)");
+  });
 });

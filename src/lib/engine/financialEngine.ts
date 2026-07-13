@@ -135,8 +135,8 @@ export function computeFinancialState(data: AppData): FinancialState {
     weeklySpending,
     monthlySpending,
     transactionWeekNet: transactionNet,
-    largestExpense: largest ? `${largest.cells.description || "Expense"} (${largest.cells.amount})` : "None",
-    lastTransaction: last ? `${last.cells.description || "Transaction"} (${last.cells.amount})` : "None",
+    largestExpense: largest ? formatTransactionLabel(largest, "Expense") : "None",
+    lastTransaction: last ? formatTransactionLabel(last, "Transaction") : "None",
     billsDueToday,
     billsDueThisWeek,
     overdueBills,
@@ -174,6 +174,16 @@ export function computeFinancialState(data: AppData): FinancialState {
 
 function positive(value: number): number {
   return value > 0 ? value : 0;
+}
+
+function formatTransactionLabel(row: SpreadsheetRow, fallback: string): string {
+  const amount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(signedTransactionAmount(row));
+  return `${row.cells.description || fallback} (${amount})`;
 }
 
 function moneySection(row: SpreadsheetRow): "cash" | "protectedSavings" | "availableSavings" | "borrowed" {

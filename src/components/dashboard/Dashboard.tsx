@@ -94,12 +94,12 @@ export default function Dashboard({
       tone: "red",
       icon: <TrendingDown size={22} />,
       title: "Transactions",
-      value: formatWholeCurrency(financialState.monthlySpending),
+      value: formatDashboardSpending(financialState.monthlySpending),
       detail: "Monthly spending",
       metrics: [
         ["Week Impact", formatExactCurrency(financialState.transactionWeekNet)],
-        ["Weekly Spending", formatWholeCurrency(financialState.weeklySpending)],
-        ["Monthly Spending", formatWholeCurrency(financialState.monthlySpending)],
+        ["Weekly Spending", formatDashboardSpending(financialState.weeklySpending)],
+        ["Monthly Spending", formatDashboardSpending(financialState.monthlySpending)],
         ["Largest Expense", financialState.largestExpense],
         ["Last Transaction", financialState.lastTransaction],
       ],
@@ -288,6 +288,11 @@ function formatWholeCurrency(value: number) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(Number.isFinite(value) ? value : 0);
+}
+
+export function formatDashboardSpending(value: number) {
+  const magnitude = Math.abs(Number.isFinite(value) ? value : 0);
+  return formatWholeCurrency(magnitude > 0 ? -magnitude : 0);
 }
 
 function formatExactCurrency(value: number) {
