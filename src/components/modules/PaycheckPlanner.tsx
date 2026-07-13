@@ -126,6 +126,7 @@ function PlannerInput({
       <span>{label}</span>
       <input
         type={type}
+        aria-label={label}
         className={type === "date" ? "calendar-input" : undefined}
         value={value}
         disabled={disabled}

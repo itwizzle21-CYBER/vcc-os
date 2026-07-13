@@ -195,7 +195,7 @@ export default function Spreadsheet({
         <div className="toolbar-controls">
           <label>
             <span>Sort By</span>
-            <select value={sortBy || ""} onChange={(event) => onSortChange(config.key, event.target.value)}>
+            <select aria-label={`Sort ${config.title}`} value={sortBy || ""} onChange={(event) => onSortChange(config.key, event.target.value)}>
               <option value="">None</option>
               {config.columns.map((column) => (
                 <option key={column.key} value={column.key}>
@@ -206,7 +206,7 @@ export default function Spreadsheet({
           </label>
           <label>
             <span>Search</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search rows" />
+            <input aria-label={`Search ${config.title} rows`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search rows" />
           </label>
           <button type="button" onClick={addRow}>
             {addLabel}
@@ -250,6 +250,7 @@ export default function Spreadsheet({
                           className={`inventory-alert-button ${tone}`}
                           data-row-index={rowIndex}
                           data-column-index={columnIndex}
+                          aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}: ${value}`}
                           onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex)}
                           onClick={() => document.getElementById("buy-next")?.scrollIntoView({ behavior: "smooth" })}
                         >
@@ -270,6 +271,7 @@ export default function Spreadsheet({
                         value={value}
                         list={!readOnly ? inputLists?.[column.key] : undefined}
                         readOnly={readOnly}
+                        aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
                         aria-readonly={readOnly}
                         onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value)}
                         onChange={(event) => updateCell(row.id, column.key, event.target.value)}

@@ -277,7 +277,7 @@ function BillsPage({
         <div className="bills-filter-row">
           <label className="bills-search">
             <span>Search bills</span>
-            <input value={billSearch} onChange={(event) => setBillSearch(event.target.value)} placeholder="Search bills, categories, status" />
+            <input aria-label="Search bills" value={billSearch} onChange={(event) => setBillSearch(event.target.value)} placeholder="Search bills, categories, status" />
           </label>
           <div className="bills-status-tabs" role="tablist" aria-label="Bill status filter">
             {[
@@ -406,12 +406,12 @@ function TransactionsPage({
         <div className="transactions-filter-row">
           <label className="transactions-search">
             <span>Search transactions</span>
-            <input value={transactionSearch} onChange={(event) => setTransactionSearch(event.target.value)} placeholder="Search descriptions, categories, accounts" />
+            <input aria-label="Search transactions" value={transactionSearch} onChange={(event) => setTransactionSearch(event.target.value)} placeholder="Search descriptions, categories, accounts" />
           </label>
           <div className="transactions-filter-controls">
             <label>
               <span>Worldwide Category</span>
-              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+              <select aria-label="Transaction category" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
                 <option value="all">All Categories</option>
                 {worldwideTransactionCategories.map((category) => (
                   <option key={category} value={category}>
@@ -422,7 +422,7 @@ function TransactionsPage({
             </label>
             <label>
               <span>Type</span>
-              <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+              <select aria-label="Transaction type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
                 <option value="all">All Types</option>
                 <option value="income">Income</option>
                 <option value="expense">Expense</option>
@@ -431,7 +431,7 @@ function TransactionsPage({
             </label>
             <label>
               <span>Date</span>
-              <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
+              <select aria-label="Transaction date range" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
                 <option value="all">All Time</option>
                 <option value="month">This Month</option>
                 <option value="lastmonth">Last Month</option>
@@ -546,11 +546,11 @@ function SavingsPage({
         <div className="savings-filter-row">
           <label className="savings-search">
             <span>Search vaults</span>
-            <input value={savingsSearch} onChange={(event) => setSavingsSearch(event.target.value)} placeholder="Search names, institutions, notes" />
+            <input aria-label="Search savings vaults" value={savingsSearch} onChange={(event) => setSavingsSearch(event.target.value)} placeholder="Search names, institutions, notes" />
           </label>
           <label className="savings-type-select">
             <span>Type</span>
-            <select value={vaultType} onChange={(event) => setVaultType(event.target.value)}>
+            <select aria-label="Savings vault type" value={vaultType} onChange={(event) => setVaultType(event.target.value)}>
               <option value="all">All Vaults</option>
               <option value="high_yield">High Yield</option>
               <option value="traditional">Traditional</option>
@@ -650,11 +650,11 @@ function GoalsPage({
         <div className="goals-filter-row">
           <label className="goals-search">
             <span>Search goals</span>
-            <input value={goalSearch} onChange={(event) => setGoalSearch(event.target.value)} placeholder="Search goals, categories, priorities" />
+            <input aria-label="Search goals" value={goalSearch} onChange={(event) => setGoalSearch(event.target.value)} placeholder="Search goals, categories, priorities" />
           </label>
           <label className="goals-status-select">
             <span>Status</span>
-            <select value={goalStatus} onChange={(event) => setGoalStatus(event.target.value)}>
+            <select aria-label="Goal status" value={goalStatus} onChange={(event) => setGoalStatus(event.target.value)}>
               <option value="all">All Goals</option>
               <option value="active">Active</option>
               <option value="completed">Completed</option>
@@ -917,7 +917,7 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
         </div>
         <label className="inventory-search">
           <span>Search inventory</span>
-          <input value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Search items, categories, alerts" />
+          <input aria-label="Search inventory" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Search items, categories, alerts" />
         </label>
         <div className="inventory-inline-stats">
           <span>{inventoryStats.visible} shown</span>
@@ -1370,7 +1370,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
           <button type="button" onClick={exportData}>Export Data</button>
           <label>
             <span>Import Data</span>
-            <input type="file" accept="application/json,.json" onChange={(event) => importData(event.target.files?.[0])} />
+            <input aria-label="Import VCC data" type="file" accept="application/json,.json" onChange={(event) => importData(event.target.files?.[0])} />
           </label>
         </div>
         <div className="settings-reset-grid">
@@ -1468,7 +1468,7 @@ function SettingFeatureRow({ title, description, checked, onChange }: { title: s
         <strong>{title}</strong>
         <small>{description}</small>
       </span>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <input aria-label={title} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
     </label>
   );
 }
@@ -1491,7 +1491,7 @@ function SettingInput({ label, value, onChange }: { label: string; value: string
   return (
     <label>
       <span>{label}</span>
-      <input value={value} onChange={(event) => onChange(event.target.value)} />
+      <input aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
@@ -1500,7 +1500,7 @@ function SettingToggle({ label, checked, onChange }: { label: string; checked: b
   return (
     <label className="setting-toggle">
       <span>{label}</span>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <input aria-label={label} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
     </label>
   );
 }
@@ -1509,7 +1509,7 @@ function SettingSelect({ label, value, options, onChange }: { label: string; val
   return (
     <label>
       <span>{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
+      <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => (
           <option key={option} value={option}>
             {option}

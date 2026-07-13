@@ -44,6 +44,13 @@ const nav = [
 const primaryPaths = ["/", "/money", "/bills", "/inventory", "/transactions", "/savings", "/goals", "/reports", "/settings"];
 const dashboardNav = nav.filter((item) => primaryPaths.includes(item.path));
 const bottomNav = dashboardNav.slice(0, 5);
+const bottomNavLabels: Record<string, string> = {
+  "/": "Home",
+  "/money": "Money",
+  "/bills": "Bills",
+  "/inventory": "Stock",
+  "/transactions": "Activity",
+};
 
 export default function AppShell({
   children,
@@ -71,9 +78,30 @@ export default function AppShell({
       if (!brandRef.current?.contains(event.target as Node)) setBrandOpen(false);
       if (!mobileMenuRef.current?.contains(event.target as Node)) setMobileMenuOpen(false);
     }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setBrandOpen(false);
+        setMobileMenuOpen(false);
+      }
+    }
+
     document.addEventListener("mousedown", closeOnAway);
-    return () => document.removeEventListener("mousedown", closeOnAway);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnAway);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   return (
     <div className={`app-shell reference-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}>
@@ -87,7 +115,14 @@ export default function AppShell({
             const Icon = item.icon;
             const active = normalize(currentPath) === item.path;
             return (
-              <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
+              <a
+                key={item.path}
+                href={item.path}
+                className={active ? "active" : ""}
+                aria-label={item.label}
+                aria-current={active ? "page" : undefined}
+                title={item.label}
+              >
                 <Icon size={18} />
                 <span>{item.label}</span>
               </a>
@@ -173,7 +208,7 @@ export default function AppShell({
             <div className="search-shell">
               <label className="search-pill">
                 <Search size={16} />
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search VCC OS" />
+                <input aria-label="Search VCC OS" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search VCC OS" />
               </label>
               {query.trim() && (
                 <div className="search-results">
@@ -224,7 +259,7 @@ export default function AppShell({
           </a>
           <div className="mobile-drawer-search">
             <Search size={16} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search VCC OS" />
+            <input aria-label="Search VCC OS" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search VCC OS" />
           </div>
           <div className="mobile-drawer-results">
             {query.trim() && (
@@ -261,7 +296,7 @@ export default function AppShell({
           return (
             <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
               <Icon size={19} />
-              <span>{item.path === "/money" ? "Money" : item.label}</span>
+              <span>{bottomNavLabels[item.path] || item.label}</span>
             </a>
           );
         })}
