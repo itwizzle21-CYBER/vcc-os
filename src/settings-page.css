@@ -10,6 +10,7 @@
 
 .premium-settings .settings-content {
   display: grid;
+  align-content: start;
   gap: 0.75rem;
 }
 
@@ -22,10 +23,6 @@
   padding: 0;
   scroll-margin-top: 5.5rem;
   transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
-}
-
-.premium-settings .settings-section:hover {
-  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
 }
 
 .premium-settings .settings-section.is-open {
@@ -42,41 +39,10 @@
   min-height: 4.5rem;
   align-items: center;
   padding: 0.85rem 1rem;
-  cursor: pointer;
-}
-
-.premium-settings .settings-section-trigger:hover {
-  background: color-mix(in srgb, var(--surface-2) 52%, transparent);
 }
 
 .premium-settings .settings-section-heading {
   flex: 1 1 auto;
-}
-
-.premium-settings .settings-section-chevron {
-  display: grid;
-  width: 2.35rem;
-  height: 2.35rem;
-  flex: 0 0 2.35rem;
-  margin-left: auto;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--surface-2) 86%, transparent);
-  color: var(--muted);
-}
-
-.premium-settings .settings-section-chevron svg {
-  transition: transform var(--dur-base) var(--ease-out);
-}
-
-.premium-settings .settings-section.is-open .settings-section-chevron {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-  color: var(--accent);
-}
-
-.premium-settings .settings-section.is-open .settings-section-chevron svg {
-  transform: rotate(180deg);
 }
 
 .premium-settings .settings-section-body {
@@ -98,6 +64,24 @@
   background: color-mix(in srgb, var(--surface-2) 42%, transparent);
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .premium-settings .settings-detail-panel {
+    animation: settings-detail-enter 220ms var(--ease-out) both;
+  }
+}
+
+@keyframes settings-detail-enter {
+  from {
+    opacity: 0;
+    transform: translateY(7px) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 57.999rem) {
   .premium-settings .settings-layout {
     margin-top: 0;
@@ -111,11 +95,6 @@
     margin: 0;
     padding: 0;
     scroll-margin-top: 4.8rem;
-  }
-
-  .premium-settings .settings-section:not(.is-mobile-open) {
-    margin-bottom: 0;
-    padding-bottom: 0;
   }
 
   .premium-settings .settings-section-trigger {
@@ -150,8 +129,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .premium-settings .settings-section,
-  .premium-settings .settings-section-chevron svg {
+  .premium-settings .settings-section {
     transition-duration: 0.01ms;
   }
 }

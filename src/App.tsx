@@ -1316,14 +1316,6 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
     });
   }
 
-  function toggleSettingsSection(id: string) {
-    setOpenSection((current) => {
-      const next = current === id ? null : id;
-      window.history.replaceState(null, "", next ? `${window.location.pathname}#${next}` : window.location.pathname);
-      return next;
-    });
-  }
-
   return (
     <div className="settings-page premium-settings">
       <div className="settings-layout">
@@ -1353,7 +1345,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
         </aside>
 
         <div className="settings-content">
-          <SettingsSection id="settings-profile" icon={UserRound} title="Workspace & privacy" description="Manage your identity, profile, and local data preferences." open={openSection === "settings-profile"} onToggle={() => toggleSettingsSection("settings-profile")}>
+          <SettingsSection id="settings-profile" icon={UserRound} title="Workspace & privacy" description="Manage your identity, profile, and local data preferences." open={openSection === "settings-profile"}>
             <div className="settings-profile-overview">
               <div className="settings-account-identity">
                 <span className="settings-avatar" aria-hidden="true">{initials}</span>
@@ -1375,7 +1367,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             <SettingFeatureRow title="Local-first mode" description="Keep this VCC workspace and its data on this device." checked={data.settings.localMode} onChange={(localMode) => onChange({ ...data, settings: { ...data.settings, localMode } })} />
           </SettingsSection>
 
-          <SettingsSection id="settings-appearance" icon={Palette} title="Appearance" description="Choose a focused visual system that feels right for daily use." open={openSection === "settings-appearance"} onToggle={() => toggleSettingsSection("settings-appearance")}>
+          <SettingsSection id="settings-appearance" icon={Palette} title="Appearance" description="Choose a focused visual system that feels right for daily use." open={openSection === "settings-appearance"}>
             <SettingControlRow label="Theme" description="Set the overall brightness and contrast.">
               <SettingSegmented label="Theme" value={data.settings.theme} options={[
                 { value: "dark", label: "Dark" },
@@ -1403,7 +1395,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </SettingControlRow>
           </SettingsSection>
 
-          <SettingsSection id="settings-intelligence" icon={BrainCircuit} title="Intelligence" description="Decide which financial signals VCC calculates for you." open={openSection === "settings-intelligence"} onToggle={() => toggleSettingsSection("settings-intelligence")}>
+          <SettingsSection id="settings-intelligence" icon={BrainCircuit} title="Intelligence" description="Decide which financial signals VCC calculates for you." open={openSection === "settings-intelligence"}>
             <div className="settings-row-list">
               {smartFeatures.map((feature) => (
                 <SettingFeatureRow key={feature.key} title={feature.label} description={feature.description} checked={featurePrefs[feature.key] !== false} onChange={(checked) => updateFeature(feature.key, checked)} />
@@ -1411,7 +1403,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </div>
           </SettingsSection>
 
-          <SettingsSection id="settings-notifications" icon={BellRing} title="Notifications" description="Keep important deadlines visible without adding noise." open={openSection === "settings-notifications"} onToggle={() => toggleSettingsSection("settings-notifications")}>
+          <SettingsSection id="settings-notifications" icon={BellRing} title="Notifications" description="Keep important deadlines visible without adding noise." open={openSection === "settings-notifications"}>
             <SettingFeatureRow title="Allow notifications" description="Master control for reminders and account alerts." checked={data.settings.notificationsEnabled} onChange={(notificationsEnabled) => onChange({ ...data, settings: { ...data.settings, notificationsEnabled } })} />
             <div className="settings-row-list settings-dependent-rows" aria-disabled={!data.settings.notificationsEnabled}>
               <SettingFeatureRow title="Bill reminders" description="Alert before bills are due." checked={featurePrefs.billReminders !== false} disabled={!data.settings.notificationsEnabled} onChange={(checked) => updateFeature("billReminders", checked)} />
@@ -1420,7 +1412,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </div>
           </SettingsSection>
 
-          <SettingsSection id="settings-dashboard" icon={LayoutDashboard} title="Dashboard" description="Choose the modules that stay visible in your command center." open={openSection === "settings-dashboard"} onToggle={() => toggleSettingsSection("settings-dashboard")}>
+          <SettingsSection id="settings-dashboard" icon={LayoutDashboard} title="Dashboard" description="Choose the modules that stay visible in your command center." open={openSection === "settings-dashboard"}>
             <div className="settings-widget-grid">
               {widgetOptions.map((widget) => (
                 <SettingToggle
@@ -1441,7 +1433,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </div>
           </SettingsSection>
 
-          <SettingsSection id="settings-data" icon={Database} title="Data & storage" description="Move, protect, or reset the information stored in this browser." open={openSection === "settings-data"} onToggle={() => toggleSettingsSection("settings-data")}>
+          <SettingsSection id="settings-data" icon={Database} title="Data & storage" description="Move, protect, or reset the information stored in this browser." open={openSection === "settings-data"}>
             <div className="settings-data-stats" aria-label="Stored row counts">
               <span><strong>{data.sections.money.length}</strong><small>Money</small></span>
               <span><strong>{data.sections.bills.length}</strong><small>Bills</small></span>
@@ -1502,7 +1494,7 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
             </div>
           </SettingsSection>
 
-          <SettingsSection id="settings-about" icon={Info} title="About VCC-OS" description="Vitality Command Center Operating System." open={openSection === "settings-about"} onToggle={() => toggleSettingsSection("settings-about")}>
+          <SettingsSection id="settings-about" icon={Info} title="About VCC-OS" description="Vitality Command Center Operating System." open={openSection === "settings-about"}>
             <div className="settings-about-row">
               <div className="settings-product-mark" aria-hidden="true"><MonitorCog size={22} /></div>
               <div>
@@ -1558,27 +1550,21 @@ function loadFeaturePrefs(): Record<string, boolean> {
   }
 }
 
-function SettingsSection({ id, icon: Icon, title, description, children, open, onToggle }: { id: string; icon: LucideIcon; title: string; description: string; children: React.ReactNode; open: boolean; onToggle: () => void }) {
+function SettingsSection({ id, icon: Icon, title, description, children, open }: { id: string; icon: LucideIcon; title: string; description: string; children: React.ReactNode; open: boolean }) {
+  if (!open) return null;
+
   return (
-    <section className={`settings-section${open ? " is-open is-mobile-open" : ""}`} id={id}>
+    <section className="settings-section settings-detail-panel is-open is-mobile-open" id={id} aria-labelledby={`${id}-title`}>
       <header className="settings-section-header">
-        <button
-          className="settings-section-trigger"
-          type="button"
-          aria-expanded={open}
-          aria-controls={`${id}-content`}
-          aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
-          onClick={onToggle}
-        >
+        <div className="settings-section-trigger">
           <span className="settings-section-icon"><Icon size={19} aria-hidden="true" /></span>
           <span className="settings-section-heading">
-            <span>{title}</span>
+            <span id={`${id}-title`}>{title}</span>
             <small>{description}</small>
           </span>
-          <span className="settings-section-chevron" aria-hidden="true"><ChevronDown size={18} /></span>
-        </button>
+        </div>
       </header>
-      <div className="settings-section-body" id={`${id}-content`} hidden={!open}>
+      <div className="settings-section-body" id={`${id}-content`}>
         {children}
       </div>
     </section>
