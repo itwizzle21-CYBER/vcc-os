@@ -73,7 +73,9 @@ export default function AppShell({
   const results = useMemo(() => buildSearchResults(data, query), [data, query]);
   const isDashboard = normalize(currentPath) === "/";
   const greeting = timeGreeting();
-  const firstName = (settings.accountName || "there").trim().split(/\s+/)[0];
+  const accountName = settings.accountName.trim();
+  const firstName = accountName.split(/\s+/)[0];
+  const showDashboardProfile = isDashboard && Boolean(accountName);
 
   useEffect(() => {
     function closeOnAway(event: MouseEvent) {
@@ -108,9 +110,18 @@ export default function AppShell({
   return (
     <div className={`app-shell reference-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}>
       <header className="dashboard-top-nav">
-        <a className="dashboard-top-brand" href="/">
-          <span><Zap size={20} /></span>
-          <strong>VCC-OS</strong>
+        <a className={`dashboard-top-brand${showDashboardProfile ? " has-profile" : ""}`} href={showDashboardProfile ? "/settings" : "/"} aria-label={showDashboardProfile ? `Open ${accountName} profile` : "Open VCC-OS dashboard"}>
+          <span>{showDashboardProfile ? <UserCircle size={20} aria-hidden="true" /> : <Zap size={20} aria-hidden="true" />}</span>
+          <div className="dashboard-brand-copy">
+            {showDashboardProfile ? (
+              <>
+                <small>{greeting},</small>
+                <strong>{firstName}</strong>
+              </>
+            ) : (
+              <strong>VCC-OS</strong>
+            )}
+          </div>
         </a>
         <nav aria-label="Primary navigation">
           {dashboardNav.map((item) => {
@@ -131,15 +142,6 @@ export default function AppShell({
             );
           })}
         </nav>
-        {isDashboard && (
-          <a className="dashboard-greeting" href="/settings" aria-label={`Open ${settings.accountName || "account"} profile`}>
-            <span className="dashboard-greeting-avatar"><UserCircle size={19} aria-hidden="true" /></span>
-            <span className="dashboard-greeting-copy">
-              <small>{greeting},</small>
-              <strong>{firstName}</strong>
-            </span>
-          </a>
-        )}
         <button
           className="dashboard-mobile-menu-trigger"
           type="button"
