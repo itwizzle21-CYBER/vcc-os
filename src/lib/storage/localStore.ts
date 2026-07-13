@@ -5,11 +5,20 @@ import { createStarterData, createZeroData, sectionConfigs } from "./defaultData
 
 const STORAGE_KEY = "vcc-os:data:v2";
 const LEGACY_KEYS = ["vcc-os:data", "vcc_os_data", "vccData", "vcc-os-financial-state"];
+const BLANK_RESET_MARKER = "__vcc_blank_reset__";
 
 export function loadAppData(): AppData {
   if (typeof window === "undefined") return createZeroData();
   const existing = readJson(window.localStorage.getItem(STORAGE_KEY));
-  if (existing) return migrateAppData(existing);
+  if (existing) {
+    const migrated = migrateAppData(existing);
+    if (isEmptyAppData(migrated) && !hasBlankResetMarker(migrated)) {
+      const starter = createStarterData();
+      saveAppData(starter);
+      return starter;
+    }
+    return migrated;
+  }
 
   for (const key of LEGACY_KEYS) {
     const legacy = readJson(window.localStorage.getItem(key));
@@ -41,7 +50,14 @@ export function resetSection(data: AppData, section: SectionKey): AppData {
 }
 
 export function resetAllData(): AppData {
-  return createZeroData();
+  const data = createZeroData();
+  return {
+    ...data,
+    settings: {
+      ...data.settings,
+      hiddenWidgets: [BLANK_RESET_MARKER],
+    },
+  };
 }
 
 function migrateAppData(raw: unknown): AppData {
@@ -161,4 +177,12 @@ function matchesSeed(row: SpreadsheetRow, id: string, label: string | undefined,
 
 function normalizeText(value: string | undefined): string {
   return String(value || "").trim().toLowerCase();
+}
+
+function isEmptyAppData(data: AppData): boolean {
+  return Object.values(data.sections).every((rows) => rows.length === 0) && data.paycheckHistory.length === 0;
+}
+
+function hasBlankResetMarker(data: AppData): boolean {
+  return data.settings.hiddenWidgets.includes(BLANK_RESET_MARKER);
 }
