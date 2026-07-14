@@ -259,6 +259,32 @@ export default function Spreadsheet({
                       </td>
                     );
                   }
+                  if (config.key === "transactions" && column.key === "type") {
+                    return (
+                      <td key={column.key} data-label={column.label}>
+                        <select
+                          data-row-index={rowIndex}
+                          data-column-index={columnIndex}
+                          data-row-id={row.id}
+                          data-column-key={column.key}
+                          value={value}
+                          aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
+                          onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value)}
+                          onChange={(event) => updateCell(row.id, column.key, event.target.value)}
+                          onBlur={(event) => {
+                            commitCell(row.id, column.key, event.currentTarget.value);
+                            activeCellRef.current = null;
+                          }}
+                          onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
+                        >
+                          <option value="">Auto</option>
+                          <option value="income">Income</option>
+                          <option value="expense">Expense</option>
+                          <option value="transfer">Transfer</option>
+                        </select>
+                      </td>
+                    );
+                  }
                   return (
                     <td key={column.key} data-label={column.label}>
                       <input

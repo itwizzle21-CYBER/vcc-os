@@ -1,5 +1,5 @@
 import { getInventoryAlert } from "./inventoryEngine";
-import { signedTransactionAmount, transactionType } from "./transactionEngine";
+import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./transactionEngine";
 import { isBlankRow, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
@@ -82,7 +82,7 @@ export function computeFinancialState(data: AppData): FinancialState {
   const last = [...transactions].sort((a, b) => (b.cells.date || "").localeCompare(a.cells.date || ""))[0];
   const categorySummary = Object.entries(
     expenseRows.reduce<Record<string, number>>((acc, row) => {
-      const category = row.cells.category || "Other";
+      const category = identifyTransactionCategory(row);
       acc[category] = (acc[category] || 0) + Math.abs(toNumber(row.cells.amount));
       return acc;
     }, {})

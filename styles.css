@@ -1921,7 +1921,8 @@ td {
   padding: 0.25rem;
 }
 
-td input {
+td input,
+td select {
   width: 100%;
   min-width: 8rem;
   border: 1px solid transparent;
@@ -1932,7 +1933,12 @@ td input {
   outline: none;
 }
 
-td input:focus {
+td select {
+  min-height: 2.45rem;
+}
+
+td input:focus,
+td select:focus {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
@@ -3861,6 +3867,7 @@ td input[readonly] {
   }
 
   tbody td input,
+  tbody td select,
   .inventory-alert-button {
     min-width: 0;
     width: 100%;
@@ -6318,7 +6325,8 @@ td input:focus {
   padding: 0.15rem 0.25rem;
 }
 
-.reference-shell td input {
+.reference-shell td input,
+.reference-shell td select {
   min-height: 2rem;
   border: 0;
   background: transparent;

@@ -29,7 +29,7 @@ import { formatCurrency, isBlankRow, toNumber } from "./lib/calculations/currenc
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
-import { signedTransactionAmount, transactionType } from "./lib/engine/transactionEngine";
+import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./lib/engine/transactionEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, resetAllData, resetSection, saveAppData } from "./lib/storage/localStore";
 import type { AppData, SectionKey, SpreadsheetRow } from "./lib/types/app";
@@ -1781,6 +1781,9 @@ function computedCell(section: SectionKey, row: SpreadsheetRow, columnKey: strin
     if (columnKey === "category") return row.cells.item ? categorizeItem(row.cells.item) : "";
     if (columnKey === "alert") return getInventoryAlert(row.cells.qty || "", row.cells.minNeeded || "");
   }
+  if (section === "transactions" && columnKey === "category") {
+    return row.cells.description ? identifyTransactionCategory(row) : "";
+  }
   if (section === "debt" && columnKey === "priority") {
     const balance = Number(String(row.cells.balance || "").replace(/[$,\s]/g, ""));
     return balance > 5000 ? "High" : balance > 0 ? "Normal" : "";
@@ -1821,18 +1824,26 @@ function normalizeBillRow(row: SpreadsheetRow): SpreadsheetRow {
 }
 
 function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
-  return {
+  const normalizedRow = {
     ...row,
     cells: {
       ...row.cells,
       description: row.cells.description || "",
-      type: row.cells.type || transactionType(row),
+      type: row.cells.type || "",
       category: row.cells.category || "",
       amount: row.cells.amount || "",
       date: row.cells.date || "",
       account: row.cells.account || "",
       recurring: row.cells.recurring || row.cells.is_recurring || "",
       notes: row.cells.notes || "",
+    },
+  };
+
+  return {
+    ...normalizedRow,
+    cells: {
+      ...normalizedRow.cells,
+      category: normalizedRow.cells.description ? identifyTransactionCategory(normalizedRow) : "",
     },
   };
 }
@@ -1874,7 +1885,7 @@ function normalizeGoalRow(row: SpreadsheetRow): SpreadsheetRow {
 }
 
 function transactionCategory(row: SpreadsheetRow): string {
-  return String(row.cells.category || "Uncategorized").trim() || "Uncategorized";
+  return identifyTransactionCategory(row);
 }
 
 function transactionDateMatches(dateText: string, filter: string): boolean {

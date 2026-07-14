@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createZeroData } from "../storage/defaultData";
 import type { SpreadsheetRow } from "../types/app";
 import { computeFinancialState } from "./financialEngine";
-import { signedTransactionAmount, transactionType } from "./transactionEngine";
+import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./transactionEngine";
 
 function transaction(id: string, type: string, amount: string, category: string, date = "2026-07-13"): SpreadsheetRow {
   return {
@@ -70,5 +70,26 @@ describe("transaction engine", () => {
 
     expect(state.largestExpense).toBe("groceries (-$125.00)");
     expect(state.lastTransaction).toBe("paycheck ($500.00)");
+  });
+
+  it("identifies worldwide-style categories from transaction descriptions", () => {
+    expect(identifyTransactionCategory(transaction("shell fuel", "", "$42.00", ""))).toBe("Fuel");
+    expect(identifyTransactionCategory(transaction("netflix monthly", "", "$19.99", ""))).toBe("Subscriptions");
+    expect(identifyTransactionCategory(transaction("payroll deposit", "", "$900.00", ""))).toBe("Income");
+  });
+
+  it("uses identified categories in financial summaries", () => {
+    const data = createZeroData();
+    data.sections.transactions = [
+      transaction("shell fuel", "expense", "$42.00", ""),
+      transaction("netflix monthly", "expense", "$19.99", ""),
+    ];
+
+    const state = computeFinancialState(data);
+
+    expect(state.categorySummary).toEqual([
+      { label: "Fuel", amount: 42 },
+      { label: "Subscriptions", amount: 19.99 },
+    ]);
   });
 });
