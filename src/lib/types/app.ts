@@ -13,7 +13,7 @@ export type ThemeMode = "dark" | "midnight" | "slate" | "light";
 export type AccentColor = "blue" | "green" | "gold" | "purple" | "red";
 export type Density = "comfortable" | "compact" | "ultra";
 export type SurfaceStyle = "glass" | "neumorphic" | "minimal";
-export type WallpaperChoice = "modern" | "anime" | "animation" | "upload";
+export type WallpaperChoice = "default" | "modern" | "anime" | "animation" | "upload";
 
 export interface TableColumn {
   key: string;

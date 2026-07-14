@@ -84,6 +84,7 @@ export default function AppShell({
   const firstName = accountName.split(/\s+/)[0];
   const showDashboardProfile = isDashboard && Boolean(accountName);
   const wallpaperSource = wallpaperUrl(settings);
+  const hasWallpaper = Boolean(wallpaperSource);
   const currentLauncherIndex = Math.max(
     nav.findIndex((item) => normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts")),
     0,
@@ -215,8 +216,8 @@ export default function AppShell({
 
   return (
     <div
-      className={`app-shell reference-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} has-wallpaper wallpaper-${settings.wallpaper} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}
-      style={{ "--vcc-wallpaper": `url(${JSON.stringify(wallpaperSource)})` } as CSSProperties}
+      className={`app-shell reference-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${hasWallpaper ? `has-wallpaper wallpaper-${settings.wallpaper}` : "wallpaper-default"} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}
+      style={(hasWallpaper ? { "--vcc-wallpaper": `url(${JSON.stringify(wallpaperSource)})` } : undefined) as CSSProperties | undefined}
     >
       <header className="dashboard-top-nav">
         <a className={`dashboard-top-brand${showDashboardProfile ? " has-profile" : ""}`} href={showDashboardProfile ? "/settings" : "/"} aria-label={showDashboardProfile ? `Open ${accountName} profile` : "Open VCC-OS dashboard"}>
@@ -495,11 +496,12 @@ function titleForPath(path: string, settings: UserSettings) {
 function wallpaperUrl(settings: UserSettings) {
   if (settings.wallpaper === "upload" && settings.customWallpaper) return settings.customWallpaper;
   return {
+    default: "",
     modern: "/wallpapers/modern.png",
     anime: "/wallpapers/anime.png",
     animation: "/wallpapers/animation.png",
-    upload: "/wallpapers/modern.png",
-  }[settings.wallpaper] || "/wallpapers/modern.png";
+    upload: "",
+  }[settings.wallpaper] || "";
 }
 
 function buildSearchResults(data: AppData, query: string) {

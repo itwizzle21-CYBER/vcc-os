@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   BellRing,
   BrainCircuit,
@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   Upload,
   UserRound,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import AppShell from "./components/layout/AppShell";
@@ -1673,6 +1674,7 @@ function AccentPicker({ value, onChange }: { value: string; onChange: (value: st
 }
 
 const wallpaperOptions: Array<{ value: AppData["settings"]["wallpaper"]; label: string; image?: string }> = [
+  { value: "default", label: "Default" },
   { value: "modern", label: "Modern", image: "/wallpapers/modern.png" },
   { value: "anime", label: "Anime", image: "/wallpapers/anime.png" },
   { value: "animation", label: "Animation", image: "/wallpapers/animation.png" },
@@ -1688,43 +1690,144 @@ function WallpaperPicker({
   customWallpaper: string;
   onChange: (value: AppData["settings"]["wallpaper"], customWallpaper?: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [draftWallpaper, setDraftWallpaper] = useState(value);
+  const [draftCustomWallpaper, setDraftCustomWallpaper] = useState(customWallpaper);
+  const selectedOption = wallpaperOptions.find((option) => option.value === value) || wallpaperOptions[0];
+  const draftOption = wallpaperOptions.find((option) => option.value === draftWallpaper) || wallpaperOptions[0];
+  const draftPreview = wallpaperPreviewSource(draftWallpaper, draftCustomWallpaper);
+
+  useEffect(() => {
+    setDraftWallpaper(value);
+    setDraftCustomWallpaper(customWallpaper);
+  }, [value, customWallpaper]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
   function uploadWallpaper(file: File | undefined) {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => onChange("upload", String(reader.result || ""));
+    reader.onload = () => {
+      setDraftWallpaper("upload");
+      setDraftCustomWallpaper(String(reader.result || ""));
+    };
     reader.readAsDataURL(file);
   }
 
-  return (
-    <div className="settings-wallpaper-picker" role="radiogroup" aria-label="Background wallpaper">
-      {wallpaperOptions.map((option) => {
-        const selected = value === option.value;
-        if (option.value === "upload") {
-          return (
-            <label key={option.value} className={`settings-wallpaper-option settings-wallpaper-upload${selected ? " is-selected" : ""}`}>
-              <input type="radio" name="wallpaper" checked={selected} onChange={() => onChange("upload", customWallpaper)} />
-              <span className="settings-wallpaper-upload-drop">
-                <Upload size={19} aria-hidden="true" />
-                <strong>{customWallpaper ? "Uploaded" : option.label}</strong>
-              </span>
-              <input className="settings-wallpaper-file" aria-label="Upload custom wallpaper" type="file" accept="image/*" onChange={(event) => uploadWallpaper(event.target.files?.[0])} />
-            </label>
-          );
-        }
+  function closePicker() {
+    setDraftWallpaper(value);
+    setDraftCustomWallpaper(customWallpaper);
+    setOpen(false);
+  }
 
-        return (
-          <label key={option.value} className={`settings-wallpaper-option${selected ? " is-selected" : ""}`}>
-            <input type="radio" name="wallpaper" checked={selected} onChange={() => onChange(option.value, customWallpaper)} />
-            <img src={option.image} alt="" loading="lazy" />
-            <span>
-              <strong>{option.label}</strong>
-              {selected && <Check size={14} aria-hidden="true" />}
-            </span>
-          </label>
-        );
-      })}
-    </div>
+  function saveWallpaper() {
+    onChange(draftWallpaper, draftCustomWallpaper);
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <div className="settings-wallpaper-summary">
+        <div className={`settings-wallpaper-current wallpaper-current-${value}`}>
+          {value !== "default" && wallpaperPreviewSource(value, customWallpaper) ? <img src={wallpaperPreviewSource(value, customWallpaper)} alt="" /> : <span>Default</span>}
+        </div>
+        <div>
+          <strong>{selectedOption.label}</strong>
+          <small>{value === "default" ? "Original VCC background" : "Wallpaper background"}</small>
+        </div>
+        <button type="button" onClick={() => setOpen(true)}>Manage backgrounds</button>
+      </div>
+
+      {open && (
+        <div className="settings-wallpaper-modal" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) closePicker();
+        }}>
+          <section className="settings-wallpaper-dialog" role="dialog" aria-modal="true" aria-labelledby="wallpaper-dialog-title">
+            <header className="settings-wallpaper-dialog-header">
+              <div>
+                <p className="settings-kicker">Backgrounds</p>
+                <h3 id="wallpaper-dialog-title">Choose VCC background</h3>
+              </div>
+              <button type="button" aria-label="Close background picker" onClick={closePicker}><X size={18} /></button>
+            </header>
+
+            <div className={`settings-wallpaper-vcc-preview${draftPreview ? " has-preview-image" : ""}`} style={(draftPreview ? { "--settings-wallpaper-preview": `url(${JSON.stringify(draftPreview)})` } : undefined) as CSSProperties | undefined}>
+              <div className="settings-wallpaper-preview-nav">
+                <span>VCC-OS</span>
+                <b>{draftOption.label}</b>
+              </div>
+              <div className="settings-wallpaper-preview-card is-wide">
+                <small>Today&apos;s Mission</small>
+                <strong>Keep the command center clear</strong>
+                <span>Glass panels stay legible over the visible background.</span>
+              </div>
+              <div className="settings-wallpaper-preview-grid">
+                <div className="settings-wallpaper-preview-card">
+                  <small>Money Snapshot</small>
+                  <strong>$3,065.52</strong>
+                </div>
+                <div className="settings-wallpaper-preview-card">
+                  <small>Priority Alerts</small>
+                  <strong>3 active</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="settings-wallpaper-picker" role="radiogroup" aria-label="Background wallpaper">
+              {wallpaperOptions.map((option) => {
+                const selected = draftWallpaper === option.value;
+                if (option.value === "upload") {
+                  return (
+                    <label key={option.value} className={`settings-wallpaper-option settings-wallpaper-upload${selected ? " is-selected" : ""}`}>
+                      <input type="radio" name="wallpaper" checked={selected} onChange={() => setDraftWallpaper("upload")} />
+                      <span className="settings-wallpaper-upload-drop">
+                        <Upload size={17} aria-hidden="true" />
+                        <strong>{draftCustomWallpaper ? "Uploaded" : option.label}</strong>
+                      </span>
+                      <input className="settings-wallpaper-file" aria-label="Upload custom wallpaper" type="file" accept="image/*" onChange={(event) => uploadWallpaper(event.target.files?.[0])} />
+                    </label>
+                  );
+                }
+
+                return (
+                  <label key={option.value} className={`settings-wallpaper-option${selected ? " is-selected" : ""}`}>
+                    <input type="radio" name="wallpaper" checked={selected} onChange={() => setDraftWallpaper(option.value)} />
+                    {option.image ? <img src={option.image} alt="" loading="lazy" /> : <span className="settings-wallpaper-default-tile">Original</span>}
+                    <span>
+                      <strong>{option.label}</strong>
+                      {selected && <Check size={14} aria-hidden="true" />}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <footer className="settings-wallpaper-dialog-actions">
+              <button type="button" onClick={closePicker}>Cancel</button>
+              <button type="button" className="settings-wallpaper-save" onClick={saveWallpaper}><Save size={16} /> Save background</button>
+            </footer>
+          </section>
+        </div>
+      )}
+    </>
   );
+}
+
+function wallpaperPreviewSource(value: AppData["settings"]["wallpaper"], customWallpaper: string) {
+  if (value === "upload") return customWallpaper;
+  return wallpaperOptions.find((option) => option.value === value)?.image || "";
 }
 
 const widgetOptions = [

@@ -409,7 +409,7 @@ export function createZeroData(): AppData {
       hiddenWidgets: [],
       surfaceStyle: "glass",
       sidebarCollapsed: false,
-      wallpaper: "modern",
+      wallpaper: "default",
       customWallpaper: "",
     },
   };
