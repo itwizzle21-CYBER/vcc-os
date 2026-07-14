@@ -1834,7 +1834,7 @@ function WallpaperPicker({
                 <SettingSlider
                   label="Card opacity"
                   value={draftCardOpacity}
-                  min={76}
+                  min={0}
                   max={100}
                   onChange={setDraftCardOpacity}
                 />
@@ -1889,7 +1889,7 @@ function wallpaperPreviewSource(value: AppData["settings"]["wallpaper"], customW
 
 function wallpaperPreviewStyle(preview: string, backgroundOpacity: number, cardOpacity: number): CSSProperties {
   const visibility = clampNumber(backgroundOpacity, 20, 100) / 100;
-  const cardAlpha = clampNumber(cardOpacity, 76, 100) / 100;
+  const cardAlpha = clampNumber(cardOpacity, 0, 100) / 100;
   return {
     ...(preview ? { "--settings-wallpaper-preview": `url(${JSON.stringify(preview)})` } : {}),
     "--settings-preview-start-alpha": previewLerp(0.72, 0.08, visibility).toFixed(2),

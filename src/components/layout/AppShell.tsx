@@ -510,7 +510,7 @@ function wallpaperUrl(settings: UserSettings) {
 
 function wallpaperStyleVars(settings: UserSettings): CSSProperties {
   const visibility = clampPercent(settings.backgroundOpacity ?? 88, 20, 100) / 100;
-  const cardOpacity = clampPercent(settings.cardOpacity ?? 84, 76, 100) / 100;
+  const cardOpacity = clampPercent(settings.cardOpacity ?? 84, 0, 100) / 100;
   const topAlpha = lerp(0.7, 0.04, visibility);
   const bottomAlpha = lerp(0.88, 0.24, visibility);
   const sideAlpha = lerp(0.6, 0.18, visibility);
