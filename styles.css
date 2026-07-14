@@ -7272,20 +7272,22 @@ body {
 .reference-shell.has-wallpaper {
   position: relative;
   isolation: isolate;
-  --vcc-panel: rgba(12, 18, 29, 0.72);
+  --vcc-panel: rgba(12, 18, 29, 0.84);
   --vcc-panel-strong: rgba(16, 22, 35, 0.88);
+  --vcc-wallpaper-position: center center;
+  --vcc-wallpaper-size: cover;
   background:
-    linear-gradient(180deg, rgba(4, 7, 12, 0.54), rgba(8, 11, 18, 0.86) 38rem),
-    var(--vcc-wallpaper),
-    var(--vcc-bg);
-  background-attachment: fixed;
-  background-position: center;
-  background-size: cover;
+    linear-gradient(180deg, rgba(4, 7, 12, var(--vcc-wallpaper-top-alpha, 0.25)), rgba(8, 11, 18, var(--vcc-wallpaper-bottom-alpha, 0.62)) 38rem);
 }
 
 .reference-shell.has-wallpaper::before {
   z-index: -2;
-  opacity: 0.18;
+  opacity: 1;
+  background: var(--vcc-wallpaper);
+  background-position: var(--vcc-wallpaper-position);
+  background-repeat: no-repeat;
+  background-size: var(--vcc-wallpaper-size);
+  mask-image: none;
 }
 
 .reference-shell.has-wallpaper::after {
@@ -7295,8 +7297,8 @@ body {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 12%, rgba(74, 163, 255, 0.1), transparent 34rem),
-    linear-gradient(90deg, rgba(5, 8, 13, 0.76), rgba(5, 8, 13, 0.32) 34%, rgba(5, 8, 13, 0.72));
+    radial-gradient(circle at 18% 12%, rgba(74, 163, 255, 0.08), transparent 34rem),
+    linear-gradient(90deg, rgba(5, 8, 13, var(--vcc-wallpaper-side-alpha, 0.4)), rgba(5, 8, 13, var(--vcc-wallpaper-middle-alpha, 0.08)) 34%, rgba(5, 8, 13, var(--vcc-wallpaper-side-alpha, 0.4)));
 }
 
 .reference-shell.has-wallpaper .panel,
@@ -7317,7 +7319,7 @@ body {
 .reference-shell.has-wallpaper .danger-panel {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035)),
-    var(--vcc-panel);
+    rgba(12, 18, 29, var(--vcc-card-alpha, 0.84));
   border-color: rgba(203, 213, 225, 0.2);
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(26px) saturate(122%);
@@ -7327,7 +7329,7 @@ body {
 .reference-shell.has-wallpaper .summary-card {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.034)),
-    rgba(12, 18, 29, 0.72);
+    rgba(12, 18, 29, var(--vcc-card-alpha, 0.84));
   border-color: rgba(203, 213, 225, 0.2);
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(26px) saturate(122%);
@@ -7341,6 +7343,28 @@ body {
 @media (max-width: 57.999rem) {
   .reference-shell.has-wallpaper {
     background-attachment: scroll;
+    --vcc-wallpaper-position: center top;
+    --vcc-wallpaper-size: auto 100svh;
+  }
+}
+
+@media (max-width: 57.999rem) and (orientation: portrait) {
+  .reference-shell.has-wallpaper.wallpaper-modern {
+    --vcc-wallpaper-position: 50% top;
+  }
+
+  .reference-shell.has-wallpaper.wallpaper-anime {
+    --vcc-wallpaper-position: 47% top;
+  }
+
+  .reference-shell.has-wallpaper.wallpaper-animation {
+    --vcc-wallpaper-position: 52% top;
+  }
+}
+
+@media (min-aspect-ratio: 16 / 9) {
+  .reference-shell.has-wallpaper {
+    --vcc-wallpaper-size: 100vw auto;
   }
 }
 

@@ -64,6 +64,8 @@ export interface UserSettings {
   sidebarCollapsed: boolean;
   wallpaper: WallpaperChoice;
   customWallpaper: string;
+  backgroundOpacity: number;
+  cardOpacity: number;
 }
 
 export interface AppData {

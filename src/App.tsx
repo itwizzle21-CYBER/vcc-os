@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import {
   BellRing,
   BrainCircuit,
@@ -33,7 +34,7 @@ import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/
 import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./lib/engine/transactionEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, resetAllData, resetSection, saveAppData } from "./lib/storage/localStore";
-import type { AppData, SectionKey, SpreadsheetRow } from "./lib/types/app";
+import type { AppData, SectionKey, SpreadsheetRow, UserSettings } from "./lib/types/app";
 
 const worldwideTransactionCategories = [
   "Income",
@@ -65,8 +66,11 @@ const worldwideTransactionCategories = [
   "Uncategorized",
 ];
 
+type WallpaperPreviewSettings = Pick<UserSettings, "wallpaper" | "customWallpaper" | "backgroundOpacity" | "cardOpacity">;
+
 export default function App() {
   const [data, setData] = useState<AppData>(() => loadAppData());
+  const [wallpaperPreview, setWallpaperPreview] = useState<WallpaperPreviewSettings | null>(null);
   const path = normalizePath(window.location.pathname);
   const financialState = useMemo(() => computeFinancialState(data), [data]);
   const decisionState = useMemo(() => computeDecisionEngine(financialState, data), [financialState, data]);
@@ -103,7 +107,7 @@ export default function App() {
   }
 
   return (
-    <AppShell currentPath={path} settings={data.settings} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
+    <AppShell currentPath={path} settings={data.settings} wallpaperPreview={wallpaperPreview} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
       {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} data={data} settings={data.settings} onSettingsChange={(settings) => updateData({ ...data, settings })} />}
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
@@ -118,7 +122,7 @@ export default function App() {
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/reports" && <ReportsPage data={data} financialState={financialState} decisionState={decisionState} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} />}
-      {path === "/settings" && <SettingsPage data={data} onChange={updateData} />}
+      {path === "/settings" && <SettingsPage data={data} onChange={updateData} onWallpaperPreviewChange={setWallpaperPreview} />}
     </AppShell>
   );
 }
@@ -1286,7 +1290,15 @@ function titleCase(value: string): string {
   return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppData) => void }) {
+function SettingsPage({
+  data,
+  onChange,
+  onWallpaperPreviewChange,
+}: {
+  data: AppData;
+  onChange: (data: AppData) => void;
+  onWallpaperPreviewChange: (preview: WallpaperPreviewSettings | null) => void;
+}) {
   const [featurePrefs, setFeaturePrefs] = useState<Record<string, boolean>>(() => loadFeaturePrefs());
   const [openSection, setOpenSection] = useState<string | null>(() => {
     const hash = window.location.hash.slice(1);
@@ -1437,7 +1449,10 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
               <WallpaperPicker
                 value={data.settings.wallpaper}
                 customWallpaper={data.settings.customWallpaper}
-                onChange={(wallpaper, customWallpaper = data.settings.customWallpaper) => onChange({ ...data, settings: { ...data.settings, wallpaper, customWallpaper } })}
+                backgroundOpacity={data.settings.backgroundOpacity}
+                cardOpacity={data.settings.cardOpacity}
+                onChange={(wallpaper, customWallpaper = data.settings.customWallpaper, backgroundOpacity = data.settings.backgroundOpacity, cardOpacity = data.settings.cardOpacity) => onChange({ ...data, settings: { ...data.settings, wallpaper, customWallpaper, backgroundOpacity, cardOpacity } })}
+                onPreviewChange={onWallpaperPreviewChange}
               />
             </SettingControlRow>
           </SettingsSection>
@@ -1684,15 +1699,23 @@ const wallpaperOptions: Array<{ value: AppData["settings"]["wallpaper"]; label: 
 function WallpaperPicker({
   value,
   customWallpaper,
+  backgroundOpacity,
+  cardOpacity,
   onChange,
+  onPreviewChange,
 }: {
   value: AppData["settings"]["wallpaper"];
   customWallpaper: string;
-  onChange: (value: AppData["settings"]["wallpaper"], customWallpaper?: string) => void;
+  backgroundOpacity: number;
+  cardOpacity: number;
+  onChange: (value: AppData["settings"]["wallpaper"], customWallpaper?: string, backgroundOpacity?: number, cardOpacity?: number) => void;
+  onPreviewChange: (preview: WallpaperPreviewSettings | null) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [draftWallpaper, setDraftWallpaper] = useState(value);
   const [draftCustomWallpaper, setDraftCustomWallpaper] = useState(customWallpaper);
+  const [draftBackgroundOpacity, setDraftBackgroundOpacity] = useState(backgroundOpacity);
+  const [draftCardOpacity, setDraftCardOpacity] = useState(cardOpacity);
   const selectedOption = wallpaperOptions.find((option) => option.value === value) || wallpaperOptions[0];
   const draftOption = wallpaperOptions.find((option) => option.value === draftWallpaper) || wallpaperOptions[0];
   const draftPreview = wallpaperPreviewSource(draftWallpaper, draftCustomWallpaper);
@@ -1700,14 +1723,24 @@ function WallpaperPicker({
   useEffect(() => {
     setDraftWallpaper(value);
     setDraftCustomWallpaper(customWallpaper);
-  }, [value, customWallpaper]);
+    setDraftBackgroundOpacity(backgroundOpacity);
+    setDraftCardOpacity(cardOpacity);
+  }, [value, customWallpaper, backgroundOpacity, cardOpacity]);
+
+  useEffect(() => {
+    if (!open) {
+      onPreviewChange(null);
+      return;
+    }
+    onPreviewChange({ wallpaper: draftWallpaper, customWallpaper: draftCustomWallpaper, backgroundOpacity: draftBackgroundOpacity, cardOpacity: draftCardOpacity });
+  }, [open, draftWallpaper, draftCustomWallpaper, draftBackgroundOpacity, draftCardOpacity, onPreviewChange]);
 
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") closePicker();
     }
     window.addEventListener("keydown", closeOnEscape);
     return () => {
@@ -1729,11 +1762,15 @@ function WallpaperPicker({
   function closePicker() {
     setDraftWallpaper(value);
     setDraftCustomWallpaper(customWallpaper);
+    setDraftBackgroundOpacity(backgroundOpacity);
+    setDraftCardOpacity(cardOpacity);
+    onPreviewChange(null);
     setOpen(false);
   }
 
   function saveWallpaper() {
-    onChange(draftWallpaper, draftCustomWallpaper);
+    onChange(draftWallpaper, draftCustomWallpaper, draftBackgroundOpacity, draftCardOpacity);
+    onPreviewChange(null);
     setOpen(false);
   }
 
@@ -1750,7 +1787,7 @@ function WallpaperPicker({
         <button type="button" onClick={() => setOpen(true)}>Manage backgrounds</button>
       </div>
 
-      {open && (
+      {open && createPortal(
         <div className="settings-wallpaper-modal" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget) closePicker();
         }}>
@@ -1763,55 +1800,74 @@ function WallpaperPicker({
               <button type="button" aria-label="Close background picker" onClick={closePicker}><X size={18} /></button>
             </header>
 
-            <div className={`settings-wallpaper-vcc-preview${draftPreview ? " has-preview-image" : ""}`} style={(draftPreview ? { "--settings-wallpaper-preview": `url(${JSON.stringify(draftPreview)})` } : undefined) as CSSProperties | undefined}>
-              <div className="settings-wallpaper-preview-nav">
-                <span>VCC-OS</span>
-                <b>{draftOption.label}</b>
-              </div>
-              <div className="settings-wallpaper-preview-card is-wide">
-                <small>Today&apos;s Mission</small>
-                <strong>Keep the command center clear</strong>
-                <span>Glass panels stay legible over the visible background.</span>
-              </div>
-              <div className="settings-wallpaper-preview-grid">
-                <div className="settings-wallpaper-preview-card">
-                  <small>Money Snapshot</small>
-                  <strong>$3,065.52</strong>
+            <div className="settings-wallpaper-dialog-body">
+              <div className={`settings-wallpaper-vcc-preview${draftPreview ? " has-preview-image" : ""}`} style={wallpaperPreviewStyle(draftPreview, draftBackgroundOpacity, draftCardOpacity)}>
+                <div className="settings-wallpaper-preview-nav">
+                  <span>VCC-OS</span>
+                  <b>{draftOption.label}</b>
                 </div>
-                <div className="settings-wallpaper-preview-card">
-                  <small>Priority Alerts</small>
-                  <strong>3 active</strong>
+                <div className="settings-wallpaper-preview-card is-wide">
+                  <small>Today&apos;s Mission</small>
+                  <strong>Keep the command center clear</strong>
+                  <span>Glass panels stay legible over the visible background.</span>
+                </div>
+                <div className="settings-wallpaper-preview-grid">
+                  <div className="settings-wallpaper-preview-card">
+                    <small>Money Snapshot</small>
+                    <strong>$3,065.52</strong>
+                  </div>
+                  <div className="settings-wallpaper-preview-card">
+                    <small>Priority Alerts</small>
+                    <strong>3 active</strong>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="settings-wallpaper-picker" role="radiogroup" aria-label="Background wallpaper">
-              {wallpaperOptions.map((option) => {
-                const selected = draftWallpaper === option.value;
-                if (option.value === "upload") {
+              <div className="settings-wallpaper-tuning" aria-label="Background tuning">
+                <SettingSlider
+                  label="Background visibility"
+                  value={draftBackgroundOpacity}
+                  min={20}
+                  max={100}
+                  onChange={setDraftBackgroundOpacity}
+                />
+                <SettingSlider
+                  label="Card opacity"
+                  value={draftCardOpacity}
+                  min={76}
+                  max={100}
+                  onChange={setDraftCardOpacity}
+                />
+              </div>
+
+              <div className="settings-wallpaper-picker" role="radiogroup" aria-label="Background wallpaper">
+                {wallpaperOptions.map((option) => {
+                  const selected = draftWallpaper === option.value;
+                  if (option.value === "upload") {
+                    return (
+                      <label key={option.value} className={`settings-wallpaper-option settings-wallpaper-upload${selected ? " is-selected" : ""}`}>
+                        <input type="radio" name="wallpaper" checked={selected} onChange={() => setDraftWallpaper("upload")} />
+                        <span className="settings-wallpaper-upload-drop">
+                          <Upload size={17} aria-hidden="true" />
+                          <strong>{draftCustomWallpaper ? "Uploaded" : option.label}</strong>
+                        </span>
+                        <input className="settings-wallpaper-file" aria-label="Upload custom wallpaper" type="file" accept="image/*" onChange={(event) => uploadWallpaper(event.target.files?.[0])} />
+                      </label>
+                    );
+                  }
+
                   return (
-                    <label key={option.value} className={`settings-wallpaper-option settings-wallpaper-upload${selected ? " is-selected" : ""}`}>
-                      <input type="radio" name="wallpaper" checked={selected} onChange={() => setDraftWallpaper("upload")} />
-                      <span className="settings-wallpaper-upload-drop">
-                        <Upload size={17} aria-hidden="true" />
-                        <strong>{draftCustomWallpaper ? "Uploaded" : option.label}</strong>
+                    <label key={option.value} className={`settings-wallpaper-option${selected ? " is-selected" : ""}`}>
+                      <input type="radio" name="wallpaper" checked={selected} onChange={() => setDraftWallpaper(option.value)} />
+                      {option.image ? <img src={option.image} alt="" loading="lazy" /> : <span className="settings-wallpaper-default-tile">Original</span>}
+                      <span>
+                        <strong>{option.label}</strong>
+                        {selected && <Check size={14} aria-hidden="true" />}
                       </span>
-                      <input className="settings-wallpaper-file" aria-label="Upload custom wallpaper" type="file" accept="image/*" onChange={(event) => uploadWallpaper(event.target.files?.[0])} />
                     </label>
                   );
-                }
-
-                return (
-                  <label key={option.value} className={`settings-wallpaper-option${selected ? " is-selected" : ""}`}>
-                    <input type="radio" name="wallpaper" checked={selected} onChange={() => setDraftWallpaper(option.value)} />
-                    {option.image ? <img src={option.image} alt="" loading="lazy" /> : <span className="settings-wallpaper-default-tile">Original</span>}
-                    <span>
-                      <strong>{option.label}</strong>
-                      {selected && <Check size={14} aria-hidden="true" />}
-                    </span>
-                  </label>
-                );
-              })}
+                })}
+              </div>
             </div>
 
             <footer className="settings-wallpaper-dialog-actions">
@@ -1819,7 +1875,8 @@ function WallpaperPicker({
               <button type="button" className="settings-wallpaper-save" onClick={saveWallpaper}><Save size={16} /> Save background</button>
             </footer>
           </section>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
@@ -1828,6 +1885,60 @@ function WallpaperPicker({
 function wallpaperPreviewSource(value: AppData["settings"]["wallpaper"], customWallpaper: string) {
   if (value === "upload") return customWallpaper;
   return wallpaperOptions.find((option) => option.value === value)?.image || "";
+}
+
+function wallpaperPreviewStyle(preview: string, backgroundOpacity: number, cardOpacity: number): CSSProperties {
+  const visibility = clampNumber(backgroundOpacity, 20, 100) / 100;
+  const cardAlpha = clampNumber(cardOpacity, 76, 100) / 100;
+  return {
+    ...(preview ? { "--settings-wallpaper-preview": `url(${JSON.stringify(preview)})` } : {}),
+    "--settings-preview-start-alpha": previewLerp(0.72, 0.08, visibility).toFixed(2),
+    "--settings-preview-end-alpha": previewLerp(0.88, 0.34, visibility).toFixed(2),
+    "--settings-preview-side-alpha": previewLerp(0.58, 0.2, visibility).toFixed(2),
+    "--settings-preview-middle-alpha": previewLerp(0.26, 0.04, visibility).toFixed(2),
+    "--settings-preview-card-alpha": cardAlpha.toFixed(2),
+  } as CSSProperties;
+}
+
+function SettingSlider({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+}) {
+  const normalizedValue = clampNumber(value, min, max);
+
+  return (
+    <label className="settings-range-control">
+      <span>
+        <strong>{label}</strong>
+        <small>{normalizedValue}%</small>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={normalizedValue}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </label>
+  );
+}
+
+function clampNumber(value: number | undefined, min: number, max: number) {
+  const safeValue = Number.isFinite(value) ? Number(value) : max;
+  return Math.min(max, Math.max(min, Math.round(safeValue)));
+}
+
+function previewLerp(from: number, to: number, amount: number) {
+  return from + (to - from) * amount;
 }
 
 const widgetOptions = [

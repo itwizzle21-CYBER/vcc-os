@@ -411,6 +411,8 @@ export function createZeroData(): AppData {
       sidebarCollapsed: false,
       wallpaper: "default",
       customWallpaper: "",
+      backgroundOpacity: 88,
+      cardOpacity: 84,
     },
   };
 }

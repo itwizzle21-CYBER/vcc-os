@@ -155,6 +155,8 @@
 }
 
 .settings-wallpaper-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   width: min(100%, 58rem);
   max-height: calc(100svh - clamp(1.5rem, 6vw, 4rem));
   overflow: hidden;
@@ -178,6 +180,11 @@
 
 .settings-wallpaper-dialog-header {
   border-bottom: 1px solid var(--border);
+}
+
+.settings-wallpaper-dialog-body {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .settings-wallpaper-dialog-header h3 {
@@ -207,7 +214,7 @@
 
 .settings-wallpaper-vcc-preview.has-preview-image {
   background:
-    linear-gradient(180deg, rgba(4, 7, 12, 0.62), rgba(8, 11, 18, 0.9) 78%),
+    linear-gradient(180deg, rgba(4, 7, 12, var(--settings-preview-start-alpha, 0.16)), rgba(8, 11, 18, var(--settings-preview-end-alpha, 0.42)) 78%),
     var(--settings-wallpaper-preview),
     #080b12;
   background-position: center;
@@ -221,7 +228,7 @@
   pointer-events: none;
   background:
     radial-gradient(circle at 22% 12%, rgba(74, 163, 255, 0.13), transparent 22rem),
-    linear-gradient(90deg, rgba(5, 8, 13, 0.52), rgba(5, 8, 13, 0.22) 42%, rgba(5, 8, 13, 0.58));
+    linear-gradient(90deg, rgba(5, 8, 13, var(--settings-preview-side-alpha, 0.25)), rgba(5, 8, 13, var(--settings-preview-middle-alpha, 0.05)) 42%, rgba(5, 8, 13, var(--settings-preview-side-alpha, 0.25)));
 }
 
 .settings-wallpaper-preview-nav,
@@ -252,7 +259,7 @@
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.028)),
-    rgba(13, 18, 29, 0.7);
+    rgba(13, 18, 29, var(--settings-preview-card-alpha, 0.84));
   padding: 0.9rem;
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(24px) saturate(118%);
@@ -262,7 +269,7 @@
   min-height: 7.5rem;
   background:
     linear-gradient(135deg, rgba(37, 99, 235, 0.72), rgba(6, 182, 212, 0.45)),
-    rgba(13, 18, 29, 0.62);
+    rgba(13, 18, 29, var(--settings-preview-card-alpha, 0.84));
 }
 
 .settings-wallpaper-preview-card small {
@@ -286,14 +293,58 @@
   gap: 0.75rem;
 }
 
-.premium-settings .settings-wallpaper-picker {
+.settings-wallpaper-tuning {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0.85rem 1rem;
+  background: rgba(8, 11, 18, 0.34);
+}
+
+.settings-range-control {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.settings-range-control > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.settings-range-control strong,
+.settings-range-control small {
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.settings-range-control small {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-range-control input {
+  width: 100%;
+  min-height: 1.5rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.settings-wallpaper-picker {
   display: grid;
   grid-template-columns: repeat(4, minmax(7.2rem, 1fr)) 5.8rem;
   gap: 0.65rem;
   padding: 1rem;
 }
 
-.premium-settings .settings-wallpaper-option {
+.settings-wallpaper-option {
   position: relative;
   display: grid;
   min-width: 0;
@@ -305,36 +356,36 @@
   transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
-.premium-settings .settings-wallpaper-option:hover {
+.settings-wallpaper-option:hover {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
 }
 
-.premium-settings .settings-wallpaper-option.is-selected {
+.settings-wallpaper-option.is-selected {
   border-color: color-mix(in srgb, var(--accent) 78%, var(--border));
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.premium-settings .settings-wallpaper-option > input[type="radio"] {
+.settings-wallpaper-option > input[type="radio"] {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
-.premium-settings .settings-wallpaper-option img,
-.premium-settings .settings-wallpaper-default-tile,
-.premium-settings .settings-wallpaper-upload-drop {
+.settings-wallpaper-option img,
+.settings-wallpaper-default-tile,
+.settings-wallpaper-upload-drop {
   width: 100%;
   aspect-ratio: 16 / 9;
 }
 
-.premium-settings .settings-wallpaper-option img {
+.settings-wallpaper-option img {
   display: block;
   object-fit: cover;
 }
 
-.premium-settings .settings-wallpaper-default-tile,
-.premium-settings .settings-wallpaper-upload-drop {
+.settings-wallpaper-default-tile,
+.settings-wallpaper-upload-drop {
   display: grid;
   place-items: center;
   align-content: center;
@@ -344,7 +395,7 @@
   text-align: center;
 }
 
-.premium-settings .settings-wallpaper-default-tile {
+.settings-wallpaper-default-tile {
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
@@ -354,7 +405,7 @@
   font-weight: 800;
 }
 
-.premium-settings .settings-wallpaper-option > span:not(.settings-wallpaper-upload-drop):not(.settings-wallpaper-default-tile) {
+.settings-wallpaper-option > span:not(.settings-wallpaper-upload-drop):not(.settings-wallpaper-default-tile) {
   display: flex;
   min-height: 2.4rem;
   align-items: center;
@@ -366,16 +417,16 @@
   font-weight: 800;
 }
 
-.premium-settings .settings-wallpaper-option > span svg {
+.settings-wallpaper-option > span svg {
   flex: 0 0 auto;
   color: var(--accent);
 }
 
-.premium-settings .settings-wallpaper-upload {
+.settings-wallpaper-upload {
   align-self: stretch;
 }
 
-.premium-settings .settings-wallpaper-upload-drop {
+.settings-wallpaper-upload-drop {
   position: relative;
   z-index: 3;
   min-height: 3.55rem;
@@ -387,12 +438,12 @@
   pointer-events: none;
 }
 
-.premium-settings .settings-wallpaper-upload-drop strong {
+.settings-wallpaper-upload-drop strong {
   color: var(--text);
   font-size: 0.72rem;
 }
 
-.premium-settings .settings-wallpaper-file {
+.settings-wallpaper-file {
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -402,22 +453,11 @@
   cursor: pointer;
 }
 
-.premium-settings .settings-wallpaper-upload::after {
-  content: "Upload";
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  display: grid;
-  place-items: center;
-  color: var(--text);
-  font-size: 0.72rem;
-  font-weight: 800;
-  pointer-events: none;
-}
-
 .settings-wallpaper-dialog-actions {
   border-top: 1px solid var(--border);
-  background: rgba(8, 11, 18, 0.48);
+  background: rgba(8, 11, 18, 0.92);
+  backdrop-filter: blur(18px) saturate(118%);
+  -webkit-backdrop-filter: blur(18px) saturate(118%);
 }
 
 .settings-wallpaper-dialog-actions button {
@@ -450,11 +490,20 @@
 
 @media (max-width: 57.999rem) {
   .settings-wallpaper-dialog {
+    width: min(100%, 34rem);
     overflow-y: auto;
   }
 
-  .premium-settings .settings-wallpaper-picker {
+  .settings-wallpaper-picker {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-wallpaper-vcc-preview {
+    min-height: 13rem;
+  }
+
+  .settings-wallpaper-tuning {
+    grid-template-columns: 1fr;
   }
 
   .premium-settings .settings-layout {
@@ -478,6 +527,47 @@
 }
 
 @media (max-width: 39.999rem) {
+  .settings-wallpaper-modal {
+    padding: 0.55rem;
+  }
+
+  .settings-wallpaper-dialog {
+    max-height: calc(100svh - 1.1rem);
+  }
+
+  .settings-wallpaper-dialog-header,
+  .settings-wallpaper-dialog-actions {
+    padding: 0.75rem;
+  }
+
+  .settings-wallpaper-vcc-preview {
+    min-height: 14.25rem;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .settings-wallpaper-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-wallpaper-preview-card.is-wide {
+    min-height: 5.75rem;
+  }
+
+  .settings-wallpaper-picker {
+    gap: 0.55rem;
+    padding: 0.75rem;
+  }
+
+  .premium-settings .settings-wallpaper-summary {
+    grid-template-columns: 4.75rem minmax(0, 1fr);
+  }
+
+  .premium-settings .settings-wallpaper-summary button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
   .premium-settings .settings-profile-overview {
     min-height: 0;
     align-items: flex-start;
@@ -501,7 +591,7 @@
     -webkit-line-clamp: 1;
   }
 
-  .premium-settings .settings-wallpaper-picker {
+  .settings-wallpaper-picker {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

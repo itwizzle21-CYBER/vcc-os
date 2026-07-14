@@ -49,12 +49,14 @@ export default function AppShell({
   children,
   currentPath,
   settings,
+  wallpaperPreview,
   data,
   onSettingsChange,
 }: {
   children: ReactNode;
   currentPath: string;
   settings: UserSettings;
+  wallpaperPreview?: Pick<UserSettings, "wallpaper" | "customWallpaper" | "backgroundOpacity" | "cardOpacity"> | null;
   data: AppData;
   onSettingsChange: (settings: UserSettings) => void;
 }) {
@@ -83,8 +85,10 @@ export default function AppShell({
   const accountName = settings.accountName.trim();
   const firstName = accountName.split(/\s+/)[0];
   const showDashboardProfile = isDashboard && Boolean(accountName);
-  const wallpaperSource = wallpaperUrl(settings);
+  const visualSettings = wallpaperPreview ? { ...settings, ...wallpaperPreview } : settings;
+  const wallpaperSource = wallpaperUrl(visualSettings);
   const hasWallpaper = Boolean(wallpaperSource);
+  const opacityStyle = hasWallpaper ? wallpaperStyleVars(visualSettings) : undefined;
   const currentLauncherIndex = Math.max(
     nav.findIndex((item) => normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts")),
     0,
@@ -216,8 +220,8 @@ export default function AppShell({
 
   return (
     <div
-      className={`app-shell reference-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${hasWallpaper ? `has-wallpaper wallpaper-${settings.wallpaper}` : "wallpaper-default"} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}
-      style={(hasWallpaper ? { "--vcc-wallpaper": `url(${JSON.stringify(wallpaperSource)})` } : undefined) as CSSProperties | undefined}
+      className={`app-shell reference-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${hasWallpaper ? `has-wallpaper wallpaper-${visualSettings.wallpaper}` : "wallpaper-default"} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}
+      style={(hasWallpaper ? { "--vcc-wallpaper": `url(${JSON.stringify(wallpaperSource)})`, ...opacityStyle } : undefined) as CSSProperties | undefined}
     >
       <header className="dashboard-top-nav">
         <a className={`dashboard-top-brand${showDashboardProfile ? " has-profile" : ""}`} href={showDashboardProfile ? "/settings" : "/"} aria-label={showDashboardProfile ? `Open ${accountName} profile` : "Open VCC-OS dashboard"}>
@@ -502,6 +506,31 @@ function wallpaperUrl(settings: UserSettings) {
     animation: "/wallpapers/animation.png",
     upload: "",
   }[settings.wallpaper] || "";
+}
+
+function wallpaperStyleVars(settings: UserSettings): CSSProperties {
+  const visibility = clampPercent(settings.backgroundOpacity ?? 88, 20, 100) / 100;
+  const cardOpacity = clampPercent(settings.cardOpacity ?? 84, 76, 100) / 100;
+  const topAlpha = lerp(0.7, 0.04, visibility);
+  const bottomAlpha = lerp(0.88, 0.24, visibility);
+  const sideAlpha = lerp(0.6, 0.18, visibility);
+  const middleAlpha = lerp(0.26, 0.02, visibility);
+
+  return {
+    "--vcc-wallpaper-top-alpha": topAlpha.toFixed(2),
+    "--vcc-wallpaper-bottom-alpha": bottomAlpha.toFixed(2),
+    "--vcc-wallpaper-side-alpha": sideAlpha.toFixed(2),
+    "--vcc-wallpaper-middle-alpha": middleAlpha.toFixed(2),
+    "--vcc-card-alpha": cardOpacity.toFixed(2),
+  } as CSSProperties;
+}
+
+function clampPercent(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, Number.isFinite(value) ? value : max));
+}
+
+function lerp(from: number, to: number, amount: number) {
+  return from + (to - from) * amount;
 }
 
 function buildSearchResults(data: AppData, query: string) {
