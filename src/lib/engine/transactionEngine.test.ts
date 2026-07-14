@@ -78,6 +78,16 @@ describe("transaction engine", () => {
     expect(identifyTransactionCategory(transaction("payroll deposit", "", "$900.00", ""))).toBe("Income");
   });
 
+  it("maps common global merchants and item clues to locked categories", () => {
+    expect(identifyTransactionCategory(transaction("tesco milk and bread", "", "$18.20", ""))).toBe("Groceries");
+    expect(identifyTransactionCategory(transaction("walmart pharmacy prescription", "", "$11.00", ""))).toBe("Healthcare");
+    expect(identifyTransactionCategory(transaction("ikea desk", "", "$129.00", ""))).toBe("Shopping");
+    expect(identifyTransactionCategory(transaction("uber trip downtown", "", "$24.00", ""))).toBe("Transportation");
+    expect(identifyTransactionCategory(transaction("delta air flight", "", "$330.00", ""))).toBe("Travel");
+    expect(identifyTransactionCategory(transaction("chewy dog food", "", "$58.00", ""))).toBe("Pets");
+    expect(identifyTransactionCategory(transaction("apple.com/bill icloud", "", "$2.99", ""))).toBe("Subscriptions");
+  });
+
   it("uses identified categories in financial summaries", () => {
     const data = createZeroData();
     data.sections.transactions = [

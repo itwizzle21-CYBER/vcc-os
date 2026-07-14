@@ -542,14 +542,8 @@ function TransactionsPage({
         onRowsChange={updateVisibleTransactionRows}
         onResetSection={resetSection}
         getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
-        inputLists={{ category: "worldwide-transaction-categories" }}
         addLabel="Add Transaction"
       />
-      <datalist id="worldwide-transaction-categories">
-        {worldwideTransactionCategories.map((category) => (
-          <option key={category} value={category} />
-        ))}
-      </datalist>
     </div>
   );
 }
@@ -1782,7 +1776,7 @@ function computedCell(section: SectionKey, row: SpreadsheetRow, columnKey: strin
     if (columnKey === "alert") return getInventoryAlert(row.cells.qty || "", row.cells.minNeeded || "");
   }
   if (section === "transactions" && columnKey === "category") {
-    return row.cells.description ? identifyTransactionCategory(row) : "";
+    return hasTransactionIdentifier(row) ? identifyTransactionCategory(row) : "";
   }
   if (section === "debt" && columnKey === "priority") {
     const balance = Number(String(row.cells.balance || "").replace(/[$,\s]/g, ""));
@@ -1843,7 +1837,7 @@ function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
     ...normalizedRow,
     cells: {
       ...normalizedRow.cells,
-      category: normalizedRow.cells.description ? identifyTransactionCategory(normalizedRow) : "",
+      category: hasTransactionIdentifier(normalizedRow) ? identifyTransactionCategory(normalizedRow) : "",
     },
   };
 }
@@ -1886,6 +1880,11 @@ function normalizeGoalRow(row: SpreadsheetRow): SpreadsheetRow {
 
 function transactionCategory(row: SpreadsheetRow): string {
   return identifyTransactionCategory(row);
+}
+
+function hasTransactionIdentifier(row: SpreadsheetRow): boolean {
+  return [row.cells.description, row.cells.account, row.cells.notes, row.cells.type, row.cells.amount, row.cells.category]
+    .some((value) => String(value || "").trim());
 }
 
 function transactionDateMatches(dateText: string, filter: string): boolean {

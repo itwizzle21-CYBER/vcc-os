@@ -44,7 +44,7 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
     columns: [
       { key: "description", label: "Description" },
       { key: "type", label: "Type" },
-      { key: "category", label: "Category" },
+      { key: "category", label: "Category", readOnly: true },
       { key: "amount", label: "Amount", type: "currency" },
       { key: "date", label: "Date", type: "date" },
       { key: "account", label: "Account" },
