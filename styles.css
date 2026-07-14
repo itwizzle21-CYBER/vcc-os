@@ -7269,6 +7269,73 @@ body {
   }
 }
 
+.reference-shell.has-wallpaper {
+  position: relative;
+  isolation: isolate;
+  --vcc-panel: rgba(13, 18, 29, 0.92);
+  --vcc-panel-strong: rgba(16, 22, 35, 0.98);
+  background:
+    linear-gradient(180deg, rgba(4, 7, 12, 0.9), rgba(8, 11, 18, 0.985) 38rem),
+    var(--vcc-wallpaper),
+    var(--vcc-bg);
+  background-attachment: fixed;
+  background-position: center;
+  background-size: cover;
+}
+
+.reference-shell.has-wallpaper::before {
+  z-index: -2;
+  opacity: 0.22;
+}
+
+.reference-shell.has-wallpaper::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(74, 163, 255, 0.12), transparent 34rem),
+    linear-gradient(90deg, rgba(5, 8, 13, 0.9), rgba(5, 8, 13, 0.62) 34%, rgba(5, 8, 13, 0.88));
+}
+
+.reference-shell.has-wallpaper .panel,
+.reference-shell.has-wallpaper .spreadsheet-panel,
+.reference-shell.has-wallpaper .planner-panel,
+.reference-shell.has-wallpaper .buy-next-panel,
+.reference-shell.has-wallpaper .money-history-panel,
+.reference-shell.has-wallpaper .bills-command-panel,
+.reference-shell.has-wallpaper .transactions-command-panel,
+.reference-shell.has-wallpaper .inventory-command-panel,
+.reference-shell.has-wallpaper .savings-command-panel,
+.reference-shell.has-wallpaper .goals-command-panel,
+.reference-shell.has-wallpaper .reports-command-panel,
+.reference-shell.has-wallpaper .settings-section,
+.reference-shell.has-wallpaper .settings-card,
+.reference-shell.has-wallpaper .settings-hero,
+.reference-shell.has-wallpaper .danger-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.018)),
+    var(--vcc-panel);
+  backdrop-filter: blur(22px) saturate(110%);
+}
+
+.reference-shell.has-wallpaper .summary-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018)),
+    rgba(13, 18, 29, 0.9);
+}
+
+.reference-shell.has-wallpaper .dashboard-top-nav {
+  background: rgba(8, 11, 18, 0.74);
+}
+
+@media (max-width: 57.999rem) {
+  .reference-shell.has-wallpaper {
+    background-attachment: scroll;
+  }
+}
+
 .mobile-quick-launcher {
   display: none;
 }

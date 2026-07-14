@@ -1432,6 +1432,13 @@ function SettingsPage({ data, onChange }: { data: AppData; onChange: (data: AppD
                 { value: "minimal", label: "Minimal" },
               ]} onChange={(surfaceStyle) => onChange({ ...data, settings: { ...data.settings, surfaceStyle: surfaceStyle as AppData["settings"]["surfaceStyle"] } })} />
             </SettingControlRow>
+            <SettingControlRow label="Background" description="Choose a wallpaper or bring your own.">
+              <WallpaperPicker
+                value={data.settings.wallpaper}
+                customWallpaper={data.settings.customWallpaper}
+                onChange={(wallpaper, customWallpaper = data.settings.customWallpaper) => onChange({ ...data, settings: { ...data.settings, wallpaper, customWallpaper } })}
+              />
+            </SettingControlRow>
           </SettingsSection>
 
           <SettingsSection id="settings-intelligence" icon={BrainCircuit} title="Intelligence" description="Decide which financial signals VCC calculates for you." open={openSection === "settings-intelligence"}>
@@ -1661,6 +1668,61 @@ function AccentPicker({ value, onChange }: { value: string; onChange: (value: st
           {value === accent && <Check size={13} aria-hidden="true" />}
         </button>
       ))}
+    </div>
+  );
+}
+
+const wallpaperOptions: Array<{ value: AppData["settings"]["wallpaper"]; label: string; image?: string }> = [
+  { value: "modern", label: "Modern", image: "/wallpapers/modern.png" },
+  { value: "anime", label: "Anime", image: "/wallpapers/anime.png" },
+  { value: "animation", label: "Animation", image: "/wallpapers/animation.png" },
+  { value: "upload", label: "Upload" },
+];
+
+function WallpaperPicker({
+  value,
+  customWallpaper,
+  onChange,
+}: {
+  value: AppData["settings"]["wallpaper"];
+  customWallpaper: string;
+  onChange: (value: AppData["settings"]["wallpaper"], customWallpaper?: string) => void;
+}) {
+  function uploadWallpaper(file: File | undefined) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => onChange("upload", String(reader.result || ""));
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="settings-wallpaper-picker" role="radiogroup" aria-label="Background wallpaper">
+      {wallpaperOptions.map((option) => {
+        const selected = value === option.value;
+        if (option.value === "upload") {
+          return (
+            <label key={option.value} className={`settings-wallpaper-option settings-wallpaper-upload${selected ? " is-selected" : ""}`}>
+              <input type="radio" name="wallpaper" checked={selected} onChange={() => onChange("upload", customWallpaper)} />
+              <span className="settings-wallpaper-upload-drop">
+                <Upload size={19} aria-hidden="true" />
+                <strong>{customWallpaper ? "Uploaded" : option.label}</strong>
+              </span>
+              <input className="settings-wallpaper-file" aria-label="Upload custom wallpaper" type="file" accept="image/*" onChange={(event) => uploadWallpaper(event.target.files?.[0])} />
+            </label>
+          );
+        }
+
+        return (
+          <label key={option.value} className={`settings-wallpaper-option${selected ? " is-selected" : ""}`}>
+            <input type="radio" name="wallpaper" checked={selected} onChange={() => onChange(option.value, customWallpaper)} />
+            <img src={option.image} alt="" loading="lazy" />
+            <span>
+              <strong>{option.label}</strong>
+              {selected && <Check size={14} aria-hidden="true" />}
+            </span>
+          </label>
+        );
+      })}
     </div>
   );
 }
