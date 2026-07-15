@@ -14,6 +14,13 @@ export function formatCurrency(value: number): string {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
+export function formatDateMDY(value: string | undefined): string {
+  if (!value) return "Not set";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  return `${match[2]}-${match[3]}-${match[1]}`;
+}
+
 export function isBlankRow(cells: Record<string, string>): boolean {
   return Object.values(cells).every((value) => !String(value || "").trim());
 }

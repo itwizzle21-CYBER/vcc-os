@@ -27,7 +27,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import PaycheckPlanner from "./components/modules/PaycheckPlanner";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
-import { formatCurrency, isBlankRow, toNumber } from "./lib/calculations/currency";
+import { formatCurrency, formatDateMDY, isBlankRow, toNumber } from "./lib/calculations/currency";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
@@ -213,7 +213,7 @@ function MoneyPaymentHistory({
             <div>
               <span>Locked Week</span>
               <strong>{formatCurrency(toNumber(row.remaining))}</strong>
-              <small>{row.payDate || "No pay date"}</small>
+              <small>{row.payDate ? formatDateMDY(row.payDate) : "No pay date"}</small>
             </div>
             <dl>
               <div>
@@ -229,8 +229,12 @@ function MoneyPaymentHistory({
                 <dd>{formatCurrency(toNumber(row.myPay))}</dd>
               </div>
               <div>
+                <dt>Remaining</dt>
+                <dd>{formatCurrency(toNumber(row.remaining))}</dd>
+              </div>
+              <div>
                 <dt>Week</dt>
-                <dd>{row.weekStart && row.weekEnd ? `${row.weekStart} to ${row.weekEnd}` : "Not set"}</dd>
+                <dd>{row.weekStart && row.weekEnd ? `${formatDateMDY(row.weekStart)} to ${formatDateMDY(row.weekEnd)}` : "Not set"}</dd>
               </div>
             </dl>
           </article>

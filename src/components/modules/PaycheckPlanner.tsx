@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { formatCurrency, toNumber, weekBounds } from "../../lib/calculations/currency";
+import { formatCurrency, formatDateMDY, toNumber, weekBounds } from "../../lib/calculations/currency";
 import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner } from "../../lib/types/app";
 
 export default function PaycheckPlanner({
@@ -83,7 +83,7 @@ export default function PaycheckPlanner({
           <div className="history-list">
             {data.paycheckHistory.map((row) => (
               <button type="button" key={row.id} onClick={() => setSelected(row)}>
-                <span>{row.payDate}</span>
+                <span>{formatDateMDY(row.payDate)}</span>
                 <strong>{formatCurrency(toNumber(row.income))}</strong>
                 <small>{formatCurrency(toNumber(row.remaining))} remaining</small>
               </button>
@@ -98,7 +98,7 @@ export default function PaycheckPlanner({
               <p>MyPay: {formatCurrency(toNumber(selected.myPay))}</p>
               <p>Remaining: {formatCurrency(toNumber(selected.remaining))}</p>
               <p>
-                {selected.weekStart} to {selected.weekEnd}
+                {formatDateMDY(selected.weekStart)} to {formatDateMDY(selected.weekEnd)}
               </p>
             </div>
           )}
@@ -121,14 +121,16 @@ function PlannerInput({
   disabled?: boolean;
   type?: string;
 }) {
+  const isLockedDate = type === "date" && disabled;
+
   return (
     <label>
       <span>{label}</span>
       <input
-        type={type}
+        type={isLockedDate ? "text" : type}
         aria-label={label}
         className={type === "date" ? "calendar-input" : undefined}
-        value={value}
+        value={isLockedDate ? formatDateMDY(value) : value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         onClick={(event) => {
