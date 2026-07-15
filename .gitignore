@@ -4,3 +4,5 @@ dist/
 *.log
 .playwright-cli/
 output/playwright/
+.env.local
+.env.*.local

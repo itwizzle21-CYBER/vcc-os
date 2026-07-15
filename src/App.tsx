@@ -27,6 +27,7 @@ import AppShell from "./components/layout/AppShell";
 import NotFound from "./components/layout/NotFound";
 import WelcomeTransition from "./components/layout/WelcomeTransition";
 import Dashboard from "./components/dashboard/Dashboard";
+import VccAgent from "./components/agent/VccAgent";
 import PaycheckPlanner from "./components/modules/PaycheckPlanner";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
@@ -128,6 +129,7 @@ export default function App() {
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/reports" && <ReportsPage data={data} financialState={financialState} decisionState={decisionState} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} />}
+      {path === "/agent" && <VccAgent financialState={financialState} decisionState={decisionState} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} onWallpaperPreviewChange={setWallpaperPreview} />}
       {!isKnownPath && <NotFound />}
     </AppShell>
@@ -2400,5 +2402,6 @@ const knownPaths = new Set([
   "/goals",
   "/reports",
   "/missions",
+  "/agent",
   "/settings",
 ]);

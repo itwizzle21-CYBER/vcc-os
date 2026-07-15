@@ -64,6 +64,17 @@ test("mobile navigation exposes labeled destinations", async ({ page }, testInfo
   await expect(drawer.getByRole("link", { name: "Transactions" })).toBeVisible();
 });
 
+test("VCC Agent explains its recommendation and answers a spending question", async ({ page }) => {
+  await page.goto("/agent");
+  await expect(page.getByRole("heading", { name: "Ask less. Decide better." })).toBeVisible();
+  await expect(page.getByText("Private local analysis · No external AI connection")).toBeVisible();
+
+  await page.getByRole("button", { name: "Can I safely spend today?" }).click();
+  await expect(page.getByText(/Hold non-essential spending|Spendable \/ Safe amount/).last()).toBeVisible();
+  await page.getByText("Why this recommendation").last().click();
+  await expect(page.getByText(/Source: Money Snapshot, bills, and borrowed-money rows/)).toBeVisible();
+});
+
 test("configures the welcome content, duration, and style", async ({ page }) => {
   await page.goto("/settings#settings-appearance");
   await page.getByRole("link", { name: "Appearance" }).click();
