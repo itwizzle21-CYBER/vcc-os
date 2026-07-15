@@ -1,7 +1,7 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { ArrowRight, Bot, CheckCircle2, CircleAlert, Send, ShieldCheck, Sparkles } from "lucide-react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
+import { Bot, ChevronDown, ExternalLink, Send, Sparkles, X } from "lucide-react";
 import { formatCurrency } from "../../lib/calculations/currency";
-import type { DecisionState, FinancialState } from "../../lib/types/app";
+import type { AppData, DecisionState, FinancialState } from "../../lib/types/app";
 
 type AgentMessage = {
   id: string;
@@ -9,38 +9,41 @@ type AgentMessage = {
   text: string;
   reasoning?: string;
   source?: string;
-  confidence?: "High" | "Medium";
   href?: string;
+  action?: string;
 };
 
-const suggestedPrompts = [
-  "What should I do first?",
-  "Can I safely spend today?",
-  "Where is my biggest risk?",
-  "What pattern do you see?",
-];
+const setupPrompts = ["Help me start", "Walk me through VCC", "What data should I add first?"];
+const activePrompts = ["What should I do first?", "Can I safely spend?", "Where is my biggest risk?"];
 
-export default function VccAgent({ financialState, decisionState }: { financialState: FinancialState; decisionState: DecisionState }) {
+export default function VccAgent({ data, financialState, decisionState }: { data: AppData; financialState: FinancialState; decisionState: DecisionState }) {
+  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
-  const opening = useMemo<AgentMessage>(() => ({
-    id: "opening",
-    role: "agent",
-    text: decisionState.recommendedMove,
-    reasoning: decisionState.todayBriefing,
-    source: "Money, bills, transactions, debt, goals, and inventory",
-    confidence: "High",
-    href: decisionState.todayMission.href,
-  }), [decisionState]);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isFreshStart = useMemo(() => hasNoMeaningfulData(data), [data]);
+  const prompts = isFreshStart ? setupPrompts : activePrompts;
+  const opening = isFreshStart
+    ? "Welcome to VCC. We can build your stability one small step at a time. Start with your available money, then bills, income, and debt—I’ll guide you through each one."
+    : decisionState.recommendedMove;
+
+  function toggle() {
+    setOpen((current) => {
+      const next = !current;
+      if (next) window.setTimeout(() => inputRef.current?.focus(), 80);
+      return next;
+    });
+  }
 
   function ask(question: string) {
     const clean = question.trim();
     if (!clean) return;
-    const reply = buildAgentReply(clean, financialState, decisionState);
+    const reply = buildAgentReply(clean, financialState, decisionState, isFreshStart);
+    const time = Date.now();
     setMessages((current) => [
       ...current,
-      { id: `user-${Date.now()}`, role: "user", text: clean },
-      { ...reply, id: `agent-${Date.now() + 1}`, role: "agent" },
+      { id: `user-${time}`, role: "user", text: clean },
+      { ...reply, id: `agent-${time + 1}`, role: "agent" },
     ]);
     setDraft("");
   }
@@ -50,125 +53,135 @@ export default function VccAgent({ financialState, decisionState }: { financialS
     ask(draft);
   }
 
-  const safe = Math.min(financialState.spendableCash, financialState.safeToSpend);
-  const riskCount = financialState.overdueBills + financialState.criticalItems + (financialState.borrowedMoney > 0 ? 1 : 0);
-
   return (
-    <div className="agent-page">
-      <section className="agent-hero">
-        <div>
-          <p className="eyebrow"><Sparkles size={14} /> VCC Intelligence</p>
-          <h2>Ask less. Decide better.</h2>
-          <p>Your VCC Agent monitors the financial picture already stored in this device and turns it into one clear next move.</p>
-        </div>
-        <div className="agent-status" aria-label="Agent status">
-          <span><span className="agent-live-dot" /> Monitoring this device</span>
-          <small>Private local analysis · No external AI connection</small>
-        </div>
-      </section>
+    <aside className={`vcc-agent-widget${open ? " is-open" : ""}`} aria-label="VCC Agent">
+      {open && (
+        <section className="vcc-agent-popover" role="dialog" aria-modal="false" aria-label="Chat with VCC Agent">
+          <header>
+            <span className="vcc-agent-face" aria-hidden="true"><Bot size={20} /></span>
+            <div><strong>VCC Agent</strong><small><i /> Local guidance · watching this device</small></div>
+            <button type="button" onClick={toggle} aria-label="Minimize VCC Agent"><ChevronDown size={18} /></button>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close VCC Agent"><X size={17} /></button>
+          </header>
 
-      <section className="agent-signal-grid" aria-label="Current decision signals">
-        <article><small>Spendable / Safe</small><strong>{formatCurrency(safe)}</strong><span>After known pressure</span></article>
-        <article><small>Immediate Risks</small><strong>{riskCount}</strong><span>Across bills, borrowing, inventory</span></article>
-        <article><small>Today’s Priority</small><strong>{decisionState.todayMission.priority}</strong><span>{decisionState.todayMission.title}</span></article>
-      </section>
-
-      <div className="agent-layout">
-        <section className="agent-chat-panel" aria-label="Conversation with VCC Agent">
-          <div className="agent-chat-heading">
-            <span><Bot size={20} /></span>
-            <div><strong>VCC Agent</strong><small>Decision support, not automatic control</small></div>
-          </div>
-          <div className="agent-messages" aria-live="polite">
-            {[opening, ...messages].map((message) => (
-              <article key={message.id} className={`agent-message ${message.role}`}>
-                {message.role === "agent" && <span className="agent-avatar"><Bot size={16} /></span>}
+          <div className="vcc-agent-thread" aria-live="polite">
+            <article className="vcc-agent-message agent">
+              <span className="vcc-agent-mini-face"><Sparkles size={14} /></span>
+              <div><p>{opening}</p>{!isFreshStart && <small>{decisionState.todayBriefing}</small>}</div>
+            </article>
+            {messages.map((message) => (
+              <article key={message.id} className={`vcc-agent-message ${message.role}`}>
+                {message.role === "agent" && <span className="vcc-agent-mini-face"><Bot size={14} /></span>}
                 <div>
                   <p>{message.text}</p>
-                  {message.reasoning && (
-                    <details>
-                      <summary>Why this recommendation</summary>
-                      <p>{message.reasoning}</p>
-                      <small><ShieldCheck size={13} /> Source: {message.source} · {message.confidence} confidence</small>
-                    </details>
-                  )}
-                  {message.href && <a href={message.href}>Review supporting data <ArrowRight size={14} /></a>}
+                  {message.reasoning && <details><summary>Small reason</summary><p>{message.reasoning}</p>{message.source && <small>Based on: {message.source}</small>}</details>}
+                  {message.href && <a href={message.href}>{message.action || "Open this area"} <ExternalLink size={13} /></a>}
                 </div>
               </article>
             ))}
           </div>
 
-          <div className="agent-suggestions">
-            {suggestedPrompts.map((prompt) => <button key={prompt} type="button" onClick={() => ask(prompt)}>{prompt}</button>)}
+          <div className="vcc-agent-quick-actions" aria-label="Suggested questions">
+            {prompts.map((prompt) => <button key={prompt} type="button" onClick={() => ask(prompt)}>{prompt}</button>)}
           </div>
-          <form className="agent-composer" onSubmit={submit}>
-            <label htmlFor="agent-question">Ask about your current VCC data</label>
+          <form className="vcc-agent-input" onSubmit={submit}>
+            <label htmlFor="vcc-agent-question">Ask VCC Agent</label>
             <div>
-              <input id="agent-question" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Example: What should I focus on this week?" />
-              <button type="submit" aria-label="Send question" disabled={!draft.trim()}><Send size={17} /></button>
+              <input ref={inputRef} id="vcc-agent-question" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Ask what to do next…" />
+              <button type="submit" disabled={!draft.trim()} aria-label="Send question"><Send size={16} /></button>
             </div>
           </form>
+          <footer>Guidance only. Review important financial decisions before acting.</footer>
         </section>
+      )}
 
-        <aside className="agent-brief-panel">
-          <p className="eyebrow">Decision Brief</p>
-          <h3>{decisionState.todayMission.title}</h3>
-          <p>{decisionState.todayMission.detail}</p>
-          <a href={decisionState.todayMission.href}>Open action area <ArrowRight size={15} /></a>
-          <div className="agent-alert-list">
-            {decisionState.priorityAlerts.map((alert) => (
-              <div key={alert.title}>
-                {alert.tone === "success" ? <CheckCircle2 size={17} /> : <CircleAlert size={17} />}
-                <span><strong>{alert.title}</strong><small>{alert.detail}</small></span>
-              </div>
-            ))}
-          </div>
-        </aside>
-      </div>
-    </div>
+      <button
+        className="vcc-agent-launcher"
+        type="button"
+        onClick={toggle}
+        aria-label={open ? "Minimize VCC Agent" : "Open VCC Agent"}
+        aria-expanded={open}
+      >
+        <Bot size={23} />
+        {!open && <span>{isFreshStart ? "Need help starting?" : "Ask VCC"}</span>}
+      </button>
+    </aside>
   );
 }
 
-export function buildAgentReply(question: string, financial: FinancialState, decision: DecisionState): Omit<AgentMessage, "id" | "role"> {
+export function buildAgentReply(question: string, financial: FinancialState, decision: DecisionState, freshStart = false): Omit<AgentMessage, "id" | "role"> {
   const query = question.toLowerCase();
   const safe = Math.min(financial.spendableCash, financial.safeToSpend);
-  const base = { confidence: "High" as const };
 
+  if (/start|begin|zero|reset|first time/.test(query) || (freshStart && /what|help/.test(query))) {
+    return {
+      text: "Start with Money Snapshot. Add every checking balance and cash amount you can use today. Do not include credit as cash. When that is done, come back and I’ll take you to bills.",
+      reasoning: "A reliable starting balance gives every later spending and bill recommendation a safe baseline.",
+      source: "VCC setup order",
+      href: "/money",
+      action: "Start Money Snapshot",
+    };
+  }
+  if (/walk|tour|through vcc|how.*work/.test(query)) {
+    return {
+      text: "Use VCC in this order: Money Snapshot → Bills → Income → Transactions → Debt → Savings and Goals. Inventory and Missions help with daily follow-through. You can ask me what belongs in any field.",
+      reasoning: "This order establishes cash first, obligations second, then behavior and long-term stability.",
+      source: "VCC workflow",
+      href: "/money",
+      action: "Begin the walkthrough",
+    };
+  }
+  if (/data|input|enter|add|field/.test(query)) {
+    return {
+      text: "Add only what you can verify. Begin with current cash balances, then each bill’s amount and due date, your income, and recent transactions. Estimates are okay if you label them in Notes.",
+      reasoning: "Small verified inputs produce safer guidance than filling every section with guesses.",
+      source: "VCC data-quality rules",
+      href: "/money",
+      action: "Enter the first balance",
+    };
+  }
+  if (/stability|stable|overwhelm|stress|control/.test(query)) {
+    return {
+      text: financial.overdueBills > 0 ? "Stability starts by stopping new damage: list and address overdue bills before optional spending." : "Stability starts with a clear floor: protect bill money, avoid new fixed costs, and make one small update in VCC each day.",
+      reasoning: decision.todayBriefing,
+      source: "Current cash and obligation signals",
+      href: financial.overdueBills > 0 ? "/bills" : "/missions",
+      action: "Take the next stability step",
+    };
+  }
   if (/spend|buy|afford|safe/.test(query)) {
     const hold = financial.overdueBills > 0 || financial.billsPressure > safe * 0.5 || financial.borrowedMoney > 0;
     return {
-      ...base,
-      text: hold ? "Hold non-essential spending today." : `Your current Spendable / Safe amount is ${formatCurrency(safe)}. Keep new purchases below that ceiling and avoid adding fixed costs.`,
-      reasoning: `${formatCurrency(financial.billsPressure)} is reserved for near-term bills and ${formatCurrency(financial.borrowedMoney)} is borrowed money. The remaining safe amount is ${formatCurrency(safe)}.`,
-      source: "Money Snapshot, bills, and borrowed-money rows",
+      text: hold ? "Hold non-essential spending today." : `Your current Spendable / Safe amount is ${formatCurrency(safe)}. Stay below it and avoid adding fixed costs.`,
+      reasoning: `${formatCurrency(financial.billsPressure)} is reserved for bills and ${formatCurrency(financial.borrowedMoney)} is borrowed money.`,
+      source: "Money Snapshot and bills",
       href: "/money",
+      action: "Review safe spending",
     };
   }
-  if (/risk|wrong|flaw|problem|pressure/.test(query)) {
+  if (/risk|problem|flaw|pressure/.test(query)) {
     const risk = financial.overdueBills > 0
-      ? `${financial.overdueBills} overdue bill${financial.overdueBills === 1 ? " is" : "s are"} the largest immediate risk.`
+      ? `${financial.overdueBills} overdue bill${financial.overdueBills === 1 ? " is" : "s are"} the biggest immediate risk.`
       : financial.borrowedMoney > 0
-        ? `${formatCurrency(financial.borrowedMoney)} in borrowed money is the largest cash-flow risk.`
-        : financial.criticalItems > 0
-          ? `${financial.criticalItems} critical inventory item${financial.criticalItems === 1 ? " needs" : "s need"} attention.`
-          : "No urgent exception is visible in the current records.";
-    return { ...base, text: risk, reasoning: decision.todayBriefing, source: "Bills, money, and inventory exception checks", href: decision.todayMission.href };
+        ? `${formatCurrency(financial.borrowedMoney)} in borrowed money is the biggest cash-flow risk.`
+        : "No urgent exception is visible in the current records.";
+    return { text: risk, reasoning: decision.todayBriefing, source: "Bills and Money Snapshot", href: decision.todayMission.href, action: "Review the risk" };
   }
   if (/pattern|behavior|habit|trend/.test(query)) {
     const top = financial.categorySummary[0];
-    return {
-      confidence: top ? "High" : "Medium",
-      text: top ? `${top.label} is currently the strongest spending pattern at ${formatCurrency(top.amount)}.` : "There is not enough categorized transaction history to identify a reliable behavior pattern yet.",
-      reasoning: top ? `VCC grouped recorded expenses by category and ranked them by total amount. This describes recorded behavior; it does not infer motive or personality.` : "Pattern detection needs multiple dated, categorized transactions.",
-      source: "Categorized transaction history",
-      href: "/transactions",
-    };
+    return { text: top ? `${top.label} is the strongest recorded spending pattern at ${formatCurrency(top.amount)}.` : "Add several dated transactions before I call a behavior pattern reliable.", reasoning: "I describe recorded spending behavior without guessing motive or personality.", source: "Categorized transactions", href: "/transactions", action: "Review transactions" };
   }
   if (/debt|payoff|loan|credit/.test(query)) {
-    return { ...base, text: financial.totalDebt > 0 ? `Keep minimums current, then focus on ${financial.nextPayoff}.` : "No active debt balance is recorded.", reasoning: `Recorded debt is ${formatCurrency(financial.totalDebt)} with ${formatCurrency(financial.minimumPayments)} in minimum payments.`, source: "Debt records", href: "/debt" };
+    return { text: financial.totalDebt > 0 ? `Keep minimums current, then focus on ${financial.nextPayoff}.` : "No active debt is recorded yet.", reasoning: `Recorded debt is ${formatCurrency(financial.totalDebt)} with ${formatCurrency(financial.minimumPayments)} in minimums.`, source: "Debt records", href: "/debt", action: "Open debt" };
   }
   if (/goal|save|saving|emergency/.test(query)) {
-    return { ...base, text: financial.closestGoal !== "None" ? `The closest recorded goal is ${financial.closestGoal}. Protect essentials first, then direct surplus there.` : "Add a target and current balance before VCC recommends a savings allocation.", reasoning: `Goal progress is ${financial.goalCompletionPercent.toFixed(0)}% and the emergency fund is ${formatCurrency(financial.emergencyFund)}.`, source: "Savings and goals", href: "/goals" };
+    return { text: financial.closestGoal !== "None" ? `The closest goal is ${financial.closestGoal}. Protect essentials first, then direct surplus there.` : "Add one goal with a target and current amount. I’ll help break it into manageable steps.", reasoning: `Current goal progress is ${financial.goalCompletionPercent.toFixed(0)}%.`, source: "Savings and goals", href: "/goals", action: "Open goals" };
   }
-  return { ...base, text: decision.recommendedMove, reasoning: decision.todayBriefing, source: "VCC Decision Engine across current records", href: decision.todayMission.href };
+  return { text: freshStart ? "We’ll keep it simple. Add your current available money first, and ask me about any field you are unsure about." : decision.recommendedMove, reasoning: decision.todayBriefing, source: "VCC Decision Engine", href: freshStart ? "/money" : decision.todayMission.href, action: "Take the next step" };
+}
+
+function hasNoMeaningfulData(data: AppData): boolean {
+  const hasRows = Object.values(data.sections).some((rows) => rows.some((row) => Object.values(row.cells).some((value) => String(value || "").trim())));
+  const planner = data.paycheckPlanner;
+  return !hasRows && !planner.locked && !planner.paycheckAmount && data.paycheckHistory.length === 0;
 }

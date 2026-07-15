@@ -64,15 +64,22 @@ test("mobile navigation exposes labeled destinations", async ({ page }, testInfo
   await expect(drawer.getByRole("link", { name: "Transactions" })).toBeVisible();
 });
 
-test("VCC Agent explains its recommendation and answers a spending question", async ({ page }) => {
-  await page.goto("/agent");
-  await expect(page.getByRole("heading", { name: "Ask less. Decide better." })).toBeVisible();
-  await expect(page.getByText("Private local analysis · No external AI connection")).toBeVisible();
+test("VCC Agent stays out of the way and can start a guided walkthrough", async ({ page }) => {
+  await page.goto("/money");
+  await expect(page.getByRole("button", { name: "Open VCC Agent" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Chat with VCC Agent" })).toBeHidden();
+  await page.getByRole("button", { name: "Open VCC Agent" }).click();
+  await expect(page.getByRole("dialog", { name: "Chat with VCC Agent" })).toBeVisible();
+  await page.getByRole("textbox", { name: "Ask VCC Agent" }).fill("Walk me through VCC");
+  await page.getByRole("button", { name: "Send question" }).click();
+  await expect(page.getByText(/Money Snapshot → Bills → Income/).last()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Begin the walkthrough/ })).toHaveAttribute("href", "/money");
 
-  await page.getByRole("button", { name: "Can I safely spend today?" }).click();
+  await page.getByRole("textbox", { name: "Ask VCC Agent" }).fill("Can I safely spend today?");
+  await page.getByRole("button", { name: "Send question" }).click();
   await expect(page.getByText(/Hold non-essential spending|Spendable \/ Safe amount/).last()).toBeVisible();
-  await page.getByText("Why this recommendation").last().click();
-  await expect(page.getByText(/Source: Money Snapshot, bills, and borrowed-money rows/)).toBeVisible();
+  await page.getByText("Small reason").last().click();
+  await expect(page.getByText(/Based on: Money Snapshot and bills/)).toBeVisible();
 });
 
 test("configures the welcome content, duration, and style", async ({ page }) => {

@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  Bot,
   Bell,
   Boxes,
   Car,
@@ -28,7 +27,6 @@ import type { AppData, UserSettings } from "../../lib/types/app";
 
 const nav = [
   { path: "/", label: "Dashboard", icon: Home },
-  { path: "/agent", label: "VCC Agent", icon: Bot },
   { path: "/money", label: "Money Snapshot", icon: Wallet },
   { path: "/bills", label: "Bills", icon: ReceiptText },
   { path: "/inventory", label: "Inventory", icon: Boxes },
@@ -43,7 +41,7 @@ const nav = [
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
-const primaryPaths = ["/", "/agent", "/money", "/bills", "/inventory", "/transactions", "/savings", "/goals", "/reports", "/settings"];
+const primaryPaths = ["/", "/money", "/bills", "/inventory", "/transactions", "/savings", "/goals", "/reports", "/settings"];
 const dashboardNav = nav.filter((item) => primaryPaths.includes(item.path));
 const launcherHoldDelay = 240;
 

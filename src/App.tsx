@@ -129,9 +129,9 @@ export default function App() {
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/reports" && <ReportsPage data={data} financialState={financialState} decisionState={decisionState} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} />}
-      {path === "/agent" && <VccAgent financialState={financialState} decisionState={decisionState} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} onWallpaperPreviewChange={setWallpaperPreview} />}
       {!isKnownPath && <NotFound />}
+      {isKnownPath && <VccAgent data={data} financialState={financialState} decisionState={decisionState} />}
     </AppShell>
     </>
   );
@@ -2402,6 +2402,5 @@ const knownPaths = new Set([
   "/goals",
   "/reports",
   "/missions",
-  "/agent",
   "/settings",
 ]);
