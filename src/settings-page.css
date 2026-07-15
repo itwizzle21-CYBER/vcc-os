@@ -339,7 +339,7 @@
 
 .settings-wallpaper-picker {
   display: grid;
-  grid-template-columns: repeat(4, minmax(7.2rem, 1fr)) 5.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(8.35rem, 100%), 1fr));
   gap: 0.65rem;
   padding: 1rem;
 }
@@ -423,19 +423,18 @@
 }
 
 .settings-wallpaper-upload {
-  align-self: stretch;
+  align-self: start;
+  cursor: pointer;
 }
 
 .settings-wallpaper-upload-drop {
   position: relative;
-  z-index: 3;
   min-height: 3.55rem;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 62%),
     color-mix(in srgb, var(--surface-2) 72%, transparent);
   color: var(--text);
   font-size: 0.72rem;
-  pointer-events: none;
 }
 
 .settings-wallpaper-upload-drop strong {
@@ -443,14 +442,45 @@
   font-size: 0.72rem;
 }
 
+.settings-wallpaper-upload-preview {
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-wallpaper-upload .settings-wallpaper-upload-preview,
+.settings-wallpaper-upload .settings-wallpaper-upload-drop {
+  aspect-ratio: 16 / 7.2;
+}
+
+.settings-wallpaper-upload-label {
+  min-width: 0;
+}
+
+.settings-wallpaper-upload-action {
+  width: calc(100% - 1rem);
+  min-height: 2rem;
+  justify-self: center;
+  margin: 0 0 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.settings-wallpaper-upload-action:hover {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--border));
+  background: color-mix(in srgb, var(--accent) 24%, var(--surface-2));
+}
+
 .settings-wallpaper-file {
   position: absolute;
-  inset: 0;
-  z-index: 2;
-  width: 100%;
-  height: 100%;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
   opacity: 0;
-  cursor: pointer;
+  pointer-events: none;
 }
 
 .settings-wallpaper-dialog-actions {
@@ -463,11 +493,13 @@
 .settings-wallpaper-dialog-actions button {
   min-height: 2.55rem;
   padding: 0 0.85rem;
+  white-space: nowrap;
 }
 
 .settings-wallpaper-dialog-actions .settings-wallpaper-save {
   border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
   background: color-mix(in srgb, var(--accent) 24%, var(--surface-2));
+  min-width: 10rem;
 }
 
 @media (prefers-reduced-motion: no-preference) {

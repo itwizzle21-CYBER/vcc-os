@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   BellRing,
@@ -1716,6 +1716,7 @@ function WallpaperPicker({
   const [draftCustomWallpaper, setDraftCustomWallpaper] = useState(customWallpaper);
   const [draftBackgroundOpacity, setDraftBackgroundOpacity] = useState(backgroundOpacity);
   const [draftCardOpacity, setDraftCardOpacity] = useState(cardOpacity);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const selectedOption = wallpaperOptions.find((option) => option.value === value) || wallpaperOptions[0];
   const draftOption = wallpaperOptions.find((option) => option.value === draftWallpaper) || wallpaperOptions[0];
   const draftPreview = wallpaperPreviewSource(draftWallpaper, draftCustomWallpaper);
@@ -1750,13 +1751,27 @@ function WallpaperPicker({
   }, [open]);
 
   function uploadWallpaper(file: File | undefined) {
-    if (!file) return;
+    if (!file || !file.type.startsWith("image/")) return;
     const reader = new FileReader();
     reader.onload = () => {
       setDraftWallpaper("upload");
       setDraftCustomWallpaper(String(reader.result || ""));
     };
     reader.readAsDataURL(file);
+  }
+
+  function chooseUploadWallpaper() {
+    if (draftCustomWallpaper) {
+      setDraftWallpaper("upload");
+      return;
+    }
+    uploadInputRef.current?.click();
+  }
+
+  function handleUploadKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    chooseUploadWallpaper();
   }
 
   function closePicker() {
@@ -1845,14 +1860,47 @@ function WallpaperPicker({
                   const selected = draftWallpaper === option.value;
                   if (option.value === "upload") {
                     return (
-                      <label key={option.value} className={`settings-wallpaper-option settings-wallpaper-upload${selected ? " is-selected" : ""}`}>
-                        <input type="radio" name="wallpaper" checked={selected} onChange={() => setDraftWallpaper("upload")} />
-                        <span className="settings-wallpaper-upload-drop">
-                          <Upload size={17} aria-hidden="true" />
-                          <strong>{draftCustomWallpaper ? "Uploaded" : option.label}</strong>
+                      <div
+                        key={option.value}
+                        className={`settings-wallpaper-option settings-wallpaper-upload${selected ? " is-selected" : ""}`}
+                        role="radio"
+                        aria-checked={selected}
+                        tabIndex={0}
+                        onClick={chooseUploadWallpaper}
+                        onKeyDown={handleUploadKeyDown}
+                      >
+                        {draftCustomWallpaper ? <img className="settings-wallpaper-upload-preview" src={draftCustomWallpaper} alt="" /> : (
+                          <span className="settings-wallpaper-upload-drop">
+                            <Upload size={17} aria-hidden="true" />
+                            <strong>{option.label}</strong>
+                          </span>
+                        )}
+                        <span className="settings-wallpaper-upload-label">
+                          <strong>{draftCustomWallpaper ? "Custom upload" : "Upload image"}</strong>
+                          {selected && <Check size={14} aria-hidden="true" />}
                         </span>
-                        <input className="settings-wallpaper-file" aria-label="Upload custom wallpaper" type="file" accept="image/*" onChange={(event) => uploadWallpaper(event.target.files?.[0])} />
-                      </label>
+                        <button
+                          type="button"
+                          className="settings-wallpaper-upload-action"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            uploadInputRef.current?.click();
+                          }}
+                        >
+                          {draftCustomWallpaper ? "Replace" : "Choose"}
+                        </button>
+                        <input
+                          ref={uploadInputRef}
+                          className="settings-wallpaper-file"
+                          aria-label="Upload custom wallpaper"
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => {
+                            uploadWallpaper(event.currentTarget.files?.[0]);
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </div>
                     );
                   }
 
