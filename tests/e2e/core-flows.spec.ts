@@ -82,6 +82,24 @@ test("VCC Agent stays out of the way and can start a guided walkthrough", async 
   await expect(page.getByText(/Based on: Money Snapshot and bills/)).toBeVisible();
 });
 
+test("VCC Agent learns conversational preferences and can forget them", async ({ page }) => {
+  await page.goto("/goals");
+  await page.getByRole("button", { name: "Open VCC Agent" }).click();
+  await page.getByRole("button", { name: "Get to know me" }).click();
+  const input = page.getByRole("textbox", { name: "Ask VCC Agent" });
+  await input.fill("build an emergency fund");
+  await page.getByRole("button", { name: "Send question" }).click();
+  await expect(page.getByText(/What creates the most pressure today/)).toBeVisible();
+  await input.fill("bills arrive too close together");
+  await page.getByRole("button", { name: "Send question" }).click();
+  await expect(page.getByText(/How should I guide you/)).toBeVisible();
+  await input.fill("one step at a time");
+  await page.getByRole("button", { name: "Send question" }).click();
+  await expect(page.getByText(/respond in a step-by-step way/)).toBeVisible();
+  await page.getByRole("button", { name: "Forget what you learned" }).click();
+  await expect(page.getByText(/cleared what I learned/)).toBeVisible();
+});
+
 test("configures the welcome content, duration, and style", async ({ page }) => {
   await page.goto("/settings#settings-appearance");
   await page.getByRole("link", { name: "Appearance" }).click();

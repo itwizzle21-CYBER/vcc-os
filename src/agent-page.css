@@ -46,7 +46,10 @@
 .vcc-agent-input button:hover { filter: brightness(1.08); }
 .vcc-agent-input button:active { transform: scale(.95); }
 .vcc-agent-input button:disabled { opacity: .38; cursor: not-allowed; filter: grayscale(.2); }
-.vcc-agent-popover > footer { padding: 8px 14px; color: #7f899d; background: rgba(0,0,0,.12); font-size: .67rem; text-align: center; }
+.vcc-agent-popover > footer { display: grid; justify-items: center; gap: 4px; padding: 8px 14px; color: #7f899d; background: rgba(0,0,0,.12); font-size: .67rem; text-align: center; }
+.vcc-agent-popover > footer button { padding: 2px 4px; border: 0; border-radius: 5px; color: #aeb7d8; background: transparent; font: inherit; text-decoration: underline; cursor: pointer; }
+.vcc-agent-popover > footer button:hover { color: white; }
+.vcc-agent-popover > footer button:active { opacity: .7; }
 
 @keyframes vcc-agent-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
 @media (prefers-reduced-motion: reduce) { .vcc-agent-popover { animation: none; } .vcc-agent-launcher, .vcc-agent-popover button { transition: none; } }

@@ -13,6 +13,10 @@ type AgentMessage = {
   action?: string;
 };
 
+type ConversationStep = "idle" | "priority" | "pressure" | "style" | "complete";
+type UserContext = { priority?: string; pressure?: string; style?: string };
+const contextKey = "vcc.agent.context.v1";
+
 const setupPrompts = ["Help me start", "Walk me through VCC", "What data should I add first?"];
 const activePrompts = ["What should I do first?", "Can I safely spend?", "Where is my biggest risk?"];
 
@@ -20,6 +24,8 @@ export default function VccAgent({ data, financialState, decisionState }: { data
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([]);
+  const [conversationStep, setConversationStep] = useState<ConversationStep>("idle");
+  const [userContext, setUserContext] = useState<UserContext>(() => loadUserContext());
   const inputRef = useRef<HTMLInputElement>(null);
   const isFreshStart = useMemo(() => hasNoMeaningfulData(data), [data]);
   const prompts = isFreshStart ? setupPrompts : activePrompts;
@@ -38,7 +44,13 @@ export default function VccAgent({ data, financialState, decisionState }: { data
   function ask(question: string) {
     const clean = question.trim();
     if (!clean) return;
-    const reply = buildAgentReply(clean, financialState, decisionState, isFreshStart);
+    const guided = continueConversation(clean, conversationStep, userContext);
+    const reply = guided?.reply || buildAgentReply(clean, financialState, decisionState, isFreshStart, userContext);
+    if (guided) {
+      setConversationStep(guided.nextStep);
+      setUserContext(guided.context);
+      saveUserContext(guided.context);
+    }
     const time = Date.now();
     setMessages((current) => [
       ...current,
@@ -46,6 +58,24 @@ export default function VccAgent({ data, financialState, decisionState }: { data
       { ...reply, id: `agent-${time + 1}`, role: "agent" },
     ]);
     setDraft("");
+  }
+
+  function startConversation() {
+    const time = Date.now();
+    setConversationStep("priority");
+    setMessages((current) => [...current, {
+      id: `agent-${time}`,
+      role: "agent",
+      text: "I’d like to understand what stability means for you. What matters most right now: getting bills under control, reducing debt, building savings, or simply understanding where your money goes?",
+    }]);
+    window.setTimeout(() => inputRef.current?.focus(), 60);
+  }
+
+  function forgetContext() {
+    window.localStorage.removeItem(contextKey);
+    setUserContext({});
+    setConversationStep("idle");
+    setMessages((current) => [...current, { id: `agent-${Date.now()}`, role: "agent", text: "I’ve cleared what I learned from this conversation. We can start fresh whenever you’re ready." }]);
   }
 
   function submit(event: FormEvent) {
@@ -82,6 +112,7 @@ export default function VccAgent({ data, financialState, decisionState }: { data
           </div>
 
           <div className="vcc-agent-quick-actions" aria-label="Suggested questions">
+            <button type="button" onClick={startConversation}>{Object.keys(userContext).length ? "Update what you know" : "Get to know me"}</button>
             {prompts.map((prompt) => <button key={prompt} type="button" onClick={() => ask(prompt)}>{prompt}</button>)}
           </div>
           <form className="vcc-agent-input" onSubmit={submit}>
@@ -91,7 +122,10 @@ export default function VccAgent({ data, financialState, decisionState }: { data
               <button type="submit" disabled={!draft.trim()} aria-label="Send question"><Send size={16} /></button>
             </div>
           </form>
-          <footer>Guidance only. Review important financial decisions before acting.</footer>
+          <footer>
+            <span>Guidance only. Review important financial decisions before acting.</span>
+            {Object.keys(userContext).length > 0 && <button type="button" onClick={forgetContext}>Forget what you learned</button>}
+          </footer>
         </section>
       )}
 
@@ -109,7 +143,7 @@ export default function VccAgent({ data, financialState, decisionState }: { data
   );
 }
 
-export function buildAgentReply(question: string, financial: FinancialState, decision: DecisionState, freshStart = false): Omit<AgentMessage, "id" | "role"> {
+export function buildAgentReply(question: string, financial: FinancialState, decision: DecisionState, freshStart = false, context: UserContext = {}): Omit<AgentMessage, "id" | "role"> {
   const query = question.toLowerCase();
   const safe = Math.min(financial.spendableCash, financial.safeToSpend);
 
@@ -177,7 +211,55 @@ export function buildAgentReply(question: string, financial: FinancialState, dec
   if (/goal|save|saving|emergency/.test(query)) {
     return { text: financial.closestGoal !== "None" ? `The closest goal is ${financial.closestGoal}. Protect essentials first, then direct surplus there.` : "Add one goal with a target and current amount. I’ll help break it into manageable steps.", reasoning: `Current goal progress is ${financial.goalCompletionPercent.toFixed(0)}%.`, source: "Savings and goals", href: "/goals", action: "Open goals" };
   }
-  return { text: freshStart ? "We’ll keep it simple. Add your current available money first, and ask me about any field you are unsure about." : decision.recommendedMove, reasoning: decision.todayBriefing, source: "VCC Decision Engine", href: freshStart ? "/money" : decision.todayMission.href, action: "Take the next step" };
+  const personalLead = context.priority ? `Since your priority is ${context.priority}, ` : "";
+  const followUp = context.style === "step-by-step"
+    ? " Would you like me to give you only the first step?"
+    : " What part of that feels hardest right now?";
+  return { text: freshStart ? "We’ll keep it simple. Add your current available money first, and ask me about any field you are unsure about." : `${personalLead}${decision.recommendedMove.toLowerCase()}${followUp}`, reasoning: decision.todayBriefing, source: "VCC Decision Engine and your stated priorities", href: freshStart ? "/money" : decision.todayMission.href, action: "Take the next step" };
+}
+
+function continueConversation(answer: string, step: ConversationStep, current: UserContext): { reply: Omit<AgentMessage, "id" | "role">; nextStep: ConversationStep; context: UserContext } | null {
+  if (step === "idle" || step === "complete") return null;
+  if (step === "priority") {
+    const context = { ...current, priority: answer };
+    return { context, nextStep: "pressure", reply: { text: `Got it—${answer} is the priority. What creates the most pressure today: not enough income, bills arriving too close together, impulse spending, debt, or uncertainty about the numbers?` } };
+  }
+  if (step === "pressure") {
+    const context = { ...current, pressure: answer };
+    return { context, nextStep: "style", reply: { text: "That helps me understand the pressure behind the numbers. How should I guide you: one step at a time, a short answer with optional reasoning, or a complete plan?" } };
+  }
+  const style = normalizeGuidanceStyle(answer);
+  const context = { ...current, style };
+  return {
+    context,
+    nextStep: "complete",
+    reply: {
+      text: `Understood. I’ll prioritize ${context.priority || "stability"}, watch for ${context.pressure || "financial pressure"}, and respond in a ${style} way. You can change this anytime. What decision are you facing today?`,
+      reasoning: "Your answers stay in this browser and are used only to tailor VCC guidance.",
+      source: "What you told VCC Agent",
+    },
+  };
+}
+
+function normalizeGuidanceStyle(value: string): string {
+  const lower = value.toLowerCase();
+  if (lower.includes("step") || lower.includes("one")) return "step-by-step";
+  if (lower.includes("complete") || lower.includes("plan") || lower.includes("detail")) return "complete-plan";
+  return "concise-with-reasoning";
+}
+
+function loadUserContext(): UserContext {
+  if (typeof window === "undefined") return {};
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(contextKey) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveUserContext(context: UserContext) {
+  window.localStorage.setItem(contextKey, JSON.stringify(context));
 }
 
 function hasNoMeaningfulData(data: AppData): boolean {
