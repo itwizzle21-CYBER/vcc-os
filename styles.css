@@ -1200,6 +1200,68 @@ textarea {
   }
 }
 
+/* Bills status check-off */
+.bill-status-control {
+  display: grid;
+  grid-template-columns: 0.65rem minmax(5.5rem, 1fr);
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2rem;
+  border: 1px solid color-mix(in srgb, var(--bill-status-color) 40%, var(--border));
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--bill-status-color) 11%, transparent);
+  padding: 0 0.4rem;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+
+.bill-status-control.unpaid { --bill-status-color: #60a5fa; }
+.bill-status-control.paid { --bill-status-color: #22c55e; }
+.bill-status-control.overdue { --bill-status-color: #f87171; }
+
+.bill-status-control:hover {
+  border-color: var(--bill-status-color);
+  background: color-mix(in srgb, var(--bill-status-color) 17%, transparent);
+}
+
+.bill-status-control:focus-within {
+  outline: 2px solid var(--bill-status-color);
+  outline-offset: 2px;
+}
+
+.bill-status-control:active { transform: scale(0.98); }
+
+.bill-status-indicator {
+  width: 0.6rem;
+  height: 0.6rem;
+  border: 2px solid var(--bill-status-color);
+  border-radius: 50%;
+  background: var(--bill-status-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bill-status-color) 16%, transparent);
+}
+
+.bill-status-control select,
+.reference-shell .bill-status-control select {
+  width: 100%;
+  min-height: 1.9rem;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.bill-status-control select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bill-status-control { transition: none; }
+  .bill-status-control:active { transform: none; }
+}
+
 .workspace {
   min-width: 0;
   padding: 1rem 1rem 1.5rem;

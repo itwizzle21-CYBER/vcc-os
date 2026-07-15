@@ -284,7 +284,7 @@ function BillsPage({
     total: filledBillRows.length,
     amount: visibleBillRows.reduce((sum, row) => sum + toNumber(row.cells.amount), 0),
     overdue: filledBillRows.filter((row) => ["overdue", "late"].includes(billStatus(row))).length,
-    upcoming: filledBillRows.filter((row) => billStatus(row) === "upcoming").length,
+    unpaid: filledBillRows.filter((row) => billStatus(row) === "unpaid").length,
     paid: filledBillRows.filter((row) => billStatus(row) === "paid").length,
     autopay: filledBillRows.filter((row) => isAffirmative(row.cells.autopay)).length,
     critical: filledBillRows.filter((row) => (row.cells.priority || "").toLowerCase() === "critical").length,
@@ -315,11 +315,9 @@ function BillsPage({
           <div className="bills-status-tabs" role="tablist" aria-label="Bill status filter">
             {[
               ["all", "All"],
-              ["upcoming", "Upcoming"],
+              ["unpaid", "Unpaid"],
               ["paid", "Paid"],
               ["overdue", "Overdue"],
-              ["late", "Late"],
-              ["cancelled", "Cancelled"],
             ].map(([value, label]) => (
               <button
                 key={value}
@@ -388,7 +386,7 @@ function BillsPage({
         <article className="panel bill-insight-card">
           <p className="eyebrow">Status Mix</p>
           <div className="bill-status-bars">
-            <BillMiniBar label="Upcoming" value={billStats.upcoming} total={Math.max(1, billStats.total)} tone="blue" />
+            <BillMiniBar label="Unpaid" value={billStats.unpaid} total={Math.max(1, billStats.total)} tone="blue" />
             <BillMiniBar label="Paid" value={billStats.paid} total={Math.max(1, billStats.total)} tone="green" />
             <BillMiniBar label="Overdue/Late" value={billStats.overdue} total={Math.max(1, billStats.total)} tone="red" />
           </div>
@@ -2312,7 +2310,9 @@ function savingsProjection(row: SpreadsheetRow, monthlyContribution: number): st
 
 function billStatus(row: SpreadsheetRow): string {
   const status = (row.cells.status || "").trim().toLowerCase();
-  return status || "upcoming";
+  if (status === "paid") return "paid";
+  if (status === "overdue" || status === "late") return "overdue";
+  return "unpaid";
 }
 
 function isAffirmative(value: string | undefined): boolean {

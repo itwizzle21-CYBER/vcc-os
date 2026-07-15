@@ -131,11 +131,13 @@ export default function Spreadsheet({
   function addRow() {
     const id = `${config.key}-${Date.now()}`;
     setNewRowId(id);
+    const cells = Object.fromEntries(config.columns.map((column) => [column.key, ""]));
+    if (config.key === "bills") cells.status = "unpaid";
     onRowsChange(config.key, [
       ...rows,
       {
         id,
-        cells: Object.fromEntries(config.columns.map((column) => [column.key, ""])),
+        cells,
       },
     ]);
   }
@@ -284,6 +286,30 @@ export default function Spreadsheet({
                       </td>
                     );
                   }
+                  if (config.key === "bills" && column.key === "status") {
+                    const status = billStatusValue(value);
+                    return (
+                      <td key={column.key} data-label={column.label} className="bill-status-cell">
+                        <div className={`bill-status-control ${status}`}>
+                          <span className="bill-status-indicator" aria-hidden="true" />
+                          <select
+                            data-row-index={rowIndex}
+                            data-column-index={columnIndex}
+                            data-row-id={row.id}
+                            data-column-key={column.key}
+                            value={status}
+                            aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}: ${status}`}
+                            onChange={(event) => updateCell(row.id, column.key, event.target.value)}
+                            onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
+                          >
+                            <option value="unpaid">Unpaid</option>
+                            <option value="paid">Paid</option>
+                            <option value="overdue">Overdue</option>
+                          </select>
+                        </div>
+                      </td>
+                    );
+                  }
                   return (
                     <td key={column.key} data-label={column.label}>
                       <input
@@ -319,6 +345,13 @@ export default function Spreadsheet({
       </div>
     </section>
   );
+}
+
+function billStatusValue(value: string): "paid" | "unpaid" | "overdue" {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "paid") return "paid";
+  if (normalized === "overdue" || normalized === "late") return "overdue";
+  return "unpaid";
 }
 
 function formatLooseCurrency(value: string): string {
