@@ -6225,12 +6225,13 @@ td input:focus {
   top: auto;
   z-index: 15;
   display: grid;
-  grid-template-columns: minmax(10rem, 0.75fr) minmax(0, 1fr);
-  align-items: end;
-  gap: 1rem;
+  grid-template-columns: minmax(7rem, 0.5fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.55rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: #17181d;
-  padding: 0.85rem 1rem;
+  background: rgba(18, 24, 35, 0.94);
+  padding: 0.42rem 0.75rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .reference-shell .spreadsheet-toolbar .eyebrow {
@@ -6239,14 +6240,15 @@ td input:focus {
 
 .reference-shell .spreadsheet-toolbar h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.86rem;
+  line-height: 1.15;
 }
 
 .reference-shell .toolbar-controls {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .reference-shell .toolbar-controls label,
@@ -6295,6 +6297,16 @@ td input:focus {
   padding: 0 0.7rem;
 }
 
+.reference-shell .spreadsheet-toolbar .toolbar-controls span {
+  font-size: 0.66rem;
+}
+
+.reference-shell .spreadsheet-toolbar .toolbar-controls input,
+.reference-shell .spreadsheet-toolbar .toolbar-controls select,
+.reference-shell .spreadsheet-toolbar .toolbar-controls button {
+  min-height: 1.9rem;
+}
+
 .reference-shell .table-wrap {
   min-height: 0;
   overflow: auto;
@@ -6310,11 +6322,13 @@ td input:focus {
 .reference-shell th {
   height: 2.3rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: transparent;
+  background:
+    linear-gradient(180deg, rgba(24, 35, 50, 0.98), rgba(18, 26, 39, 0.98));
   color: rgba(255, 255, 255, 0.4);
   font-size: 0.75rem;
   font-weight: 650;
   padding: 0.65rem 0.75rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.045), 0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
 .reference-shell td,
@@ -6869,6 +6883,34 @@ body {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.018)),
     rgba(17, 22, 33, 0.95);
+}
+
+.reference-shell .spreadsheet-panel .spreadsheet-toolbar {
+  grid-template-columns: minmax(7rem, 0.5fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.55rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.014)),
+    rgba(17, 22, 33, 0.96);
+  padding: 0.42rem 0.75rem;
+}
+
+.reference-shell .spreadsheet-panel .spreadsheet-toolbar h2 {
+  font-size: 0.86rem;
+}
+
+.reference-shell .spreadsheet-panel .toolbar-controls {
+  gap: 0.35rem;
+}
+
+.reference-shell .spreadsheet-panel .toolbar-controls label {
+  gap: 0;
+}
+
+.reference-shell .spreadsheet-panel .toolbar-controls input,
+.reference-shell .spreadsheet-panel .toolbar-controls select,
+.reference-shell .spreadsheet-panel .toolbar-controls button {
+  min-height: 1.9rem;
 }
 
 .reference-shell .toolbar-controls button,

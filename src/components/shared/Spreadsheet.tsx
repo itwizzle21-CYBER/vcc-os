@@ -63,8 +63,9 @@ export default function Spreadsheet({
     const sorted = sortBy
       ? [...searched].sort((a, b) => String(a.cells[sortBy] || "").localeCompare(String(b.cells[sortBy] || ""), undefined, { numeric: true }))
       : searched;
-    return [...sorted, ...(!search.trim() ? blanks : [])];
-  }, [blankRowIds, config.columns, getComputedCell, rows, search, sortBy]);
+    const visibleBlanks = search.trim() ? blanks.filter((row) => row.id === newRowId) : blanks;
+    return [...sorted, ...visibleBlanks];
+  }, [blankRowIds, config.columns, getComputedCell, newRowId, rows, search, sortBy]);
 
   function updateCell(rowId: string, columnKey: string, value: string) {
     if (preventDuplicateKey === columnKey && value.trim()) {
@@ -194,19 +195,17 @@ export default function Spreadsheet({
         </div>
         <div className="toolbar-controls">
           <label>
-            <span>Sort By</span>
             <select aria-label={`Sort ${config.title}`} value={sortBy || ""} onChange={(event) => onSortChange(config.key, event.target.value)}>
-              <option value="">None</option>
+              <option value="">Sort by: None</option>
               {config.columns.map((column) => (
                 <option key={column.key} value={column.key}>
-                  {column.label}
+                  Sort by: {column.label}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            <span>Search</span>
-            <input aria-label={`Search ${config.title} rows`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search rows" />
+            <input aria-label={`Search ${config.title} rows`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${config.title} rows`} />
           </label>
           <button type="button" onClick={addRow}>
             {addLabel}
