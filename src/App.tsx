@@ -2094,6 +2094,9 @@ function summaryForSection(section: SectionKey, financialState: ReturnType<typeo
 }
 
 function computedCell(section: SectionKey, row: SpreadsheetRow, columnKey: string): string | undefined {
+  if (section === "bills" && columnKey === "status") {
+    return billStatus(row);
+  }
   if (section === "money" && columnKey === "section") {
     return moneySectionLabel(moneySection(row));
   }
@@ -2312,6 +2315,13 @@ function billStatus(row: SpreadsheetRow): string {
   const status = (row.cells.status || "").trim().toLowerCase();
   if (status === "paid") return "paid";
   if (status === "overdue" || status === "late") return "overdue";
+  const dueDate = row.cells.dueDate || row.cells.due_date || "";
+  if (dueDate) {
+    const due = new Date(`${dueDate}T12:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (!Number.isNaN(due.getTime()) && due < today) return "overdue";
+  }
   return "unpaid";
 }
 

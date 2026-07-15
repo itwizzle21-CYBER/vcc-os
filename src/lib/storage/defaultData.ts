@@ -23,7 +23,6 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
       { key: "amount", label: "Amount", type: "currency" },
       { key: "status", label: "Status" },
       { key: "autopay", label: "Autopay" },
-      { key: "priority", label: "Priority" },
       { key: "notes", label: "Notes" },
     ],
   },
