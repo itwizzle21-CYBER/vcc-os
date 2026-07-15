@@ -2,27 +2,27 @@
 
 Sprint 0.6 verified the Codex AI environment for VCC-OS without modifying application source code.
 
-Audit date: 2026-07-12  
+Audit date: 2026-07-15  
 Repository: `C:\Users\itwiz\Downloads\VCC-OS`  
-Branch: `cleanup-recovery`  
+Branch: `main`  
 Remote: `https://github.com/itwizzle21-CYBER/vcc-os.git`
 
 ## Overall Readiness Score
 
-**87%**
+**86%**
 
-The environment is strong for React/Vite work, UI craft, accessibility, financial QA, Vercel deployment checks, Supabase/PostgreSQL support, Context7 documentation lookup, Base44 app access, and local build/test verification. The score is held back by Chrome extension/native-host setup, inactive Supabase project state, and some overlapping skills that need routing discipline.
+The environment is strong for React/Vite work, UI craft, accessibility, financial QA, Vercel deployment checks, Supabase/PostgreSQL support, Context7 documentation lookup, connector-backed GitHub repo access, and local build/test verification. The score is held back by missing local GitHub and Supabase CLIs, Chrome extension/native-host setup, inactive Supabase project state, and some overlapping skills that need routing discipline.
 
 ## Verification Evidence
 
 | Area | Result | Evidence |
 | --- | --- | --- |
-| Local tests | Pass | `npm.cmd test` ran Vitest: 1 file, 4 tests passed. |
-| Production build | Pass | `npm.cmd run build` completed TypeScript check and Vite production build. |
-| GitHub | Verified for repo access | GitHub app returned repo `itwizzle21-CYBER/vcc-os` with admin/push permissions. Installed-account listing returned empty, so broad account discovery is weak. |
-| Vercel | Verified and linked | `.vercel/project.json` points to `vcc-os`; Vercel returned project `prj_ZSUV6VGFxLlyLQCUAwATsFOQce78` and ready production deployment `vcc-ezvpqbj0u-crlzel.vercel.app`. |
-| Supabase | Connector verified, project inactive | Supabase returned project `vcc-os-production`, ref `awwkueiavctldiehlige`, region `us-east-2`, PostgreSQL 17, status `INACTIVE`. |
-| Playwright | Usable via project/CLI path | `npx.cmd --version` returned `11.17.0`; PowerShell `npx.ps1` is blocked by execution policy, so use `npx.cmd` on Windows. |
+| Local tests | Pass | `npm test` ran Vitest: 4 files, 12 tests passed. |
+| Production build | Pass | `npm run build` completed TypeScript check and Vite production build. |
+| GitHub | Connector verified for repo access | GitHub app returned repo `itwizzle21-CYBER/vcc-os` with admin/push permissions. Local `gh` CLI is not installed, so PR automation via CLI is unavailable. Installed-account listing returned empty, so broad account discovery is weak. |
+| Vercel | Verified and linked | `.vercel/project.json` points to `vcc-os`; Vercel returned project `prj_ZSUV6VGFxLlyLQCUAwATsFOQce78` and ready production deployment `vcc-bvve0ru7h-crlzel.vercel.app`. Local Vercel CLI returned `54.20.1`. |
+| Supabase | Connector verified, project inactive | Supabase returned project `vcc-os-production`, ref `awwkueiavctldiehlige`, region `us-east-2`, PostgreSQL 17, status `INACTIVE`. Local `supabase` CLI is not installed. |
+| Playwright | Usable via project/CLI path | `npx playwright --version` returned `1.61.1`. |
 | Browser | Verified | In-app Browser selected successfully and returned API documentation. |
 | Chrome | Not currently usable | Chrome extension backend returned `Browser is not available: extension`; diagnostics show missing native host manifest and no Chrome user-data directory at the expected path. |
 | Context7 | Verified | Resolved React docs to `/reactjs/react.dev` and returned current React documentation snippets. |
@@ -281,10 +281,11 @@ No exact duplicate local skill folder names were detected from the available ski
 ## Git Repository Health
 
 - `git status --short --branch` succeeded.
-- Current branch: `cleanup-recovery`.
-- Branch is ahead of `origin/cleanup-recovery` by 17 commits before this report update.
+- Current branch: `main`.
+- Branch was ahead of `origin/main` by 9 commits before this cleanup/report update.
 - Remote is configured correctly.
-- Existing untracked directory `.codex-audit/` was present before this audit and was not modified.
+- Existing untracked directory `.codex-audit/` contained old audit screenshots and was removed during cleanup.
+- Obsolete root-level React modules were removed after confirming the active Vite entry imports `src/App.tsx`.
 - No Git ACL or lock-file issue was observed during this Sprint 0.6 verification pass.
 
 ## Readiness Summary
