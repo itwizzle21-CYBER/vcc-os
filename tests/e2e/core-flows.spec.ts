@@ -12,13 +12,13 @@ test("shows a brief, skippable welcome before the dashboard", async ({ page }) =
   const welcome = page.getByRole("status", { name: /Welcome to VCC-OS/i });
   await expect(welcome).toBeVisible();
   await expect(page.getByRole("button", { name: "Skip intro" })).toBeVisible();
-  await expect(welcome).toBeHidden({ timeout: 2_000 });
+  await expect(welcome).toBeHidden({ timeout: 6_000 });
   await expect(page.getByRole("heading", { name: /Stabilize|Build|Protect|Restock/i }).first()).toBeVisible();
 });
 
 test("uses the current time of day in the dashboard greeting", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 2_000 });
+  await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
   const hour = new Date().getHours();
   const expected = hour < 12 ? "Good morning," : hour < 18 ? "Good afternoon," : "Good evening,";
   await expect(page.locator(".dashboard-brand-copy small")).toHaveText(expected);
@@ -64,9 +64,25 @@ test("mobile navigation exposes labeled destinations", async ({ page }, testInfo
   await expect(drawer.getByRole("link", { name: "Transactions" })).toBeVisible();
 });
 
+test("configures the welcome content, duration, and style", async ({ page }) => {
+  await page.goto("/settings#settings-appearance");
+  await page.getByRole("link", { name: "Appearance" }).click();
+  await page.getByRole("textbox", { name: "Welcome headline" }).fill("Ready to build");
+  await page.getByRole("textbox", { name: "Supporting message" }).fill("Loading today’s priorities");
+  await page.getByRole("button", { name: "Sweep" }).click();
+  await page.getByRole("slider", { name: "Welcome display time" }).fill("5");
+  await expect(page.getByText("5s", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Preview welcome" }).click();
+  const welcome = page.getByRole("status", { name: /Welcome to VCC-OS/i });
+  await expect(welcome).toContainText("Ready to build");
+  await expect(welcome).toContainText("Loading today’s priorities");
+  await expect(welcome).toHaveClass(/welcome-transition-sweep/);
+  await expect(welcome).toBeHidden({ timeout: 6_500 });
+});
+
 test("has no measurable accessibility failures on the dashboard", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 2_000 });
+  await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
   const failures = await page.evaluate(() => {
     const visible = (element: Element) => {
       const box = element.getBoundingClientRect();

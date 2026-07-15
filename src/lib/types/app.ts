@@ -66,6 +66,10 @@ export interface UserSettings {
   customWallpaper: string;
   backgroundOpacity: number;
   cardOpacity: number;
+  welcomeHeadline: string;
+  welcomeMessage: string;
+  welcomeDurationSeconds: number;
+  welcomeTransition: "rise" | "fade" | "focus" | "sweep";
 }
 
 export interface AppData {

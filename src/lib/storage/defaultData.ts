@@ -412,6 +412,10 @@ export function createZeroData(): AppData {
       customWallpaper: "",
       backgroundOpacity: 88,
       cardOpacity: 84,
+      welcomeHeadline: "",
+      welcomeMessage: "Preparing your command center",
+      welcomeDurationSeconds: 4,
+      welcomeTransition: "rise",
     },
   };
 }

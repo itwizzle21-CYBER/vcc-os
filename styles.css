@@ -7098,8 +7098,12 @@ body {
 .welcome-transition > button { position: absolute; right: 1rem; bottom: 1rem; min-height: 44px; border: 1px solid rgba(255,255,255,0.24); border-radius: 0.65rem; background: rgba(255,255,255,0.06); color: #fff; padding: 0 1rem; }
 
 @media (prefers-reduced-motion: no-preference) {
-  .welcome-transition { animation: welcome-exit 760ms var(--ease-out) both; }
-  .welcome-transition-content { animation: welcome-content 520ms var(--ease-out) both; }
+  .welcome-transition { animation: welcome-exit var(--welcome-duration, 4000ms) var(--ease-out) both; }
+  .welcome-transition-content { animation-duration: 520ms; animation-timing-function: var(--ease-out); animation-fill-mode: both; }
+  .welcome-transition-rise .welcome-transition-content { animation-name: welcome-content-rise; }
+  .welcome-transition-fade .welcome-transition-content { animation-name: welcome-content-fade; }
+  .welcome-transition-focus .welcome-transition-content { animation-name: welcome-content-focus; }
+  .welcome-transition-sweep .welcome-transition-content { animation-name: welcome-content-sweep; }
 }
 
 @keyframes welcome-exit {
@@ -7107,10 +7111,35 @@ body {
   100% { opacity: 0; pointer-events: none; }
 }
 
-@keyframes welcome-content {
+@keyframes welcome-content-rise {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+@keyframes welcome-content-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes welcome-content-focus {
+  from { opacity: 0; transform: scale(1.08); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes welcome-content-sweep {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.settings-welcome-panel { display: grid; gap: 1rem; margin-bottom: 1rem; border: 1px solid var(--vcc-line-strong); border-radius: 0.85rem; background: color-mix(in srgb, var(--vcc-panel-strong) 92%, var(--accent) 8%); padding: 1rem; }
+.settings-welcome-heading { display: flex; align-items: center; gap: 0.75rem; }
+.settings-welcome-heading > span { display: grid; width: 2.25rem; height: 2.25rem; place-items: center; border-radius: 0.65rem; background: var(--accent-soft); color: var(--accent); }
+.settings-welcome-heading div { display: grid; gap: 0.2rem; }
+.settings-welcome-heading small { color: var(--vcc-muted); }
+.settings-duration-control { display: flex; min-width: min(100%, 18rem); align-items: center; gap: 0.8rem; }
+.settings-duration-control input { width: 100%; min-height: 24px; accent-color: var(--accent); }
+.settings-duration-control output { min-width: 2rem; color: var(--text); font-weight: 800; }
+.settings-preview-welcome { justify-self: start; min-height: 44px; border: 1px solid var(--vcc-line-strong); border-radius: 0.65rem; background: var(--accent-soft); color: var(--text); padding: 0 1rem; font-weight: 800; }
 
 @media (prefers-reduced-motion: reduce) {
   .welcome-transition,

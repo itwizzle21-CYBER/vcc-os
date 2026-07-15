@@ -17,6 +17,7 @@ import {
   Save,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Upload,
   UserRound,
   X,
@@ -111,7 +112,7 @@ export default function App() {
 
   return (
     <>
-    {path === "/" && <WelcomeTransition accountName={data.settings.accountName} />}
+    {path === "/" && <WelcomeTransition settings={data.settings} />}
     <AppShell currentPath={path} settings={data.settings} wallpaperPreview={wallpaperPreview} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
       {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} data={data} settings={data.settings} onSettingsChange={(settings) => updateData({ ...data, settings })} />}
       {path === "/money" && (
@@ -1309,6 +1310,7 @@ function SettingsPage({
   onWallpaperPreviewChange: (preview: WallpaperPreviewSettings | null) => void;
 }) {
   const [featurePrefs, setFeaturePrefs] = useState<Record<string, boolean>>(() => loadFeaturePrefs());
+  const [welcomePreviewId, setWelcomePreviewId] = useState<number | null>(null);
   const [openSection, setOpenSection] = useState<string | null>(() => {
     const hash = window.location.hash.slice(1);
     return settingsNavigation.some(({ href }) => href === `#${hash}`) ? hash : "settings-profile";
@@ -1379,6 +1381,7 @@ function SettingsPage({
 
   return (
     <div className="settings-page premium-settings">
+      {welcomePreviewId !== null && <WelcomeTransition key={welcomePreviewId} settings={data.settings} preview />}
       <div className="settings-layout">
         <aside className="settings-navigation">
           <p>Settings</p>
@@ -1429,6 +1432,31 @@ function SettingsPage({
           </SettingsSection>
 
           <SettingsSection id="settings-appearance" icon={Palette} title="Appearance" description="Choose a focused visual system that feels right for daily use." open={openSection === "settings-appearance"}>
+            <div className="settings-welcome-panel">
+              <div className="settings-welcome-heading">
+                <span aria-hidden="true"><Sparkles size={18} /></span>
+                <div><strong>Welcome transition</strong><small>Shape the opening moment before your dashboard appears.</small></div>
+              </div>
+              <div className="settings-field-grid">
+                <SettingInput label="Welcome headline" description="Leave blank to use the current time-of-day greeting." value={data.settings.welcomeHeadline} onChange={(welcomeHeadline) => onChange({ ...data, settings: { ...data.settings, welcomeHeadline } })} />
+                <SettingInput label="Supporting message" description="Short status text shown beneath your name." value={data.settings.welcomeMessage} onChange={(welcomeMessage) => onChange({ ...data, settings: { ...data.settings, welcomeMessage } })} />
+              </div>
+              <SettingControlRow label="Transition style" description="Choose how the welcome content enters the screen.">
+                <SettingSegmented label="Welcome transition style" value={data.settings.welcomeTransition} options={[
+                  { value: "rise", label: "Rise" },
+                  { value: "fade", label: "Fade" },
+                  { value: "focus", label: "Focus" },
+                  { value: "sweep", label: "Sweep" },
+                ]} onChange={(welcomeTransition) => onChange({ ...data, settings: { ...data.settings, welcomeTransition: welcomeTransition as AppData["settings"]["welcomeTransition"] } })} />
+              </SettingControlRow>
+              <SettingControlRow label="Display time" description="Choose between 1 and 5 seconds.">
+                <label className="settings-duration-control">
+                  <input type="range" min="1" max="5" step="1" value={data.settings.welcomeDurationSeconds} aria-label="Welcome display time" onChange={(event) => onChange({ ...data, settings: { ...data.settings, welcomeDurationSeconds: Number(event.target.value) } })} />
+                  <output>{data.settings.welcomeDurationSeconds}s</output>
+                </label>
+              </SettingControlRow>
+              <button type="button" className="settings-preview-welcome" onClick={() => setWelcomePreviewId(Date.now())}>Preview welcome</button>
+            </div>
             <SettingControlRow label="Theme" description="Set the overall brightness and contrast.">
               <SettingSegmented label="Theme" value={data.settings.theme} options={[
                 { value: "dark", label: "Dark" },
