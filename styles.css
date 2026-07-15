@@ -111,6 +111,18 @@ input {
   min-height: 44px;
 }
 
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 button,
 a,
 input,
@@ -7044,21 +7056,65 @@ body {
     gap: 0.55rem;
   }
 
-  .dashboard-top-nav nav a:not(.active) {
-    width: 2.5rem;
-    justify-content: center;
-    padding-inline: 0;
+  .dashboard-top-nav nav a {
+    padding-inline: 0.55rem;
+    font-size: 0.78rem;
   }
+}
 
-  .dashboard-top-nav nav a:not(.active) span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
+.not-found-panel {
+  width: min(100%, 46rem);
+  margin: clamp(2rem, 9vh, 7rem) auto;
+  border: 1px solid var(--vcc-line-strong);
+  border-radius: 1rem;
+  background: var(--vcc-panel-strong);
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+  text-align: center;
+  box-shadow: var(--vcc-shadow);
+}
+
+.not-found-panel h2 { margin: 0.5rem 0 0.8rem; font-size: clamp(1.75rem, 4vw, 2.6rem); }
+.not-found-panel > p:not(.eyebrow) { max-width: 36rem; margin-inline: auto; color: var(--vcc-muted); }
+.not-found-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; margin-top: 1.5rem; }
+.not-found-actions a,
+.not-found-actions button { display: inline-flex; min-height: 44px; align-items: center; gap: 0.5rem; justify-content: center; }
+
+.welcome-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 42%, rgba(37, 99, 235, 0.22), transparent 34%), #070b13;
+  color: #fff;
+}
+
+.welcome-transition-content { text-align: center; }
+.welcome-transition-mark { display: grid; width: 3rem; height: 3rem; margin: 0 auto 1rem; place-items: center; border: 1px solid rgba(103, 232, 249, 0.55); border-radius: 0.8rem; background: linear-gradient(135deg, #2563eb, #06b6d4); box-shadow: 0 0 35px rgba(37, 99, 235, 0.42); }
+.welcome-transition p { margin: 0; color: #aebbd0; font-weight: 700; }
+.welcome-transition-name { display: block; margin: 0.15rem 0; font-size: clamp(2.6rem, 8vw, 5rem); letter-spacing: -0.04em; }
+.welcome-transition small { color: #93c5fd; letter-spacing: 0.08em; text-transform: uppercase; }
+.welcome-transition > button { position: absolute; right: 1rem; bottom: 1rem; min-height: 44px; border: 1px solid rgba(255,255,255,0.24); border-radius: 0.65rem; background: rgba(255,255,255,0.06); color: #fff; padding: 0 1rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-transition { animation: welcome-exit 760ms var(--ease-out) both; }
+  .welcome-transition-content { animation: welcome-content 520ms var(--ease-out) both; }
+}
+
+@keyframes welcome-exit {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+@keyframes welcome-content {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-transition,
+  .welcome-transition-content { animation: none; }
 }
 
 @media (max-width: 64rem) {

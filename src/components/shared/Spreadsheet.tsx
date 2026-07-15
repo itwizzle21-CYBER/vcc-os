@@ -143,7 +143,13 @@ export default function Spreadsheet({
   }
 
   function deleteRow(rowId: string) {
+    if (!window.confirm(`Delete this ${config.title.toLowerCase()} row? This cannot be undone.`)) return;
     onRowsChange(config.key, rows.filter((row) => row.id !== rowId));
+  }
+
+  function resetRows() {
+    if (!window.confirm(`Reset ${config.title} to its default rows? Your changes in this section will be replaced.`)) return;
+    onResetSection(config.key);
   }
 
   function moveFocus(rowIndex: number, columnIndex: number) {
@@ -212,7 +218,7 @@ export default function Spreadsheet({
           <button type="button" onClick={addRow}>
             {addLabel}
           </button>
-          <button type="button" className="ghost-button" onClick={() => onResetSection(config.key)}>
+          <button type="button" className="ghost-button" onClick={resetRows}>
             Reset Section
           </button>
         </div>

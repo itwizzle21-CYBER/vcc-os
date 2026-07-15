@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   BellRing,
@@ -23,6 +23,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import AppShell from "./components/layout/AppShell";
+import NotFound from "./components/layout/NotFound";
+import WelcomeTransition from "./components/layout/WelcomeTransition";
 import Dashboard from "./components/dashboard/Dashboard";
 import PaycheckPlanner from "./components/modules/PaycheckPlanner";
 import Spreadsheet from "./components/shared/Spreadsheet";
@@ -72,6 +74,7 @@ export default function App() {
   const [data, setData] = useState<AppData>(() => loadAppData());
   const [wallpaperPreview, setWallpaperPreview] = useState<WallpaperPreviewSettings | null>(null);
   const path = normalizePath(window.location.pathname);
+  const isKnownPath = knownPaths.has(path);
   const financialState = useMemo(() => computeFinancialState(data), [data]);
   const decisionState = useMemo(() => computeDecisionEngine(financialState, data), [financialState, data]);
 
@@ -107,6 +110,8 @@ export default function App() {
   }
 
   return (
+    <>
+    {path === "/" && <WelcomeTransition accountName={data.settings.accountName} />}
     <AppShell currentPath={path} settings={data.settings} wallpaperPreview={wallpaperPreview} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
       {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} data={data} settings={data.settings} onSettingsChange={(settings) => updateData({ ...data, settings })} />}
       {path === "/money" && (
@@ -123,7 +128,9 @@ export default function App() {
       {path === "/reports" && <ReportsPage data={data} financialState={financialState} decisionState={decisionState} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} onWallpaperPreviewChange={setWallpaperPreview} />}
+      {!isKnownPath && <NotFound />}
     </AppShell>
+    </>
   );
 }
 
@@ -1723,6 +1730,15 @@ function WallpaperPicker({
   const draftOption = wallpaperOptions.find((option) => option.value === draftWallpaper) || wallpaperOptions[0];
   const draftPreview = wallpaperPreviewSource(draftWallpaper, draftCustomWallpaper);
 
+  const closePicker = useCallback(() => {
+    setDraftWallpaper(value);
+    setDraftCustomWallpaper(customWallpaper);
+    setDraftBackgroundOpacity(backgroundOpacity);
+    setDraftCardOpacity(cardOpacity);
+    onPreviewChange(null);
+    setOpen(false);
+  }, [backgroundOpacity, cardOpacity, customWallpaper, onPreviewChange, value]);
+
   useEffect(() => {
     setDraftWallpaper(value);
     setDraftCustomWallpaper(customWallpaper);
@@ -1750,7 +1766,7 @@ function WallpaperPicker({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [open]);
+  }, [open, closePicker]);
 
   function uploadWallpaper(file: File | undefined) {
     if (!file || !file.type.startsWith("image/")) return;
@@ -1774,15 +1790,6 @@ function WallpaperPicker({
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     chooseUploadWallpaper();
-  }
-
-  function closePicker() {
-    setDraftWallpaper(value);
-    setDraftCustomWallpaper(customWallpaper);
-    setDraftBackgroundOpacity(backgroundOpacity);
-    setDraftCardOpacity(cardOpacity);
-    onPreviewChange(null);
-    setOpen(false);
   }
 
   function saveWallpaper() {
@@ -2350,3 +2357,20 @@ function normalizePath(path: string) {
   if (path.length > 1 && path.endsWith("/")) return path.slice(0, -1);
   return path || "/";
 }
+
+const knownPaths = new Set([
+  "/",
+  "/money",
+  "/bills",
+  "/income",
+  "/transactions",
+  "/debt",
+  "/debts",
+  "/car-payment",
+  "/savings",
+  "/inventory",
+  "/goals",
+  "/reports",
+  "/missions",
+  "/settings",
+]);

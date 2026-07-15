@@ -155,6 +155,7 @@ export default function Dashboard({
 
   return (
     <div className="base44-dashboard">
+      <h1 className="sr-only">VCC-OS Dashboard</h1>
       <div className="dashboard-status-line">
         <i />
         <span>System Active</span>

@@ -493,8 +493,9 @@ function timeGreeting(): string {
 
 function titleForPath(path: string, settings: UserSettings) {
   const normalized = normalize(path);
-  const label = nav.find((item) => item.path === normalized)?.label || "Dashboard";
-  return label === "Dashboard" ? `Good evening, ${settings.accountName || "Account"}` : label;
+  const label = nav.find((item) => item.path === normalized)?.label;
+  if (!label) return "Page not found";
+  return label === "Dashboard" ? `${timeGreeting()}, ${settings.accountName || "Account"}` : label;
 }
 
 function wallpaperUrl(settings: UserSettings) {
