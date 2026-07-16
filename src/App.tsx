@@ -33,6 +33,7 @@ import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import { formatCurrency, formatDateMDY, isBlankRow, toNumber } from "./lib/calculations/currency";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
+import { syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./lib/engine/transactionEngine";
@@ -100,6 +101,14 @@ export default function App() {
 
   function updateRows(section: SectionKey, rows: SpreadsheetRow[]) {
     const nextRows = section === "money" ? autoFillMoneyWeek(rows, data) : rows;
+    if (section === "bills") {
+      const transactions = syncBillPaymentTransactions(data.sections.bills, nextRows, data.sections.transactions);
+      updateData({
+        ...data,
+        sections: { ...data.sections, bills: nextRows, transactions },
+      });
+      return;
+    }
     updateData({ ...data, sections: { ...data.sections, [section]: nextRows } });
   }
 
