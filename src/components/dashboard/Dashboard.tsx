@@ -56,7 +56,8 @@ export default function Dashboard({
       detail: "Spendable this week",
       metrics: [
         ["Total Cash", formatExactCurrency(financialState.totalCash)],
-        ["Week Transactions", formatExactCurrency(financialState.transactionWeekNet)],
+        ["Week Spending", formatDashboardSpending(financialState.weeklySpending)],
+        ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
         ["Protected Savings", formatExactCurrency(financialState.protectedSavings)],
         ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
       ],

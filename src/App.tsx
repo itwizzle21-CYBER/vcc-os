@@ -2068,6 +2068,8 @@ function summaryForSection(section: SectionKey, financialState: ReturnType<typeo
     money: [
       { label: "Total Cash", value: financialState.totalCash },
       { label: "Spendable / Safe", value: Math.min(financialState.spendableCash, financialState.safeToSpend) },
+      { label: "Week Spending", value: -Math.abs(financialState.weeklySpending), tone: "bad" as const },
+      { label: "Week Net Impact", value: financialState.transactionWeekNet, tone: financialState.transactionWeekNet < 0 ? "bad" as const : "good" as const },
       { label: "Protected Savings", value: financialState.protectedSavings },
       { label: "Available Savings", value: financialState.availableSavings },
       { label: "Weekly Income", value: financialState.weeklyIncome },
