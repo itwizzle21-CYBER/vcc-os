@@ -2569,6 +2569,40 @@ td input[readonly] {
   gap: 0.65rem;
 }
 
+.car-payment-bill-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.car-payment-bill-link > strong { color: var(--accent); white-space: nowrap; }
+
+.car-payment-history { margin-top: 20px; }
+
+.car-payment-history-list { display: grid; gap: 10px; margin-top: 16px; }
+
+.car-payment-history-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.car-payment-history-list article div { display: grid; gap: 3px; }
+.car-payment-history-list small { color: var(--muted); }
+
+@media (max-width: 700px) {
+  .car-payment-bill-link { align-items: flex-start; flex-direction: column; }
+  .car-payment-history-list article { grid-template-columns: 1fr auto; }
+  .car-payment-history-list article > span { grid-row: 2; }
+}
+
 .transactions-inline-stats {
   display: flex;
   flex-wrap: wrap;

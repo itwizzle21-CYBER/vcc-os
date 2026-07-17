@@ -33,7 +33,7 @@ import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import { formatCurrency, formatDateMDY, isBlankRow, toNumber } from "./lib/calculations/currency";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
-import { syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
+import { isCarPaymentBill, isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./lib/engine/transactionEngine";
@@ -216,6 +216,7 @@ function MoneyPaymentHistory({
 }: {
   data: AppData;
 }) {
+  const carPayments = data.sections.transactions.filter(isCarPaymentTransaction);
   return (
     <section className="money-history-panel" aria-label="Money Snapshot payment history">
       <div className="money-history-heading">
@@ -227,6 +228,20 @@ function MoneyPaymentHistory({
       </div>
 
       <div className="money-history-list">
+        {carPayments.map((row) => (
+          <article className="money-history-record car-payment-history-record" key={row.id}>
+            <div>
+              <span>Car Payment</span>
+              <strong>{formatCurrency(Math.abs(toNumber(row.cells.amount)))}</strong>
+              <small>{row.cells.date ? formatDateMDY(row.cells.date) : "No payment date"}</small>
+            </div>
+            <dl>
+              <div><dt>Payment</dt><dd>{row.cells.description || "Car payment"}</dd></div>
+              <div><dt>Category</dt><dd>{row.cells.category || "Debt Payments"}</dd></div>
+              <div><dt>Source</dt><dd>Bills</dd></div>
+            </dl>
+          </article>
+        ))}
         {data.paycheckHistory.map((row) => (
           <article className="money-history-record" key={row.id}>
             <div>
@@ -259,7 +274,7 @@ function MoneyPaymentHistory({
           </article>
         ))}
 
-        {data.paycheckHistory.length === 0 && (
+        {data.paycheckHistory.length === 0 && carPayments.length === 0 && (
           <p className="empty-copy">Lock a paycheck week to create read-only payment history records.</p>
         )}
       </div>
@@ -297,6 +312,7 @@ function BillsPage({
   });
   const visibleBillIds = new Set(visibleBillRows.map((row) => row.id));
   const rankedBills = rankBillRows(filledBillRows);
+  const carPaymentBills = filledBillRows.filter(isCarPaymentBill);
   const dueBill = rankedBills[0];
   const billStats = {
     shown: visibleBillRows.filter((row) => !isBlankRow(row.cells)).length,
@@ -418,6 +434,17 @@ function BillsPage({
           </p>
         </article>
       </section>
+
+      {carPaymentBills.length > 0 && (
+        <a className="car-payment-bill-link panel" href="/car-payment">
+          <div>
+            <p className="eyebrow">Linked Auto Loan</p>
+            <h2>{carPaymentBills.length === 1 ? carPaymentBills[0].cells.name : `${carPaymentBills.length} car-payment bills`}</h2>
+            <p className="empty-copy">Mark the bill paid to add one payment to Transactions, Money Snapshot, and Car Payment history.</p>
+          </div>
+          <strong>Open Car Payment →</strong>
+        </a>
+      )}
 
       <Spreadsheet
         config={sectionConfigs.bills}
@@ -909,12 +936,17 @@ function CarPaymentPage(props: Omit<Parameters<typeof ModulePage>[0], "section" 
   const paidPercent = Math.round(props.financialState.carPaymentPaidPercent);
   const remaining = props.financialState.carPaymentRemainingTotal;
   const original = props.financialState.carPaymentOriginalTotal;
+  const paymentHistory = props.data.sections.transactions
+    .filter(isCarPaymentTransaction)
+    .sort((a, b) => (b.cells.date || "").localeCompare(a.cells.date || ""));
 
   return (
-    <ModulePage
-      {...props}
-      section="carPayment"
-      header={
+    <div className="car-payment-page">
+      <ModulePage
+        {...props}
+        section="carPayment"
+        header={
+          <>
         <section className="car-payment-hero">
           <div>
             <p className="eyebrow">Auto Loan</p>
@@ -931,8 +963,26 @@ function CarPaymentPage(props: Omit<Parameters<typeof ModulePage>[0], "section" 
             <small>{formatCurrency(props.financialState.carPaymentMonthlyTotal)} monthly total</small>
           </div>
         </section>
-      }
-    />
+        <section className="car-payment-history panel" aria-label="Car payment history">
+          <div className="money-history-heading">
+            <div><p className="eyebrow">Payment History</p><h2>Recorded car payments</h2></div>
+            <span>{paymentHistory.length ? `${paymentHistory.length} recorded` : "No payments yet"}</span>
+          </div>
+          <div className="car-payment-history-list">
+            {paymentHistory.map((row) => (
+              <article key={row.id}>
+                <div><strong>{row.cells.description || "Car payment"}</strong><small>Recorded from Bills</small></div>
+                <span>{row.cells.date ? formatDateMDY(row.cells.date) : "No date"}</span>
+                <strong>{formatCurrency(Math.abs(toNumber(row.cells.amount)))}</strong>
+              </article>
+            ))}
+            {paymentHistory.length === 0 && <p className="empty-copy">Mark a car note or car payment as paid on the Bills page to create the first record.</p>}
+          </div>
+        </section>
+          </>
+        }
+      />
+    </div>
   );
 }
 

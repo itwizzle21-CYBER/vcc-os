@@ -1,6 +1,7 @@
 import type { SpreadsheetRow } from "../types/app";
 
 const PAYMENT_ID_PREFIX = "bill-payment-";
+const CAR_PAYMENT_MARKER = "Car payment recorded from Bills.";
 
 export function syncBillPaymentTransactions(
   previousBills: SpreadsheetRow[],
@@ -38,19 +39,34 @@ export function syncBillPaymentTransactions(
 
 function createBillPaymentTransaction(bill: SpreadsheetRow, paymentDate: string): SpreadsheetRow {
   const name = String(bill.cells.name || "Bill").trim() || "Bill";
+  const carPayment = isCarPaymentBill(bill);
   return {
     id: paymentTransactionId(bill.id),
     cells: {
-      description: `${name} bill payment`,
+      description: carPayment ? `${name} payment` : `${name} bill payment`,
       type: "expense",
-      category: bill.cells.category || "",
+      category: carPayment ? "Debt Payments" : bill.cells.category || "",
       amount: bill.cells.amount || "",
       date: paymentDate,
       account: "",
       recurring: bill.cells.autopay || "",
-      notes: `Recorded automatically when ${name} was marked paid.`,
+      notes: carPayment
+        ? `${CAR_PAYMENT_MARKER} Recorded automatically when ${name} was marked paid.`
+        : `Recorded automatically when ${name} was marked paid.`,
     },
   };
+}
+
+export function isCarPaymentBill(bill: SpreadsheetRow): boolean {
+  const value = [bill.cells.name, bill.cells.category, bill.cells.notes]
+    .join(" ")
+    .trim()
+    .toLowerCase();
+  return ["car payment", "car note", "auto loan", "vehicle payment", "vehicle loan"].some((term) => value.includes(term));
+}
+
+export function isCarPaymentTransaction(transaction: SpreadsheetRow): boolean {
+  return transaction.id.startsWith(PAYMENT_ID_PREFIX) && transaction.cells.notes?.includes(CAR_PAYMENT_MARKER);
 }
 
 function paymentTransactionId(billId: string): string {

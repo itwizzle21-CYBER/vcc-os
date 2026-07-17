@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SpreadsheetRow } from "../types/app";
-import { syncBillPaymentTransactions } from "./billPaymentSync";
+import { isCarPaymentTransaction, syncBillPaymentTransactions } from "./billPaymentSync";
 
 function bill(status: string): SpreadsheetRow {
   return {
@@ -43,5 +43,22 @@ describe("paid bill transaction sync", () => {
     const transactions = syncBillPaymentTransactions([bill("paid")], [bill("overdue")], existing, "2026-07-16");
 
     expect(transactions).toEqual([]);
+  });
+
+  it("marks a paid car note as debt-payment history", () => {
+    const carNote = bill("unpaid");
+    carNote.id = "car-note";
+    carNote.cells.name = "Car note";
+    carNote.cells.category = "Loans";
+
+    const [transaction] = syncBillPaymentTransactions([carNote], [{ ...carNote, cells: { ...carNote.cells, status: "paid" } }], [], "2026-07-16");
+
+    expect(isCarPaymentTransaction(transaction)).toBe(true);
+    expect(transaction.cells).toMatchObject({
+      description: "Car note payment",
+      category: "Debt Payments",
+      amount: "$95.00",
+      date: "2026-07-16",
+    });
   });
 });
