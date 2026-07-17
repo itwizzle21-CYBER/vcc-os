@@ -66,7 +66,7 @@ export function isCarPaymentBill(bill: SpreadsheetRow): boolean {
 }
 
 export function isCarPaymentTransaction(transaction: SpreadsheetRow): boolean {
-  return transaction.id.startsWith(PAYMENT_ID_PREFIX) && transaction.cells.notes?.includes(CAR_PAYMENT_MARKER);
+  return transaction.cells.notes?.includes("Car payment recorded") || false;
 }
 
 function paymentTransactionId(billId: string): string {

@@ -102,10 +102,15 @@ export default function App() {
   function updateRows(section: SectionKey, rows: SpreadsheetRow[]) {
     const nextRows = section === "money" ? autoFillMoneyWeek(rows, data) : rows;
     if (section === "bills") {
-      const transactions = syncBillPaymentTransactions(data.sections.bills, nextRows, data.sections.transactions);
+      const syncedTransactions = syncBillPaymentTransactions(data.sections.bills, nextRows, data.sections.transactions);
+      const { transactions, carPayment } = applyBillPaymentsToCarLoan(
+        data.sections.transactions,
+        syncedTransactions,
+        data.sections.carPayment
+      );
       updateData({
         ...data,
-        sections: { ...data.sections, bills: nextRows, transactions },
+        sections: { ...data.sections, bills: nextRows, transactions, carPayment },
       });
       return;
     }
@@ -132,7 +137,7 @@ export default function App() {
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/transactions" && <TransactionsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
-      {path === "/car-payment" && <CarPaymentPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/car-payment" && <CarPaymentPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
       {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
@@ -144,6 +149,51 @@ export default function App() {
     </AppShell>
     </>
   );
+}
+
+function applyBillPaymentsToCarLoan(
+  previousTransactions: SpreadsheetRow[],
+  nextTransactions: SpreadsheetRow[],
+  carPaymentRows: SpreadsheetRow[]
+): { transactions: SpreadsheetRow[]; carPayment: SpreadsheetRow[] } {
+  const previousIds = new Set(previousTransactions.map((row) => row.id));
+  const nextIds = new Set(nextTransactions.map((row) => row.id));
+  const loan = carPaymentRows.find((row) => !isBlankRow(row.cells));
+  if (!loan) return { transactions: nextTransactions, carPayment: carPaymentRows };
+
+  let remaining = toNumber(loan.cells.remainingBalance);
+  const transactions = nextTransactions.map((transaction) => {
+    if (!isCarPaymentTransaction(transaction) || previousIds.has(transaction.id)) return transaction;
+    const amount = Math.abs(toNumber(transaction.cells.amount));
+    const interest = Math.max(0, toNumber(loan.cells.apr));
+    const interestAmount = amount * (interest / 100);
+    const principalAmount = Math.max(0, amount - interestAmount);
+    remaining = Math.max(0, remaining - principalAmount);
+    return {
+      ...transaction,
+      cells: {
+        ...transaction.cells,
+        interestPercent: String(interest),
+        interestAmount: String(interestAmount),
+        principalAmount: String(principalAmount),
+        remainingBalance: String(remaining),
+        vehicleId: loan.id,
+      },
+    };
+  });
+
+  previousTransactions.forEach((transaction) => {
+    if (isCarPaymentTransaction(transaction) && !nextIds.has(transaction.id)) {
+      remaining += Math.max(0, toNumber(transaction.cells.principalAmount) || Math.abs(toNumber(transaction.cells.amount)));
+    }
+  });
+
+  return {
+    transactions,
+    carPayment: carPaymentRows.map((row) => row.id === loan.id
+      ? { ...row, cells: { ...row.cells, remainingBalance: formatCurrency(remaining) } }
+      : row),
+  };
 }
 
 function MoneyPage({
@@ -932,36 +982,113 @@ function ModulePage({
   );
 }
 
-function CarPaymentPage(props: Omit<Parameters<typeof ModulePage>[0], "section" | "header">) {
+function CarPaymentPage(props: Omit<Parameters<typeof ModulePage>[0], "section" | "header"> & { onChange: (data: AppData) => void }) {
   const paidPercent = Math.round(props.financialState.carPaymentPaidPercent);
   const remaining = props.financialState.carPaymentRemainingTotal;
   const original = props.financialState.carPaymentOriginalTotal;
+  const paidTotal = Math.max(0, original - remaining);
+  const loanRows = props.data.sections.carPayment.length
+    ? props.data.sections.carPayment
+    : [{ id: "car-payment-start", cells: Object.fromEntries(sectionConfigs.carPayment.columns.map((column) => [column.key, ""])) }];
+  const pageData = { ...props.data, sections: { ...props.data.sections, carPayment: loanRows } };
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDate, setPaymentDate] = useState(() => dateInputValue(new Date()));
+  const [interestPercent, setInterestPercent] = useState("");
+  const [paymentMessage, setPaymentMessage] = useState("");
   const paymentHistory = props.data.sections.transactions
     .filter(isCarPaymentTransaction)
     .sort((a, b) => (b.cells.date || "").localeCompare(a.cells.date || ""));
+
+  function recordCarPayment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const loan = loanRows.find((row) => !isBlankRow(row.cells));
+    const amount = Math.abs(toNumber(paymentAmount));
+    const currentRemaining = toNumber(loan?.cells.remainingBalance);
+    const interest = Math.max(0, toNumber(interestPercent));
+    if (!loan || !loan.cells.vehicle.trim()) {
+      setPaymentMessage("Fill out the vehicle loan row before recording a payment.");
+      return;
+    }
+    if (amount <= 0 || !paymentDate) {
+      setPaymentMessage("Enter a payment amount and payment date.");
+      return;
+    }
+    const interestAmount = amount * (interest / 100);
+    const principalAmount = Math.max(0, amount - interestAmount);
+    const nextRemaining = Math.max(0, currentRemaining - principalAmount);
+    const transaction: SpreadsheetRow = {
+      id: `car-payment-${Date.now()}`,
+      cells: {
+        description: `${loan.cells.vehicle} car payment`,
+        type: "expense",
+        category: "Debt Payments",
+        amount: formatCurrency(amount),
+        date: paymentDate,
+        account: loan.cells.lender || "",
+        recurring: "No",
+        notes: `Car payment recorded from Car Payment. Interest: ${interest}%. Principal: ${formatCurrency(principalAmount)}. Remaining: ${formatCurrency(nextRemaining)}.`,
+        interestPercent: String(interest),
+        interestAmount: String(interestAmount),
+        principalAmount: String(principalAmount),
+        remainingBalance: String(nextRemaining),
+        vehicleId: loan.id,
+      },
+    };
+    const nextLoanRows = loanRows.map((row) => row.id === loan.id
+      ? { ...row, cells: { ...row.cells, remainingBalance: formatCurrency(nextRemaining) } }
+      : row);
+    props.onChange({
+      ...props.data,
+      sections: {
+        ...props.data.sections,
+        carPayment: nextLoanRows,
+        transactions: [...props.data.sections.transactions, transaction],
+      },
+    });
+    setPaymentAmount("");
+    setPaymentMessage(`Payment recorded. ${formatCurrency(nextRemaining)} remains.`);
+  }
 
   return (
     <div className="car-payment-page">
       <ModulePage
         {...props}
+        data={pageData}
         section="carPayment"
         header={
           <>
         <section className="car-payment-hero">
-          <div>
+          <div className="car-payment-total-box">
             <p className="eyebrow">Auto Loan</p>
-            <h2>{remaining > 0 ? `${formatCurrency(remaining)} left` : "Add your car payment details"}</h2>
+            <small>Overall loan total</small>
+            <h2>{original > 0 ? formatCurrency(original) : "Add your car payment details"}</h2>
             <p>
               {original > 0
                 ? `${paidPercent}% paid down from ${formatCurrency(original)}.`
                 : "Track the vehicle, lender, balance, monthly payment, due date, APR, and payoff notes."}
             </p>
           </div>
-          <div className="car-payment-progress-card">
+          <div className="car-payment-progress-card car-payment-remaining-box">
+            <small>Remaining balance</small>
+            <h2>{formatCurrency(remaining)}</h2>
             <span>{paidPercent}% paid</span>
             <i><b style={{ width: `${Math.max(0, Math.min(100, paidPercent))}%` }} /></i>
-            <small>{formatCurrency(props.financialState.carPaymentMonthlyTotal)} monthly total</small>
+            <small>{formatCurrency(paidTotal)} paid · {formatCurrency(props.financialState.carPaymentMonthlyTotal)} monthly</small>
           </div>
+        </section>
+        <section className="car-payment-entry panel">
+          <div>
+            <p className="eyebrow">Make a Payment</p>
+            <h2>Record a car-note payment</h2>
+            <p className="empty-copy">Creates the transaction, updates Money Snapshot, reduces the remaining principal, and adds the history record below.</p>
+          </div>
+          <form onSubmit={recordCarPayment}>
+            <label><span>Payment amount</span><input aria-label="Car payment amount" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} placeholder={props.financialState.carPaymentMonthlyTotal ? formatCurrency(props.financialState.carPaymentMonthlyTotal) : "$0.00"} /></label>
+            <label><span>Date paid</span><input aria-label="Car payment date" type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} /></label>
+            <label><span>Interest in payment (%)</span><input aria-label="Car payment interest percent" inputMode="decimal" value={interestPercent} onChange={(event) => setInterestPercent(event.target.value)} placeholder="0.00" /></label>
+            <button type="submit">Record Payment</button>
+          </form>
+          {paymentMessage && <p className="car-payment-message" role="status">{paymentMessage}</p>}
         </section>
         <section className="car-payment-history panel" aria-label="Car payment history">
           <div className="money-history-heading">
@@ -971,8 +1098,9 @@ function CarPaymentPage(props: Omit<Parameters<typeof ModulePage>[0], "section" 
           <div className="car-payment-history-list">
             {paymentHistory.map((row) => (
               <article key={row.id}>
-                <div><strong>{row.cells.description || "Car payment"}</strong><small>Recorded from Bills</small></div>
+                <div><strong>{row.cells.description || "Car payment"}</strong><small>Recorded payment</small></div>
                 <span>{row.cells.date ? formatDateMDY(row.cells.date) : "No date"}</span>
+                <span>{toNumber(row.cells.interestPercent).toFixed(2)}% interest</span>
                 <strong>{formatCurrency(Math.abs(toNumber(row.cells.amount)))}</strong>
               </article>
             ))}
@@ -984,6 +1112,13 @@ function CarPaymentPage(props: Omit<Parameters<typeof ModulePage>[0], "section" 
       />
     </div>
   );
+}
+
+function dateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">) {

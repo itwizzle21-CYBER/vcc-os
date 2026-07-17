@@ -2586,7 +2586,7 @@ td input[readonly] {
 
 .car-payment-history-list article {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 20px;
   padding: 14px 16px;
@@ -2597,10 +2597,29 @@ td input[readonly] {
 .car-payment-history-list article div { display: grid; gap: 3px; }
 .car-payment-history-list small { color: var(--muted); }
 
+.car-payment-total-box > small,
+.car-payment-remaining-box > small:first-child {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.car-payment-remaining-box h2 { margin: 0; font-size: clamp(1.55rem, 3vw, 2.25rem); }
+
+.car-payment-entry { display: grid; gap: 16px; margin-top: 20px; }
+.car-payment-entry h2 { margin: 0; }
+.car-payment-entry form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 12px; align-items: end; }
+.car-payment-entry label { display: grid; gap: 6px; color: var(--muted); font-size: 0.78rem; font-weight: 800; }
+.car-payment-entry input { width: 100%; }
+.car-payment-entry button { min-height: 42px; }
+.car-payment-message { margin: 0; color: var(--good); font-weight: 800; }
+
 @media (max-width: 700px) {
   .car-payment-bill-link { align-items: flex-start; flex-direction: column; }
   .car-payment-history-list article { grid-template-columns: 1fr auto; }
   .car-payment-history-list article > span { grid-row: 2; }
+  .car-payment-entry form { grid-template-columns: 1fr; }
 }
 
 .transactions-inline-stats {

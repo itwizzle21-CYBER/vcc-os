@@ -141,10 +141,10 @@ export default function Dashboard({
       value: formatWholeCurrency(financialState.carPaymentRemainingTotal),
       detail: "Remaining total left",
       metrics: [
+        ["Remaining Balance", formatWholeCurrency(financialState.carPaymentRemainingTotal)],
         ["Monthly Payment", formatWholeCurrency(financialState.carPaymentMonthlyTotal)],
         ["Original Total", formatWholeCurrency(financialState.carPaymentOriginalTotal)],
         ["Paid Off", `${Math.round(financialState.carPaymentPaidPercent)}%`],
-        ["Next Vehicle", financialState.nextCarPayment],
       ],
       progress: {
         label: "Payoff Progress",
