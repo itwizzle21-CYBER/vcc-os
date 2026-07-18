@@ -1242,6 +1242,8 @@ function ReportsPage({
   decisionState: ReturnType<typeof computeDecisionEngine>;
 }) {
   const [period, setPeriod] = useState("monthly");
+  const [cashFlowSlide, setCashFlowSlide] = useState(0);
+  const [forecastSlide, setForecastSlide] = useState(0);
   const transactions = data.sections.transactions.map(normalizeTransactionRow).filter((row) => !isBlankRow(row.cells));
   const filteredTransactions = transactions.filter((row) => period === "all" || transactionDateMatchesReport(row.cells.date, period));
   const incomeRows = filteredTransactions.filter((row) => transactionType(row) === "income");
@@ -1256,8 +1258,10 @@ function ReportsPage({
   const topCategoryShare = totalExpenses > 0 && categoryData.length > 0 ? Math.round((categoryData[0].amount / totalExpenses) * 100) : 0;
   const trendData = buildTrendReport(filteredTransactions, period);
   const trendMax = Math.max(1, ...trendData.flatMap((item) => [item.income, item.expenses]));
+  const netTrendMax = Math.max(1, ...trendData.map((item) => Math.abs(item.income - item.expenses)));
   const forecast = buildForecast(cashFlow, period);
   const forecastMax = Math.max(1, ...forecast.map((item) => Math.abs(item.balance)));
+  const monthlyProjection = projectedMonthlyCashFlow(cashFlow, period);
   const reportSummary = [
     { label: "Income", value: totalIncome },
     { label: "Expenses", value: totalExpenses, tone: "bad" as const },
@@ -1312,9 +1316,10 @@ function ReportsPage({
               </div>
               <a href="/transactions" className="report-link">Transactions</a>
             </div>
+            <ChartSlideControls labels={["Compare", "Trend lines", "Net flow"]} active={cashFlowSlide} onChange={setCashFlowSlide} />
             <figure className="report-chart-figure">
-              <div className="report-chart-key" aria-hidden="true"><span className="income">Income</span><span className="expense">Expenses</span></div>
-              <div className="report-flow-chart" role="img" aria-label={`Income and expense comparison. Income ${formatCurrency(totalIncome)}, expenses ${formatCurrency(totalExpenses)}.`}>
+              {cashFlowSlide < 2 && <div className="report-chart-key" aria-hidden="true"><span className="income">Income</span><span className="expense">Expenses</span></div>}
+              {cashFlowSlide === 0 && <div className="report-flow-chart" role="img" aria-label={`Income and expense comparison. Income ${formatCurrency(totalIncome)}, expenses ${formatCurrency(totalExpenses)}.`}>
               {trendData.length ? trendData.map((item) => (
                 <div key={item.label}>
                   <span>{item.label}</span>
@@ -1326,7 +1331,14 @@ function ReportsPage({
                   <small>{formatCurrency(item.expenses)} out</small>
                 </div>
               )) : <p className="empty-copy">No transactions in this period.</p>}
-              </div>
+              </div>}
+              {cashFlowSlide === 1 && <ReportLineChart data={trendData} max={trendMax} />}
+              {cashFlowSlide === 2 && <div className="report-net-chart" role="img" aria-label="Net cash flow by period, above zero is positive and below zero is negative">
+                {trendData.map((item) => {
+                  const net = item.income - item.expenses;
+                  return <div key={item.label}><strong>{formatCurrency(net)}</strong><div><i className={net >= 0 ? "positive" : "negative"} style={{ height: `${(Math.abs(net) / netTrendMax) * 50}%` }} /></div><span>{item.label}</span></div>;
+                })}
+              </div>}
               <figcaption>{cashFlow >= 0 ? `You kept ${formatCurrency(cashFlow)} after expenses.` : `Expenses exceeded income by ${formatCurrency(Math.abs(cashFlow))}.`}</figcaption>
               <table className="visually-hidden"><caption>Cash flow trend data</caption><thead><tr><th>Period</th><th>Income</th><th>Expenses</th></tr></thead><tbody>{trendData.map((item) => <tr key={item.label}><th>{item.label}</th><td>{formatCurrency(item.income)}</td><td>{formatCurrency(item.expenses)}</td></tr>)}</tbody></table>
             </figure>
@@ -1360,15 +1372,21 @@ function ReportsPage({
               </div>
               <span className="report-pill">{formatCurrency(projectedMonthlyCashFlow(cashFlow, period))}/mo</span>
             </div>
-            <div className="report-forecast-bars" role="img" aria-label={`12-month cash flow projection at ${formatCurrency(projectedMonthlyCashFlow(cashFlow, period))} per month`}>
-              {forecast.map((item) => (
+            <ChartSlideControls labels={["Projection", "Milestones", "Monthly pace"]} active={forecastSlide} onChange={setForecastSlide} />
+            {forecastSlide === 0 && <ForecastLineChart data={forecast} max={forecastMax} />}
+            {forecastSlide === 1 && <div className="report-forecast-bars" role="img" aria-label={`Quarterly forecast milestones at ${formatCurrency(monthlyProjection)} per month`}>
+              {forecast.filter((_, index) => [2, 5, 8, 11].includes(index)).map((item) => (
                 <div key={item.label}>
                   <span>{item.label}</span>
                   <div className="forecast-track"><i className={item.balance >= 0 ? "positive" : "negative"} style={{ height: `${(Math.abs(item.balance) / forecastMax) * 50}%` }} /></div>
                   <strong>{formatCurrency(item.balance)}</strong>
                 </div>
               ))}
-            </div>
+            </div>}
+            {forecastSlide === 2 && <div className="report-waterfall-chart" role="img" aria-label={`Monthly contribution of ${formatCurrency(monthlyProjection)} over 12 months`}>
+              {forecast.map((item, index) => <div key={item.label}><strong>{formatCurrency(item.balance)}</strong><div><i className={monthlyProjection >= 0 ? "positive" : "negative"} style={{ height: `${Math.max(8, ((index + 1) / 12) * 100)}%` }} /></div><span>{item.label}</span></div>)}
+            </div>}
+            <p className="report-chart-caption">At the current pace, 12-month cash flow is projected at <strong>{formatCurrency(monthlyProjection * 12)}</strong>.</p>
           </article>
 
           <article className="panel report-card report-card-wide">
@@ -1503,12 +1521,11 @@ function projectedMonthlyCashFlow(cashFlow: number, period: string): number {
 
 function buildForecast(cashFlow: number, period: string): Array<{ label: string; balance: number }> {
   const monthly = projectedMonthlyCashFlow(cashFlow, period);
-  return [
-    { label: "Now", balance: 0 },
-    { label: "+3mo", balance: monthly * 3 },
-    { label: "+6mo", balance: monthly * 6 },
-    { label: "+12mo", balance: monthly * 12 },
-  ];
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() + index + 1, 1);
+    return { label: date.toLocaleDateString("en-US", { month: "short" }), balance: monthly * (index + 1) };
+  });
 }
 
 function titleCase(value: string): string {
@@ -1938,6 +1955,34 @@ function AccentPicker({ value, onChange }: { value: string; onChange: (value: st
       ))}
     </div>
   );
+}
+
+function ChartSlideControls({ labels, active, onChange }: { labels: string[]; active: number; onChange: (index: number) => void }) {
+  return <div className="chart-slide-controls">
+    <button type="button" onClick={() => onChange((active - 1 + labels.length) % labels.length)} aria-label="Previous chart">‹</button>
+    <div role="tablist" aria-label="Chart views">{labels.map((label, index) => <button key={label} type="button" role="tab" aria-selected={active === index} onClick={() => onChange(index)}><i aria-hidden="true" />{label}</button>)}</div>
+    <button type="button" onClick={() => onChange((active + 1) % labels.length)} aria-label="Next chart">›</button>
+  </div>;
+}
+
+function chartPoints(values: number[], max: number): string {
+  return values.map((value, index) => `${42 + (values.length <= 1 ? 264 : (index / (values.length - 1)) * 528)},${180 - (value / Math.max(1, max)) * 162}`).join(" ");
+}
+
+function ReportLineChart({ data, max }: { data: Array<{ label: string; income: number; expenses: number }>; max: number }) {
+  if (!data.length) return <p className="empty-copy">No transactions in this period.</p>;
+  return <svg className="report-svg-chart" viewBox="0 0 600 220" role="img" aria-label="Income and expense trend lines">
+    <line x1="42" y1="180" x2="570" y2="180" className="chart-axis" /><polyline points={chartPoints(data.map((item) => item.income), max)} className="chart-line income" /><polyline points={chartPoints(data.map((item) => item.expenses), max)} className="chart-line expense" />
+    {data.map((item, index) => { const x = 42 + (data.length <= 1 ? 264 : (index / (data.length - 1)) * 528); return <g key={item.label}><circle cx={x} cy={180 - (item.income / max) * 162} r="4" className="chart-dot income" /><circle cx={x} cy={180 - (item.expenses / max) * 162} r="4" className="chart-dot expense" /><text x={x} y="205" textAnchor="middle">{item.label}</text></g>; })}
+  </svg>;
+}
+
+function ForecastLineChart({ data, max }: { data: Array<{ label: string; balance: number }>; max: number }) {
+  const points = data.map((item, index) => `${42 + (index / Math.max(1, data.length - 1)) * 528},${item.balance >= 0 ? 110 - (item.balance / max) * 82 : 110 + (Math.abs(item.balance) / max) * 82}`).join(" ");
+  return <svg className="report-svg-chart forecast" viewBox="0 0 600 220" role="img" aria-label="Cumulative 12-month cash flow projection">
+    <line x1="42" y1="110" x2="570" y2="110" className="chart-axis zero" /><polyline points={points} className={`chart-line ${data[0]?.balance >= 0 ? "income" : "expense"}`} />
+    {data.map((item, index) => { const x = 42 + (index / Math.max(1, data.length - 1)) * 528; const y = item.balance >= 0 ? 110 - (item.balance / max) * 82 : 110 + (Math.abs(item.balance) / max) * 82; return <g key={item.label}><circle cx={x} cy={y} r="3.5" className={`chart-dot ${item.balance >= 0 ? "income" : "expense"}`} />{(index === 0 || index === 5 || index === 11) && <text x={x} y="207" textAnchor="middle">{item.label}</text>}</g>; })}
+  </svg>;
 }
 
 const wallpaperOptions: Array<{ value: AppData["settings"]["wallpaper"]; label: string; image?: string }> = [
