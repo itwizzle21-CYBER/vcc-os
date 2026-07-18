@@ -37,7 +37,7 @@ import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine
 import { isCarPaymentBill, isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
-import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./lib/engine/transactionEngine";
+import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, resetAllData, resetSection, saveAppData } from "./lib/storage/localStore";
 import type { AppData, SectionKey, SpreadsheetRow, UserSettings } from "./lib/types/app";
@@ -555,6 +555,14 @@ function TransactionsPage({
     .filter((row) => transactionType(row) === "transfer")
     .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
   const recurringCount = visibleFilledRows.filter((row) => isAffirmative(row.cells.recurring)).length;
+  const expenseRows = transactionRows.filter((row) => !isBlankRow(row.cells) && transactionType(row) === "expense");
+  const spendingByPeriod = (period: TransactionPeriod) => expenseRows
+    .filter((row) => transactionMatchesPeriod(row.cells.date, period))
+    .reduce((sum, row) => sum + Math.abs(signedTransactionAmount(row)), 0);
+  const thisWeekSpending = spendingByPeriod("week");
+  const lastWeekSpending = spendingByPeriod("lastweek");
+  const thisMonthSpending = spendingByPeriod("month");
+  const lastMonthSpending = spendingByPeriod("lastmonth");
 
   function updateVisibleTransactionRows(section: SectionKey, nextVisibleRows: SpreadsheetRow[]) {
     const normalizedNextRows = nextVisibleRows.map(normalizeTransactionRow);
@@ -603,6 +611,8 @@ function TransactionsPage({
               <span>Date</span>
               <select aria-label="Transaction date range" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
                 <option value="all">All Time</option>
+                <option value="week">This Week</option>
+                <option value="lastweek">Last Week</option>
                 <option value="month">This Month</option>
                 <option value="lastmonth">Last Month</option>
               </select>
@@ -617,6 +627,20 @@ function TransactionsPage({
           <em>Week impact {formatCurrency(financialState.transactionWeekNet)}</em>
           <em>{categoryFilter === "all" ? "All categories" : categoryFilter}</em>
           <em>{recurringCount} recurring</em>
+        </div>
+      </section>
+
+      <section className="spending-period-panel" aria-labelledby="spending-period-title">
+        <div className="spending-period-heading">
+          <div>
+            <p className="eyebrow">Spending by period</p>
+            <h2 id="spending-period-title">Know exactly when the money was spent</h2>
+          </div>
+          <span>Expenses only · calendar periods</span>
+        </div>
+        <div className="spending-period-groups">
+          <SpendingPeriodComparison label="Week to week" currentLabel="This week" previousLabel="Last week" current={thisWeekSpending} previous={lastWeekSpending} onCurrentClick={() => setDateFilter("week")} onPreviousClick={() => setDateFilter("lastweek")} />
+          <SpendingPeriodComparison label="Month to month" currentLabel="This month" previousLabel="Last month" current={thisMonthSpending} previous={lastMonthSpending} onCurrentClick={() => setDateFilter("month")} onPreviousClick={() => setDateFilter("lastmonth")} />
         </div>
       </section>
 
@@ -649,6 +673,24 @@ function TransactionsPage({
         addLabel="Add Transaction"
       />
     </div>
+  );
+}
+
+function SpendingPeriodComparison({ label, currentLabel, previousLabel, current, previous, onCurrentClick, onPreviousClick }: { label: string; currentLabel: string; previousLabel: string; current: number; previous: number; onCurrentClick: () => void; onPreviousClick: () => void }) {
+  const change = current - previous;
+  const direction = change > 0 ? "more" : change < 0 ? "less" : "the same";
+
+  return (
+    <article className="spending-period-group">
+      <p>{label}</p>
+      <div>
+        <button type="button" onClick={onCurrentClick}><span>{currentLabel}</span><strong>{formatCurrency(current)}</strong></button>
+        <button type="button" onClick={onPreviousClick}><span>{previousLabel}</span><strong>{formatCurrency(previous)}</strong></button>
+      </div>
+      <small className={change > 0 ? "spending-up" : change < 0 ? "spending-down" : ""}>
+        {change === 0 ? "No change from the prior period" : `${formatCurrency(Math.abs(change))} ${direction} than the prior period`}
+      </small>
+    </article>
   );
 }
 
@@ -2514,15 +2556,7 @@ function hasTransactionIdentifier(row: SpreadsheetRow): boolean {
 }
 
 function transactionDateMatches(dateText: string, filter: string): boolean {
-  if (!dateText) return false;
-  const date = new Date(`${dateText}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return false;
-  const now = new Date();
-  if (filter === "month") return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-  if (filter === "lastmonth") {
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return date.getMonth() === lastMonth.getMonth() && date.getFullYear() === lastMonth.getFullYear();
-  }
+  if (filter === "week" || filter === "lastweek" || filter === "month" || filter === "lastmonth") return transactionMatchesPeriod(dateText, filter);
   return true;
 }
 

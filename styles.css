@@ -2649,6 +2649,43 @@ td input[readonly] {
   color: #ff6666;
 }
 
+.spending-period-panel {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-raised);
+  padding: 1rem;
+}
+
+.spending-period-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.spending-period-heading h2 { margin: 0; }
+.spending-period-heading > span { color: var(--muted); font-size: 0.75rem; font-weight: 800; }
+.spending-period-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
+.spending-period-group { display: grid; gap: 0.65rem; border: 1px solid var(--border); border-radius: 0.8rem; background: var(--surface-2); padding: 0.85rem; }
+.spending-period-group > p { margin: 0; color: var(--muted); font-size: 0.78rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; }
+.spending-period-group > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+.spending-period-group button { display: grid; gap: 0.25rem; min-height: 4.5rem; border: 1px solid var(--border); border-radius: 0.7rem; background: var(--surface); color: var(--text); padding: 0.7rem; text-align: left; cursor: pointer; }
+.spending-period-group button:hover { border-color: var(--accent); }
+.spending-period-group button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.spending-period-group button span { color: var(--muted); font-size: 0.75rem; font-weight: 800; }
+.spending-period-group button strong { font-size: clamp(1.05rem, 2vw, 1.35rem); }
+.spending-period-group small { color: var(--muted); font-weight: 800; }
+.spending-period-group small.spending-up { color: #ff6666; }
+.spending-period-group small.spending-down { color: #25d39b; }
+
+@media (max-width: 700px) {
+  .spending-period-heading { align-items: flex-start; flex-direction: column; }
+  .spending-period-groups { grid-template-columns: 1fr; }
+}
+
 .transactions-insight-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);

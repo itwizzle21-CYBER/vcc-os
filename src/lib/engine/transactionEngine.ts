@@ -2,6 +2,37 @@ import { toNumber } from "../calculations/currency";
 import type { SpreadsheetRow } from "../types/app";
 
 export type TransactionType = "income" | "expense" | "transfer";
+export type TransactionPeriod = "week" | "lastweek" | "month" | "lastmonth";
+
+export function transactionMatchesPeriod(dateText: string, period: TransactionPeriod, referenceDate = new Date()): boolean {
+  if (!dateText) return false;
+  const date = new Date(`${dateText}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const today = startOfDay(referenceDate);
+  if (period === "month" || period === "lastmonth") {
+    const monthOffset = period === "lastmonth" ? -1 : 0;
+    const targetMonth = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+    return date.getFullYear() === targetMonth.getFullYear() && date.getMonth() === targetMonth.getMonth();
+  }
+
+  const thisWeekStart = startOfWeek(today);
+  const rangeStart = new Date(thisWeekStart);
+  if (period === "lastweek") rangeStart.setDate(rangeStart.getDate() - 7);
+  const rangeEnd = new Date(rangeStart);
+  rangeEnd.setDate(rangeEnd.getDate() + 7);
+  return date >= rangeStart && date < rangeEnd;
+}
+
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function startOfWeek(date: Date): Date {
+  const start = startOfDay(date);
+  start.setDate(start.getDate() - start.getDay());
+  return start;
+}
 
 const categoryRules: Array<{ category: string; keywords: string[] }> = [
   {

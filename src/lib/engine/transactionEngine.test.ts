@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createZeroData } from "../storage/defaultData";
 import type { SpreadsheetRow } from "../types/app";
 import { computeFinancialState } from "./financialEngine";
-import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./transactionEngine";
+import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType } from "./transactionEngine";
 
 function transaction(id: string, type: string, amount: string, category: string, date = "2026-07-13"): SpreadsheetRow {
   return {
@@ -101,5 +101,22 @@ describe("transaction engine", () => {
       { label: "Fuel", amount: 42 },
       { label: "Subscriptions", amount: 19.99 },
     ]);
+  });
+
+  it("separates current and previous calendar weeks", () => {
+    const referenceDate = new Date(2026, 6, 17);
+
+    expect(transactionMatchesPeriod("2026-07-12", "week", referenceDate)).toBe(true);
+    expect(transactionMatchesPeriod("2026-07-11", "week", referenceDate)).toBe(false);
+    expect(transactionMatchesPeriod("2026-07-11", "lastweek", referenceDate)).toBe(true);
+    expect(transactionMatchesPeriod("2026-07-04", "lastweek", referenceDate)).toBe(false);
+  });
+
+  it("separates current and previous calendar months across year boundaries", () => {
+    const referenceDate = new Date(2026, 0, 8);
+
+    expect(transactionMatchesPeriod("2026-01-01", "month", referenceDate)).toBe(true);
+    expect(transactionMatchesPeriod("2025-12-31", "lastmonth", referenceDate)).toBe(true);
+    expect(transactionMatchesPeriod("2025-11-30", "lastmonth", referenceDate)).toBe(false);
   });
 });
