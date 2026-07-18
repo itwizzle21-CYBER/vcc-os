@@ -1,5 +1,15 @@
 # Financial QA Report
 
+## 2026-07-17 — Car Loan Evidence Sprint
+
+- Verified four confirmed payments remain four records, including two separate payments on March 18.
+- Verified confirmed total cash paid is `$689.51`, latest official payoff is `$8,740.04`, and latest dealer account balance is `$10,378.42`.
+- Verified receipt components reconcile to documented totals without inference.
+- Verified duplicate receipt number `4-1` and the March 12 schedule/receipt principal difference are surfaced.
+- Verified superseded receipts stop producing Transactions.
+- Verified conflicting dealer communications are flagged without changing confirmed receipt values.
+- Verified only confirmed receipts affect Transactions, Money Snapshot, and current confirmed loan totals.
+
 Sprint: 1.2 - Financial Core Consolidation
 
 Date: 2026-07-04

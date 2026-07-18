@@ -41,7 +41,8 @@ The default landing experience is a CEO-style dashboard showing the most importa
 | DASH-003 | Today's Mission | In Progress | Dashboard card exists. Persistence path needs verification. |
 | FIN-001 | Money Snapshot | In Progress | Dashboard card exists with mock fallback data. |
 | BILL-001 | Bills Module | In Progress | UI, router, db helpers, calculations, and tests exist, but paths are inconsistent in this snapshot. |
-| DEBT-001 | Debt Module | In Progress | UI and database helpers exist; vehicle debt logic needs schema alignment. |
+| DEBT-001 | Debt Module | In Progress | General debt UI exists; vehicle evidence is managed by the dedicated Car Payments module. |
+| CAR-001 | Car Payments Evidence Ledger | Complete | Verified contract, confirmed receipts, immutable schedule reference, revisions, communications, reconciliation, dashboard summary, and transaction sync are implemented. |
 | SAV-001 | Savings Module | In Progress | UI, db helpers, and tests exist. |
 | INV-001 | Inventory Module | In Progress | UI, calculations, db helpers, and tests exist. |
 | BUY-001 | Buy Next | In Progress | Dashboard card and inventory-driven UI concept exist. |

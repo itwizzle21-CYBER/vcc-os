@@ -1,5 +1,13 @@
 # Financial Security Review
 
+## 2026-07-17 — Car Loan Evidence Controls
+
+- Full VIN, buyer address, and phone number are not included in normal views or structured seed data.
+- Source receipt photographs are not shipped in the public Vercel bundle.
+- New user attachments are kept in the browser's private IndexedDB store and referenced by opaque IDs.
+- Confirmed receipts cannot be directly edited; corrections create revisions and confirmed revisions supersede prior records.
+- Supabase was not adopted while authentication and RLS remain unavailable in the app. A future migration must use private Storage and user-owned RLS policies before any evidence is uploaded.
+
 Sprint: 1.2 - Financial Core Consolidation
 
 Date: 2026-07-04

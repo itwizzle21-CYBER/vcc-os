@@ -72,12 +72,106 @@ export interface UserSettings {
   welcomeTransition: "rise" | "fade" | "focus" | "sweep";
 }
 
+export type EvidenceStatus = "draft" | "confirmed" | "needs_review" | "superseded" | "rejected";
+export type CommunicationStatus = "unverified" | "dealer_confirmed" | "matches_receipt" | "conflicts_with_receipt" | "superseded";
+
+export interface CarLoanContract {
+  id: string;
+  contractDate: string;
+  vehicle: string;
+  vehicleYear: string;
+  vehicleMake: string;
+  vehicleModel: string;
+  vehicleStyle: string;
+  maskedVin: string;
+  originalOdometer: number;
+  lender: string;
+  apr: number;
+  amountFinanced: number;
+  financeCharge: number;
+  totalScheduledPayments: number;
+  downPayment: number;
+  totalSalePrice: number;
+  deferredDownPayment: number;
+  scheduledPaymentAmount: number;
+  scheduledPaymentCount: number;
+  scheduleFrequency: string;
+  firstPaymentDate: string;
+  lateChargePercent: number;
+  gracePeriodDays: number;
+  prepaymentPenalty: boolean;
+  sourceLabel: string;
+  verified: boolean;
+}
+
+export interface CarLoanReceipt {
+  id: string;
+  revision: number;
+  supersedesId?: string;
+  paidDate: string;
+  receiptNumber: string;
+  paymentType: string;
+  paymentMethod: string;
+  receivedBy: string;
+  totalPaid: number;
+  downPaymentPaid?: number;
+  principalPaid?: number;
+  interestPaid?: number;
+  lateFeesPaid?: number;
+  otherFeesPaid?: number;
+  sideNoteFeesPaid?: number;
+  creditsApplied?: number;
+  officialPayoff?: number;
+  accountBalance?: number;
+  paymentsRemaining?: number;
+  attachmentName?: string;
+  attachmentId?: string;
+  status: EvidenceStatus;
+  notes: string;
+  createdAt: string;
+}
+
+export interface CarLoanCommunication {
+  id: string;
+  messageDate: string;
+  communicationType: string;
+  dealerRepresentative: string;
+  exactMessage: string;
+  amountStated?: number;
+  paymentAcknowledged?: number;
+  payoffStated?: number;
+  accountBalanceStated?: number;
+  feesStated?: number;
+  relatedReceiptId?: string;
+  attachmentName?: string;
+  attachmentId?: string;
+  status: CommunicationStatus;
+  notes: string;
+}
+
+export interface CarLoanScheduleRow {
+  paymentNumber: number;
+  scheduledDate: string;
+  scheduledPayment: number;
+  scheduledPrincipal: number;
+  scheduledInterest: number;
+  scheduledPrincipalBalance: number;
+}
+
+export interface CarLoanData {
+  contract: CarLoanContract | null;
+  receipts: CarLoanReceipt[];
+  communications: CarLoanCommunication[];
+  schedule: CarLoanScheduleRow[];
+}
+
 export interface AppData {
   version: number;
   sections: Record<SectionKey, SpreadsheetRow[]>;
   sortBy: Partial<Record<SectionKey, string>>;
   paycheckPlanner: PaycheckPlanner;
   paycheckHistory: PaycheckHistoryRow[];
+  carLoan: CarLoanData;
   settings: UserSettings;
 }
 
@@ -115,6 +209,13 @@ export interface FinancialState {
   carPaymentPaidPercent: number;
   carPaymentMonthlyTotal: number;
   nextCarPayment: string;
+  carLoanTotalCashPaid: number;
+  carLoanPrincipalPaid: number;
+  carLoanInterestPaid: number;
+  carLoanFeesPaid: number;
+  carLoanOfficialPayoff: number;
+  carLoanDealerBalance: number;
+  carLoanPaymentsRemaining: number;
   emergencyFund: number;
   goalSavings: number;
   goalsComplete: number;

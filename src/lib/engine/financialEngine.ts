@@ -1,9 +1,12 @@
 import { getInventoryAlert } from "./inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./transactionEngine";
+import { summarizeCarLoan } from "./carLoanEngine";
 import { isBlankRow, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
 export function computeFinancialState(data: AppData): FinancialState {
+  const carLoanSummary = summarizeCarLoan(data.carLoan);
+  const carLoanContract = data.carLoan.contract;
   const money = data.sections.money.filter((row) => !isBlankRow(row.cells));
   const bills = data.sections.bills.filter((row) => !isBlankRow(row.cells));
   const income = data.sections.income.filter((row) => !isBlankRow(row.cells));
@@ -95,13 +98,18 @@ export function computeFinancialState(data: AppData): FinancialState {
   const minimumPayments = debt.reduce((sum, row) => sum + toNumber(row.cells.minimum), 0);
   const nextDebt = [...debt].sort((a, b) => toNumber(a.cells.balance) - toNumber(b.cells.balance))[0];
   const startingDebt = Math.max(totalDebt + 5000, 1);
-  const carPaymentOriginalTotal = carPayment.reduce((sum, row) => {
+  const legacyCarPaymentOriginalTotal = carPayment.reduce((sum, row) => {
     const original = toNumber(row.cells.originalBalance);
     const remaining = toNumber(row.cells.remainingBalance);
     return sum + Math.max(original, remaining);
   }, 0);
-  const carPaymentRemainingTotal = carPayment.reduce((sum, row) => sum + toNumber(row.cells.remainingBalance), 0);
-  const carPaymentMonthlyTotal = carPayment.reduce((sum, row) => sum + toNumber(row.cells.monthlyPayment), 0);
+  const legacyCarPaymentRemainingTotal = carPayment.reduce((sum, row) => sum + toNumber(row.cells.remainingBalance), 0);
+  const legacyCarPaymentMonthlyTotal = carPayment.reduce((sum, row) => sum + toNumber(row.cells.monthlyPayment), 0);
+  const carPaymentOriginalTotal = carLoanContract?.amountFinanced || legacyCarPaymentOriginalTotal;
+  const carPaymentRemainingTotal = carLoanSummary.officialPayoff || legacyCarPaymentRemainingTotal;
+  const carPaymentMonthlyTotal = carLoanContract
+    ? (carLoanContract.scheduledPaymentAmount * 52) / 12
+    : legacyCarPaymentMonthlyTotal;
   const nextCarPaymentRow = [...carPayment]
     .filter((row) => !isPaid(row))
     .sort((a, b) => (a.cells.dueDate || "").localeCompare(b.cells.dueDate || ""))[0];
@@ -148,10 +156,17 @@ export function computeFinancialState(data: AppData): FinancialState {
     carPaymentOriginalTotal,
     carPaymentRemainingTotal,
     carPaymentPaidPercent: carPaymentOriginalTotal > 0
-      ? Math.max(0, Math.min(100, ((carPaymentOriginalTotal - carPaymentRemainingTotal) / carPaymentOriginalTotal) * 100))
+      ? Math.max(0, Math.min(100, (carLoanSummary.principalPaid / carPaymentOriginalTotal) * 100))
       : 0,
     carPaymentMonthlyTotal,
-    nextCarPayment: nextCarPaymentRow?.cells.vehicle || "None",
+    nextCarPayment: carLoanContract?.vehicle || nextCarPaymentRow?.cells.vehicle || "None",
+    carLoanTotalCashPaid: carLoanSummary.totalCashPaid,
+    carLoanPrincipalPaid: carLoanSummary.principalPaid,
+    carLoanInterestPaid: carLoanSummary.interestPaid,
+    carLoanFeesPaid: carLoanSummary.feesPaid,
+    carLoanOfficialPayoff: carLoanSummary.officialPayoff,
+    carLoanDealerBalance: carLoanSummary.dealerBalance,
+    carLoanPaymentsRemaining: carLoanSummary.paymentsRemaining,
     emergencyFund: toNumber(emergencyFund?.cells.balance),
     goalSavings,
     goalsComplete: completeGoals,

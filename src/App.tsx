@@ -29,6 +29,7 @@ import WelcomeTransition from "./components/layout/WelcomeTransition";
 import Dashboard from "./components/dashboard/Dashboard";
 import VccAgent from "./components/agent/VccAgent";
 import PaycheckPlanner from "./components/modules/PaycheckPlanner";
+import CarLoanWorkspace from "./components/modules/CarLoanWorkspace";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import { formatCurrency, formatDateMDY, isBlankRow, toNumber } from "./lib/calculations/currency";
@@ -137,7 +138,7 @@ export default function App() {
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/transactions" && <TransactionsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
-      {path === "/car-payment" && <CarPaymentPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
+      {path === "/car-payment" && <CarLoanWorkspace data={data} financialState={financialState} onChange={updateData} />}
       {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
@@ -982,6 +983,7 @@ function ModulePage({
   );
 }
 
+/* Legacy payment workspace retained temporarily for migration reference.
 function CarPaymentPage(props: Omit<Parameters<typeof ModulePage>[0], "section" | "header"> & { onChange: (data: AppData) => void }) {
   const paidPercent = Math.round(props.financialState.carPaymentPaidPercent);
   const remaining = props.financialState.carPaymentRemainingTotal;
@@ -1120,6 +1122,7 @@ function dateInputValue(date: Date): string {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+*/
 
 function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">) {
   const [inventoryTab, setInventoryTab] = useState("all");

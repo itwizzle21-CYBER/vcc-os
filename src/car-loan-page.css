@@ -1,0 +1,95 @@
+.car-loan-workspace { display: grid; gap: 1rem; }
+.car-loan-command { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem; background: radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 38%), color-mix(in srgb, var(--surface) 96%, transparent); }
+.car-loan-title { display: flex; align-items: center; gap: .9rem; min-width: 0; }
+.car-loan-title h1 { margin: 0; font-size: clamp(1.45rem, 3vw, 2.1rem); }
+.car-loan-title p:last-child { margin: .3rem 0 0; color: var(--muted); }
+.car-loan-icon { display: grid; flex: 0 0 auto; place-items: center; width: 3.2rem; height: 3.2rem; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border)); border-radius: 1rem; background: color-mix(in srgb, var(--accent) 16%, var(--surface-2)); color: var(--accent); }
+.car-loan-truth { display: flex; align-items: center; gap: .45rem; flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--good) 40%, var(--border)); border-radius: 999px; background: color-mix(in srgb, var(--good) 10%, transparent); color: var(--good); padding: .55rem .75rem; font-size: .78rem; font-weight: 900; }
+.car-loan-primary-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.car-loan-metric { display: grid; gap: .35rem; min-width: 0; border: 1px solid var(--border); border-radius: 1rem; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: var(--shadow-raised); padding: 1rem; }
+.car-loan-metric.is-payoff { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 16%, var(--surface)), var(--surface)); }
+.car-loan-metric span, .car-loan-metric small { color: var(--muted); font-size: .75rem; font-weight: 800; }
+.car-loan-metric strong { overflow: hidden; color: var(--text); font-size: clamp(1.35rem, 2.7vw, 2rem); line-height: 1; text-overflow: ellipsis; }
+.car-loan-tabs { display: flex; gap: .4rem; overflow-x: auto; padding: .25rem; border: 1px solid var(--border); border-radius: .9rem; background: var(--surface-2); }
+.car-loan-tabs button { flex: 1 0 auto; border: 0; background: transparent; color: var(--muted); box-shadow: none; }
+.car-loan-tabs button.active { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--text); box-shadow: var(--shadow-raised); }
+.car-loan-overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.car-loan-breakdown, .car-loan-reconciliation, .car-loan-records, .car-loan-schedule, .car-loan-contract { padding: 1rem; }
+.car-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.car-section-heading h2 { margin: 0; }
+.car-section-heading p:last-child { max-width: 48rem; margin: .35rem 0 0; color: var(--muted); }
+.car-loan-breakdown dl, .car-loan-contract dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin: 1rem 0 0; }
+.car-loan-breakdown dl div, .car-loan-contract dl div { display: grid; gap: .2rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface-2); padding: .75rem; }
+.car-loan-breakdown dt, .car-loan-contract dt { color: var(--muted); font-size: .72rem; font-weight: 800; }
+.car-loan-breakdown dd, .car-loan-contract dd { margin: 0; font-weight: 900; }
+.car-loan-reconciliation ul { display: grid; gap: .55rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.car-loan-reconciliation li { display: flex; gap: .55rem; border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--border)); border-radius: .75rem; background: color-mix(in srgb, var(--warn) 8%, transparent); padding: .7rem; color: var(--text); font-size: .82rem; }
+.car-loan-reconciliation li svg { flex: 0 0 auto; color: var(--warn); }
+.car-loan-source-note { grid-column: 1 / -1; display: flex; gap: .75rem; align-items: flex-start; padding: 1rem; }
+.car-loan-source-note svg { color: var(--accent); }
+.car-loan-source-note p { margin: .25rem 0 0; color: var(--muted); }
+.car-evidence-form { display: grid; gap: .85rem; margin: 1rem 0; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: .9rem; background: var(--surface-2); padding: 1rem; }
+.car-form-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.car-form-heading div { display: grid; gap: .2rem; }
+.car-form-heading small { color: var(--muted); }
+.car-form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; }
+.car-form-field { display: grid; gap: .35rem; min-width: 0; }
+.car-form-field > span { color: var(--muted); font-size: .72rem; font-weight: 850; }
+.car-form-field input, .car-form-field select, .car-form-field textarea { width: 100%; min-height: 2.7rem; }
+.car-form-field textarea { min-height: 5.5rem; resize: vertical; }
+.car-form-error { margin: 0; color: var(--bad); font-weight: 800; }
+.car-receipt-list { display: grid; gap: .75rem; margin-top: 1rem; }
+.car-receipt-card { display: grid; gap: .8rem; border: 1px solid var(--border); border-radius: .9rem; background: color-mix(in srgb, var(--surface-2) 84%, transparent); padding: .9rem; }
+.car-receipt-card.status-confirmed { border-left: 4px solid var(--good); }
+.car-receipt-card.status-needs_review { border-left: 4px solid var(--warn); }
+.car-receipt-card.status-rejected, .car-receipt-card.status-superseded { opacity: .7; }
+.car-receipt-card header, .car-receipt-card header > div, .car-receipt-card footer, .car-receipt-card footer > div { display: flex; align-items: center; gap: .65rem; }
+.car-receipt-card header, .car-receipt-card footer { justify-content: space-between; }
+.car-receipt-card header strong { display: block; font-size: 1.25rem; }
+.car-receipt-card header small { color: var(--muted); }
+.receipt-icon { display: grid; place-items: center; width: 2.35rem; height: 2.35rem; border-radius: .7rem; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.receipt-breakdown { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .45rem; }
+.receipt-breakdown span { display: grid; gap: .15rem; border-radius: .65rem; background: var(--surface); padding: .55rem; }
+.receipt-breakdown small { color: var(--muted); font-size: .68rem; }
+.receipt-breakdown strong { font-size: .82rem; }
+.receipt-account-values { display: flex; flex-wrap: wrap; gap: .65rem 1.25rem; margin: 0; }
+.receipt-account-values div { display: flex; gap: .4rem; }
+.receipt-account-values dt { color: var(--muted); }
+.receipt-account-values dd { margin: 0; font-weight: 900; }
+.car-receipt-card footer { color: var(--muted); font-size: .76rem; }
+.car-receipt-card footer em { display: inline-flex; align-items: center; gap: .25rem; color: var(--warn); font-style: normal; font-weight: 800; }
+.revision-note { margin: 0; color: var(--muted); font-size: .72rem; }
+.evidence-status { border: 1px solid var(--border); border-radius: 999px; padding: .35rem .55rem; color: var(--muted); font-size: .68rem; font-weight: 900; text-transform: capitalize; white-space: nowrap; }
+.evidence-status.status-confirmed, .evidence-status.status-matches_receipt, .evidence-status.status-dealer_confirmed { border-color: color-mix(in srgb, var(--good) 45%, var(--border)); color: var(--good); }
+.evidence-status.status-needs_review, .evidence-status.status-conflicts_with_receipt { border-color: color-mix(in srgb, var(--warn) 50%, var(--border)); color: var(--warn); }
+.car-table-wrap { overflow-x: auto; margin-top: 1rem; }
+.car-table-wrap table { width: 100%; min-width: 880px; border-collapse: collapse; }
+.car-table-wrap th, .car-table-wrap td { border-bottom: 1px solid var(--border); padding: .7rem .55rem; text-align: left; white-space: nowrap; }
+.car-table-wrap th { color: var(--muted); font-size: .7rem; text-transform: uppercase; }
+.schedule-status { color: var(--muted); font-size: .72rem; font-weight: 800; }
+.schedule-status.has-evidence { color: var(--warn); }
+.communication-list { display: grid; gap: .75rem; margin-top: 1rem; }
+.communication-list article { display: grid; gap: .6rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--surface-2); padding: .8rem; }
+.communication-list header, .communication-list header div { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.communication-list blockquote { margin: 0; border-left: 3px solid var(--accent); padding-left: .7rem; color: var(--text); }
+.communication-list small { color: var(--muted); }
+.contract-boundary { display: flex; align-items: center; gap: .5rem; margin: 1rem 0 0; color: var(--good); font-weight: 800; }
+.car-loan-empty { display: grid; justify-items: center; gap: .6rem; padding: 3rem; text-align: center; }
+
+@media (max-width: 1000px) {
+  .car-loan-primary-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .car-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .receipt-breakdown { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .car-loan-command, .car-loan-records > .car-section-heading { align-items: flex-start; flex-direction: column; }
+  .car-loan-truth { align-self: flex-start; }
+  .car-loan-primary-metrics, .car-loan-overview-grid, .car-form-grid { grid-template-columns: 1fr; }
+  .car-loan-source-note { grid-column: auto; }
+  .car-loan-breakdown dl, .car-loan-contract dl { grid-template-columns: 1fr; }
+  .receipt-breakdown { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .car-receipt-card header, .car-receipt-card footer { align-items: flex-start; flex-direction: column; }
+  .car-receipt-card footer > div { flex-wrap: wrap; }
+  .receipt-account-values { display: grid; }
+}

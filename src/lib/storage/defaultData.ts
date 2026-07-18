@@ -1,4 +1,6 @@
 import type { AppData, SectionConfig, SectionKey } from "../types/app";
+import { syncConfirmedReceiptTransactions } from "../engine/carLoanEngine";
+import { createVerifiedCarLoanData } from "./carLoanReference";
 
 export const sectionConfigs: Record<SectionKey, SectionConfig> = {
   money: {
@@ -122,6 +124,7 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
 
 export function createStarterData(): AppData {
   const data = createZeroData();
+  const carLoan = createVerifiedCarLoanData();
   return {
     ...data,
     sections: {
@@ -220,7 +223,7 @@ export function createStarterData(): AppData {
           notes: "Variable income",
         }),
       ],
-      transactions: [
+      transactions: syncConfirmedReceiptTransactions([
         row("txn-paycheck", {
           description: "Primary paycheck",
           type: "income",
@@ -261,7 +264,7 @@ export function createStarterData(): AppData {
           recurring: "Yes",
           notes: "Protected savings",
         }),
-      ],
+      ], carLoan.receipts),
       debt: [
         row("debt-credit-card", {
           name: "Credit card",
@@ -280,15 +283,15 @@ export function createStarterData(): AppData {
       ],
       carPayment: [
         row("car-current", {
-          vehicle: "Current vehicle",
-          lender: "Auto lender",
-          originalBalance: "$18,500.00",
-          remainingBalance: "$10,200.00",
-          monthlyPayment: "$385.00",
-          dueDate: "2026-07-19",
-          apr: "6.9%",
+          vehicle: "2012 Lincoln MKX",
+          lender: "Newberry Paint & Body Shop, LLC",
+          originalBalance: "$8,995.00",
+          remainingBalance: "$8,740.04",
+          monthlyPayment: "$99.31 weekly",
+          dueDate: "2026-03-12",
+          apr: "17.000%",
           status: "active",
-          notes: "Track payoff progress",
+          notes: "Verified contract and latest confirmed dealer payoff",
         }),
       ],
       savings: [
@@ -358,6 +361,7 @@ export function createStarterData(): AppData {
       myPayRepayment: "$330.00",
       locked: true,
     },
+    carLoan,
     settings: {
       ...data.settings,
       accountName: "Alex",
@@ -372,7 +376,7 @@ export function createStarterData(): AppData {
 
 export function createZeroData(): AppData {
   return {
-    version: 2,
+    version: 3,
     sections: {
       money: [],
       bills: [],
@@ -395,6 +399,12 @@ export function createZeroData(): AppData {
       locked: false,
     },
     paycheckHistory: [],
+    carLoan: {
+      contract: null,
+      receipts: [],
+      communications: [],
+      schedule: [],
+    },
     settings: {
       theme: "dark",
       accent: "blue",

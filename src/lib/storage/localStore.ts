@@ -1,6 +1,8 @@
 import type { AppData, SectionKey, SpreadsheetRow } from "../types/app";
 import { isBlankRow, toNumber } from "../calculations/currency";
 import { normalizeInventoryRow } from "../engine/inventoryEngine";
+import { syncConfirmedReceiptTransactions } from "../engine/carLoanEngine";
+import { createVerifiedCarLoanData } from "./carLoanReference";
 import { createStarterData, createZeroData, sectionConfigs } from "./defaultData";
 
 const STORAGE_KEY = "vcc-os:data:v2";
@@ -36,7 +38,7 @@ export function loadAppData(): AppData {
 
 export function saveAppData(data: AppData) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, version: 2 }));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, version: 3 }));
 }
 
 export function resetSection(data: AppData, section: SectionKey): AppData {
@@ -67,6 +69,9 @@ function migrateAppData(raw: unknown): AppData {
   const starter = createZeroData();
   const source = raw as Partial<AppData> & Record<string, unknown>;
   const sections = { ...starter.sections };
+  const carLoan = source.carLoan && typeof source.carLoan === "object"
+    ? { ...starter.carLoan, ...source.carLoan }
+    : createVerifiedCarLoanData();
 
   for (const section of Object.keys(sectionConfigs) as SectionKey[]) {
     const maybeRows = source.sections && Array.isArray(source.sections[section])
@@ -84,12 +89,34 @@ function migrateAppData(raw: unknown): AppData {
   }
 
   sections.inventory = sections.inventory.map(normalizeInventoryRow);
+  sections.transactions = syncConfirmedReceiptTransactions(sections.transactions, carLoan.receipts);
+
+  if (!sections.carPayment.length && carLoan.contract) {
+    const latestReceipt = [...carLoan.receipts]
+      .filter((receipt) => receipt.status === "confirmed")
+      .sort((a, b) => `${b.paidDate}-${b.createdAt}`.localeCompare(`${a.paidDate}-${a.createdAt}`))[0];
+    sections.carPayment = [{
+      id: "car-current",
+      cells: {
+        vehicle: carLoan.contract.vehicle,
+        lender: carLoan.contract.lender,
+        originalBalance: String(carLoan.contract.amountFinanced),
+        remainingBalance: String(latestReceipt?.officialPayoff || carLoan.contract.amountFinanced),
+        monthlyPayment: String(carLoan.contract.scheduledPaymentAmount),
+        dueDate: carLoan.contract.firstPaymentDate,
+        apr: String(carLoan.contract.apr),
+        status: "active",
+        notes: "Verified contract and latest confirmed dealer payoff",
+      },
+    }];
+  }
 
   return {
     ...starter,
     ...source,
-    version: 2,
+    version: 3,
     sections,
+    carLoan,
     sortBy: { ...starter.sortBy, ...(typeof source.sortBy === "object" ? source.sortBy : {}) },
     paycheckPlanner: { ...starter.paycheckPlanner, ...(typeof source.paycheckPlanner === "object" ? source.paycheckPlanner : {}) },
     paycheckHistory: Array.isArray(source.paycheckHistory) ? source.paycheckHistory : starter.paycheckHistory,

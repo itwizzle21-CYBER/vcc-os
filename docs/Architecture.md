@@ -160,6 +160,21 @@ drizzle/
 
 Move toward one routed app structure, one server/router structure, and one documented data model before adding new product features.
 
+## Car Loan Evidence Model (2026-07-17)
+
+The active Vite application stores a typed `carLoan` aggregate in the existing versioned browser data model:
+
+- `contract`: immutable verified legal and scheduled terms.
+- `receipts`: actual payment evidence with status, revision, and supersession metadata.
+- `communications`: dealer messages that remain separate from receipts and may be flagged as conflicting.
+- `schedule`: original amortization rows used only for comparison.
+
+Confirmed receipts are normalized into Transactions by `carLoanEngine.ts`. Money Snapshot and Dashboard consume those normalized transactions and Financial Engine summaries. Official payoff and dealer account balance remain distinct.
+
+Evidence attachments are stored locally in IndexedDB, not bundled into public application assets or stored as oversized base64 values in localStorage. The supplied private images were used to verify structured seed records but are not part of the deployed bundle.
+
+Supabase remains a target architecture rather than active application persistence. The connected `vcc-os-production` project was inactive during this sprint and timed out during schema inspection. No production database migration was attempted. Moving this evidence ledger to Supabase requires authenticated users, private Storage, RLS ownership policies, migration tests, and a verified rollback before cutover.
+
 ## Architectural Risks
 
 - Missing project manifest prevents repeatable build/test commands.
