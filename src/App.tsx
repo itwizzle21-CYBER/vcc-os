@@ -33,6 +33,7 @@ import CarLoanWorkspace from "./components/modules/CarLoanWorkspace";
 import VitaScan from "./components/modules/VitaScan";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
+import CloudSyncControl from "./components/shared/CloudSyncControl";
 import { formatCurrency, formatDateMDY, isBlankRow, toNumber } from "./lib/calculations/currency";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { isCarPaymentBill, isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
@@ -42,6 +43,7 @@ import { identifyTransactionCategory, signedTransactionAmount, transactionMatche
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, resetAllData, resetSection, saveAppData } from "./lib/storage/localStore";
 import type { AppData, SectionKey, SpreadsheetRow, UserSettings } from "./lib/types/app";
+import { useVccCloudSync } from "./lib/cloud/useVccCloudSync";
 
 const worldwideTransactionCategories = [
   "Income",
@@ -82,6 +84,10 @@ export default function App() {
   const isKnownPath = knownPaths.has(path);
   const financialState = useMemo(() => computeFinancialState(data), [data]);
   const decisionState = useMemo(() => computeDecisionEngine(financialState, data), [financialState, data]);
+  const normalizeAndSetData = useCallback((next: AppData) => {
+    setData({ ...next, sections: { ...next.sections, inventory: next.sections.inventory.map(normalizeInventoryRow) } });
+  }, []);
+  const cloudSync = useVccCloudSync(data, normalizeAndSetData);
 
   useEffect(() => {
     saveAppData(data);
@@ -93,13 +99,7 @@ export default function App() {
   }, [data, path]);
 
   function updateData(next: AppData) {
-    setData({
-      ...next,
-      sections: {
-        ...next.sections,
-        inventory: next.sections.inventory.map(normalizeInventoryRow),
-      },
-    });
+    normalizeAndSetData(next);
   }
 
   function updateRows(section: SectionKey, rows: SpreadsheetRow[]) {
@@ -128,7 +128,7 @@ export default function App() {
     updateData(resetSection(data, section));
   }
 
-  if (path === "/vitascan") return <VitaScan data={data} onChange={updateData} />;
+  if (path === "/vitascan") return <><VitaScan data={data} onChange={updateData} /><CloudSyncControl sync={cloudSync}/></>;
 
   return (
     <>
@@ -152,6 +152,7 @@ export default function App() {
       {!isKnownPath && <NotFound />}
       {isKnownPath && <VccAgent data={data} financialState={financialState} decisionState={decisionState} />}
     </AppShell>
+    <CloudSyncControl sync={cloudSync}/>
     </>
   );
 }
