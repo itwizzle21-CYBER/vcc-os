@@ -10,5 +10,5 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 );
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("/vitascan-sw.js"));
+  window.addEventListener("load", () => navigator.serviceWorker.register("/vitascan-sw.js", { scope: "/vitascan" }));
 }
