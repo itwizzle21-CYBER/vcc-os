@@ -1251,6 +1251,9 @@ function ReportsPage({
   const cashFlow = totalIncome - totalExpenses;
   const savingsRate = totalIncome > 0 ? Math.round((cashFlow / totalIncome) * 100) : 0;
   const categoryData = buildCategoryReport(expenseRows);
+  const averageExpense = expenseRows.length > 0 ? totalExpenses / expenseRows.length : 0;
+  const burnRate = totalIncome > 0 ? Math.round((totalExpenses / totalIncome) * 100) : 0;
+  const topCategoryShare = totalExpenses > 0 && categoryData.length > 0 ? Math.round((categoryData[0].amount / totalExpenses) * 100) : 0;
   const trendData = buildTrendReport(filteredTransactions, period);
   const trendMax = Math.max(1, ...trendData.flatMap((item) => [item.income, item.expenses]));
   const forecast = buildForecast(cashFlow, period);
@@ -1285,6 +1288,13 @@ function ReportsPage({
 
       <SummaryGrid items={reportSummary} />
 
+      <section className="report-insight-strip" aria-label="Report metrics">
+        <div><span>Transactions</span><strong>{filteredTransactions.length}</strong><small>{incomeRows.length} income · {expenseRows.length} expense</small></div>
+        <div><span>Average expense</span><strong>{formatCurrency(averageExpense)}</strong><small>per expense transaction</small></div>
+        <div><span>Income used</span><strong className={burnRate > 100 ? "metric-negative" : ""}>{burnRate}%</strong><small>{burnRate > 100 ? "spending exceeds income" : `${Math.max(0, 100 - burnRate)}% retained`}</small></div>
+        <div><span>Largest category</span><strong>{categoryData[0]?.label || "—"}</strong><small>{topCategoryShare}% of total expenses</small></div>
+      </section>
+
       {transactions.length === 0 ? (
         <section className="panel report-empty-state">
           <p className="eyebrow">No Data Yet</p>
@@ -1302,19 +1312,24 @@ function ReportsPage({
               </div>
               <a href="/transactions" className="report-link">Transactions</a>
             </div>
-            <div className="report-flow-chart" aria-label="Cash flow trend">
+            <figure className="report-chart-figure">
+              <div className="report-chart-key" aria-hidden="true"><span className="income">Income</span><span className="expense">Expenses</span></div>
+              <div className="report-flow-chart" role="img" aria-label={`Income and expense comparison. Income ${formatCurrency(totalIncome)}, expenses ${formatCurrency(totalExpenses)}.`}>
               {trendData.length ? trendData.map((item) => (
                 <div key={item.label}>
                   <span>{item.label}</span>
                   <div>
-                    <i style={{ height: `${Math.max(7, (item.income / trendMax) * 100)}%` }} />
-                    <b style={{ height: `${Math.max(7, (item.expenses / trendMax) * 100)}%` }} />
+                    <i style={{ height: `${(item.income / trendMax) * 100}%` }} title={`Income ${formatCurrency(item.income)}`} />
+                    <b style={{ height: `${(item.expenses / trendMax) * 100}%` }} title={`Expenses ${formatCurrency(item.expenses)}`} />
                   </div>
                   <small>{formatCurrency(item.income)} in</small>
                   <small>{formatCurrency(item.expenses)} out</small>
                 </div>
               )) : <p className="empty-copy">No transactions in this period.</p>}
-            </div>
+              </div>
+              <figcaption>{cashFlow >= 0 ? `You kept ${formatCurrency(cashFlow)} after expenses.` : `Expenses exceeded income by ${formatCurrency(Math.abs(cashFlow))}.`}</figcaption>
+              <table className="visually-hidden"><caption>Cash flow trend data</caption><thead><tr><th>Period</th><th>Income</th><th>Expenses</th></tr></thead><tbody>{trendData.map((item) => <tr key={item.label}><th>{item.label}</th><td>{formatCurrency(item.income)}</td><td>{formatCurrency(item.expenses)}</td></tr>)}</tbody></table>
+            </figure>
           </article>
 
           <article className="panel report-card">
@@ -1330,7 +1345,8 @@ function ReportsPage({
                 <div key={category.label}>
                   <span><i style={{ background: REPORT_COLORS[index % REPORT_COLORS.length] }} />{category.label}</span>
                   <strong>{formatCurrency(category.amount)}</strong>
-                  <b style={{ width: `${Math.max(5, (category.amount / Math.max(1, categoryData[0].amount)) * 100)}%`, background: REPORT_COLORS[index % REPORT_COLORS.length] }} />
+                  <b style={{ width: `${(category.amount / Math.max(1, categoryData[0].amount)) * 100}%`, background: REPORT_COLORS[index % REPORT_COLORS.length] }} />
+                  <small>{totalExpenses > 0 ? Math.round((category.amount / totalExpenses) * 100) : 0}% of spend</small>
                 </div>
               )) : <p className="empty-copy">No expense data in this period.</p>}
             </div>
@@ -1344,11 +1360,11 @@ function ReportsPage({
               </div>
               <span className="report-pill">{formatCurrency(projectedMonthlyCashFlow(cashFlow, period))}/mo</span>
             </div>
-            <div className="report-forecast-bars" aria-label="Forecast">
+            <div className="report-forecast-bars" role="img" aria-label={`12-month cash flow projection at ${formatCurrency(projectedMonthlyCashFlow(cashFlow, period))} per month`}>
               {forecast.map((item) => (
                 <div key={item.label}>
                   <span>{item.label}</span>
-                  <i className={item.balance >= 0 ? "positive" : "negative"} style={{ height: `${Math.max(7, (Math.abs(item.balance) / forecastMax) * 100)}%` }} />
+                  <div className="forecast-track"><i className={item.balance >= 0 ? "positive" : "negative"} style={{ height: `${(Math.abs(item.balance) / forecastMax) * 50}%` }} /></div>
                   <strong>{formatCurrency(item.balance)}</strong>
                 </div>
               ))}
