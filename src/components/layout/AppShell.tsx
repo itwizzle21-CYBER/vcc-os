@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   ReceiptText,
+  ScanLine,
   Search,
   Settings,
   Target,
@@ -31,6 +32,7 @@ const nav = [
   { path: "/bills", label: "Bills", icon: ReceiptText },
   { path: "/inventory", label: "Inventory", icon: Boxes },
   { path: "/transactions", label: "Transactions", icon: BarChart3 },
+  { path: "/vitascan", label: "VitaScan", icon: ScanLine },
   { path: "/savings", label: "Savings", icon: Landmark },
   { path: "/goals", label: "Goals", icon: Target },
   { path: "/reports", label: "Reports", icon: FileBarChart },
@@ -41,7 +43,7 @@ const nav = [
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
-const primaryPaths = ["/", "/money", "/bills", "/inventory", "/transactions", "/savings", "/goals", "/reports", "/settings"];
+const primaryPaths = ["/", "/money", "/bills", "/inventory", "/transactions", "/vitascan", "/savings", "/goals", "/reports", "/settings"];
 const dashboardNav = nav.filter((item) => primaryPaths.includes(item.path));
 const launcherHoldDelay = 240;
 

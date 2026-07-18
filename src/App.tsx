@@ -30,6 +30,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import VccAgent from "./components/agent/VccAgent";
 import PaycheckPlanner from "./components/modules/PaycheckPlanner";
 import CarLoanWorkspace from "./components/modules/CarLoanWorkspace";
+import VitaScan from "./components/modules/VitaScan";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import { formatCurrency, formatDateMDY, isBlankRow, toNumber } from "./lib/calculations/currency";
@@ -84,11 +85,12 @@ export default function App() {
 
   useEffect(() => {
     saveAppData(data);
+    document.title = path === "/vitascan" ? "VitaScan — VCC Receipt Scanner" : "VCC-OS";
     document.documentElement.dataset.theme = data.settings.theme;
     document.documentElement.dataset.accent = data.settings.accent;
     document.documentElement.dataset.density = data.settings.density;
     document.documentElement.dataset.surface = data.settings.surfaceStyle;
-  }, [data]);
+  }, [data, path]);
 
   function updateData(next: AppData) {
     setData({
@@ -125,6 +127,8 @@ export default function App() {
   function handleResetSection(section: SectionKey) {
     updateData(resetSection(data, section));
   }
+
+  if (path === "/vitascan") return <VitaScan data={data} onChange={updateData} />;
 
   return (
     <>
@@ -2695,6 +2699,7 @@ const knownPaths = new Set([
   "/inventory",
   "/goals",
   "/reports",
+  "/vitascan",
   "/missions",
   "/settings",
 ]);
