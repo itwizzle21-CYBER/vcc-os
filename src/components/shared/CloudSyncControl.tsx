@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Cloud, CloudOff, ExternalLink, LoaderCircle, LogOut, Mail, MailCheck, RefreshCw, ShieldCheck, X } from "lucide-react";
 import type { VccCloudSync } from "../../lib/cloud/useVccCloudSync";
-import { isMagicLinkConfirmation, magicLinkRetrySeconds, MAGIC_LINK_COOLDOWN_SECONDS } from "../../lib/cloud/magicLinkFlow";
+import { gmailActionLabel, gmailInboxUrl, isMagicLinkConfirmation, magicLinkRetrySeconds, MAGIC_LINK_COOLDOWN_SECONDS, prefersGmailApp } from "../../lib/cloud/magicLinkFlow";
 import "./cloud-sync-control.css";
 
 const RESEND_AT_KEY = "vcc-os:magic-link-resend-at";
@@ -115,6 +115,15 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
     window.close();
   }
 
+  function openGmail() {
+    const target = gmailInboxUrl(sentEmail, window.navigator.userAgent);
+    if (prefersGmailApp(window.navigator.userAgent)) {
+      window.location.assign(target);
+      return;
+    }
+    window.open(target, "_blank", "noopener,noreferrer");
+  }
+
   const label = sync.email ? (sync.status === "synced" ? "Synced" : sync.status === "saving" ? "Saving" : "Connected") : "Sync devices";
   return <>
     <button ref={triggerRef} className={`cloud-sync-trigger ${sync.email ? "connected" : ""}`} type="button" onClick={() => setOpen(true)}>
@@ -136,17 +145,22 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
           <div className="cloud-sync-state"><Check size={16}/>{sync.message || "Your data is synced."}</div>
           <button className="cloud-sync-secondary" type="button" data-autofocus onClick={sync.signOut}><LogOut size={16}/> Sign out on this device</button>
         </> : sentEmail ? <>
-          <p id="cloud-sync-description">We sent a secure, one-time sign-in link to <strong>{sentEmail}</strong>.</p>
-          <a className="cloud-sync-primary cloud-sync-gmail" data-autofocus href={`https://mail.google.com/mail/?authuser=${encodeURIComponent(sentEmail)}`} target="_blank" rel="noreferrer">
-            <ExternalLink size={17}/> Open Gmail
-          </a>
+          <p id="cloud-sync-description">We sent a secure, one-time sign-in link to the Gmail account below.</p>
+          <div className="cloud-sync-account" aria-label={`Confirmation sent to ${sentEmail}`}>
+            <Mail size={18}/>
+            <span><small>Confirmation destination</small><strong>{sentEmail}</strong></span>
+            <Check size={17}/>
+          </div>
+          <button className="cloud-sync-primary cloud-sync-gmail" type="button" data-autofocus onClick={openGmail}>
+            <ExternalLink size={17}/> {gmailActionLabel(window.navigator.userAgent)}
+          </button>
           <button className="cloud-sync-resend" type="button" disabled={sending || retrySeconds > 0} onClick={() => connect(sentEmail)}>
             {sending ? <LoaderCircle className="spin" size={17}/> : <RefreshCw size={17}/>}
             {retrySeconds > 0 ? `Resend available in ${retrySeconds}s` : "Resend sign-in email"}
           </button>
           {error && <p className="cloud-sync-message" role="alert">{error}</p>}
           <div className="cloud-sync-delivery-note">
-            <Mail size={16}/><span>Delivery may take a minute. Check <strong>Spam</strong> and search Gmail for <strong>VitaScan</strong>. Only the newest link will work.</span>
+            <Mail size={16}/><span>Confirm that Gmail shows <strong>{sentEmail}</strong> in the account menu. Check <strong>Spam</strong> and search for <strong>VitaScan</strong>. Only the newest link will work.</span>
           </div>
           <button className="cloud-sync-text-button" type="button" onClick={resetRequest}>Use a different email</button>
         </> : <>

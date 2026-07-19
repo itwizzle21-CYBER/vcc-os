@@ -37,6 +37,11 @@
 .cloud-sync-resend:disabled { cursor: not-allowed; color: #94a3b8; opacity: .78; }
 .cloud-sync-state { display: flex; align-items: center; gap: 8px; margin: 18px 0; padding: 12px; border-radius: 12px; background: rgba(52, 211, 153, .1); color: #6ee7b7; }
 .cloud-sync-message { font-size: .82rem; color: #fecaca !important; }
+.cloud-sync-account { display: flex; min-width: 0; align-items: center; gap: 10px; margin-top: 16px; padding: 12px; border: 1px solid rgba(110, 231, 183, .28); border-radius: 12px; background: rgba(16, 185, 129, .08); color: #6ee7b7; }
+.cloud-sync-account > span { display: grid; min-width: 0; flex: 1; gap: 2px; }
+.cloud-sync-account small { margin: 0; color: #a7f3d0; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; }
+.cloud-sync-account strong { overflow-wrap: anywhere; color: #f0fdf4; font-size: .9rem; }
+.cloud-sync-account > svg:last-child { flex: 0 0 auto; }
 .cloud-sync-delivery-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 16px; padding: 12px; border: 1px solid rgba(125, 211, 252, .18); border-radius: 12px; background: rgba(56, 189, 248, .06); color: #b6c1d9; font-size: .8rem; line-height: 1.45; }
 .cloud-sync-delivery-note svg { flex: 0 0 auto; margin-top: 2px; color: #7dd3fc; }
 .cloud-sync-delivery-note strong { color: #e2e8f0; }
