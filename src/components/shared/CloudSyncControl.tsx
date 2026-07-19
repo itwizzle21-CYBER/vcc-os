@@ -14,13 +14,14 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
   const [sentEmail, setSentEmail] = useState(() => window.sessionStorage.getItem(LOGIN_EMAIL_KEY) || "");
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [loginCode, setLoginCode] = useState("");
   const [now, setNow] = useState(Date.now());
   const [resendAt, setResendAt] = useState(() => Number(window.sessionStorage.getItem(RESEND_AT_KEY)) || 0);
   const [confirmationReturn, setConfirmationReturn] = useState(() => isMagicLinkConfirmation(window.location.search));
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
-  const busy = sending || verifying || sync.status === "connecting" || sync.status === "saving";
+  const busy = sending || verifying || restoring || sync.status === "connecting" || sync.status === "saving";
   const retrySeconds = Math.max(0, Math.ceil((resendAt - now) / 1000));
   const standaloneApp = window.matchMedia?.("(display-mode: standalone)").matches
     || Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
@@ -145,6 +146,19 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
     }
   }
 
+  async function restoreCloudCopy() {
+    if (!window.confirm("Replace the data shown on this device with the protected VCC cloud copy?")) return;
+    setError("");
+    setRestoring(true);
+    try {
+      await sync.restoreFromCloud();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The protected cloud copy could not be restored.");
+    } finally {
+      setRestoring(false);
+    }
+  }
+
   function closeConfirmation() {
     setConfirmationReturn(false);
     setOpen(false);
@@ -181,7 +195,12 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
         </> : sync.email ? <>
           <p id="cloud-sync-description">Signed in as <strong>{sync.email}</strong>. Changes from VitaScan, mobile, and desktop share one protected VCC account.</p>
           <div className="cloud-sync-state"><Check size={16}/>{sync.message || "Your data is synced."}</div>
-          <button className="cloud-sync-secondary" type="button" data-autofocus onClick={sync.signOut}><LogOut size={16}/> Sign out on this device</button>
+          <button className="cloud-sync-primary" type="button" data-autofocus disabled={busy} onClick={restoreCloudCopy}>
+            {restoring ? <LoaderCircle className="spin" size={17}/> : <RefreshCw size={17}/>} Restore protected cloud copy
+          </button>
+          <small>This reloads the latest protected VCC data onto this device. Every later cloud replacement is kept in recovery history.</small>
+          {error && <p className="cloud-sync-message" role="alert">{error}</p>}
+          <button className="cloud-sync-secondary" type="button" disabled={busy} onClick={sync.signOut}><LogOut size={16}/> Sign out on this device</button>
         </> : sentEmail ? <>
           <p id="cloud-sync-description">We sent a secure six-digit code to the Gmail account below. Enter it here to load your desktop VCC data on this device.</p>
           <div className="cloud-sync-account" aria-label={`Confirmation sent to ${sentEmail}`}>
