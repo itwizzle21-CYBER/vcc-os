@@ -176,8 +176,8 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
 
   const label = sync.email ? (sync.status === "synced" ? "Synced" : sync.status === "saving" ? "Saving" : "Connected") : "Sync devices";
   return <>
-    <button ref={triggerRef} className={`cloud-sync-trigger ${sync.email ? "connected" : ""}`} type="button" onClick={() => setOpen(true)}>
-      {busy ? <LoaderCircle className="spin" size={16}/> : sync.email ? <Cloud size={16}/> : <CloudOff size={16}/>} {label}
+    <button ref={triggerRef} className={`cloud-sync-trigger ${sync.email ? "connected" : ""}`} type="button" onClick={() => setOpen(true)} aria-label={label} title={label}>
+      {busy ? <LoaderCircle className="spin" size={18}/> : sync.email ? <Cloud size={18}/> : <CloudOff size={18}/>}<span>{label}</span>
     </button>
     {open && <div className="cloud-sync-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
       <section ref={dialogRef} className="cloud-sync-dialog" role="dialog" aria-modal="true" aria-labelledby="cloud-sync-title" aria-describedby="cloud-sync-description">

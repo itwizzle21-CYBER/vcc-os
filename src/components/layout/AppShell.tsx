@@ -44,7 +44,6 @@ const nav = [
 ];
 
 const primaryPaths = ["/", "/money", "/bills", "/inventory", "/transactions", "/vitascan", "/savings", "/goals", "/reports", "/settings"];
-const dashboardNav = nav.filter((item) => primaryPaths.includes(item.path));
 const launcherHoldDelay = 240;
 
 export default function AppShell({
@@ -81,21 +80,24 @@ export default function AppShell({
     moved: boolean;
     selectedPath: string;
   } | null>(null);
-  const results = useMemo(() => buildSearchResults(data, query), [data, query]);
+  const visibleNav = useMemo(() => nav.filter((item) => item.path !== "/vitascan" || settings.vitaScanEnabled), [settings.vitaScanEnabled]);
+  const dashboardNav = useMemo(() => visibleNav.filter((item) => primaryPaths.includes(item.path)), [visibleNav]);
+  const results = useMemo(
+    () => buildSearchResults(data, query).filter((result) => settings.vitaScanEnabled || result.href !== "/vitascan"),
+    [data, query, settings.vitaScanEnabled],
+  );
   const isDashboard = normalize(currentPath) === "/";
-  const greeting = timeGreeting();
   const accountName = settings.accountName.trim();
-  const firstName = accountName.split(/\s+/)[0];
-  const showDashboardProfile = isDashboard && Boolean(accountName);
+  const firstName = accountName.split(/\s+/)[0] || "Account";
   const visualSettings = wallpaperPreview ? { ...settings, ...wallpaperPreview } : settings;
   const wallpaperSource = wallpaperUrl(visualSettings);
   const hasWallpaper = Boolean(wallpaperSource);
   const opacityStyle = hasWallpaper ? wallpaperStyleVars(visualSettings) : undefined;
   const currentLauncherIndex = Math.max(
-    nav.findIndex((item) => normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts")),
+    visibleNav.findIndex((item) => normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts")),
     0,
   );
-  const launcherTargetIndex = nav.findIndex((item) => item.path === launcherTarget);
+  const launcherTargetIndex = visibleNav.findIndex((item) => item.path === launcherTarget);
   const selectedLauncherIndex = launcherTargetIndex >= 0 ? launcherTargetIndex : currentLauncherIndex;
 
   useEffect(() => {
@@ -153,8 +155,8 @@ export default function AppShell({
     const edgeInset = 18;
     const usableWidth = Math.max(window.innerWidth - edgeInset * 2, 1);
     const progress = Math.min(Math.max((clientX - edgeInset) / usableWidth, 0), 1);
-    const targetIndex = Math.round(progress * (nav.length - 1));
-    const targetPath = nav[targetIndex].path;
+    const targetIndex = Math.round(progress * (visibleNav.length - 1));
+    const targetPath = visibleNav[targetIndex].path;
     if (launcherPointerRef.current) launcherPointerRef.current.selectedPath = targetPath;
     setLauncherTarget(targetPath);
   }
@@ -169,7 +171,7 @@ export default function AppShell({
       startY: event.clientY,
       activated: false,
       moved: false,
-      selectedPath: nav[currentLauncherIndex].path,
+      selectedPath: visibleNav[currentLauncherIndex].path,
     };
     launcherPointerRef.current = session;
     launcherHoldTimerRef.current = setTimeout(() => {
@@ -226,17 +228,11 @@ export default function AppShell({
       style={(hasWallpaper ? { "--vcc-wallpaper": `url(${JSON.stringify(wallpaperSource)})`, ...opacityStyle } : undefined) as CSSProperties | undefined}
     >
       <header className="dashboard-top-nav">
-        <a className={`dashboard-top-brand${showDashboardProfile ? " has-profile" : ""}`} href={showDashboardProfile ? "/settings" : "/"} aria-label={showDashboardProfile ? `Open ${accountName} profile` : "Open VCC-OS dashboard"}>
-          <span>{showDashboardProfile ? <UserCircle size={20} aria-hidden="true" /> : <Zap size={20} aria-hidden="true" />}</span>
+        <a className="dashboard-top-brand has-profile" href="/settings" aria-label={`Open ${accountName || "account"} profile`}>
+          <span><UserCircle size={20} aria-hidden="true" /></span>
           <div className="dashboard-brand-copy">
-            {showDashboardProfile ? (
-              <>
-                <small>{greeting},</small>
-                <strong>{firstName}</strong>
-              </>
-            ) : (
-              <strong>VCC-OS</strong>
-            )}
+            <small>Profile</small>
+            <strong>{firstName}</strong>
           </div>
         </a>
         <nav aria-label="Primary navigation">
@@ -295,7 +291,7 @@ export default function AppShell({
           </span>
         </a>
         <nav>
-          {nav.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = item.icon;
             const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
             return (
@@ -405,7 +401,7 @@ export default function AppShell({
             )}
           </div>
           <div className="mobile-drawer-nav">
-            {nav.map((item) => {
+            {visibleNav.map((item) => {
               const Icon = item.icon;
               const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
               return (
@@ -420,7 +416,7 @@ export default function AppShell({
       </div>
       <div className={`mobile-quick-launcher${launcherOpen ? " is-open" : ""}${launcherDragging ? " is-dragging" : ""}`} ref={launcherRef}>
         <div className="mobile-quick-launcher-menu" id="mobile-quick-launcher-menu" role="menu" aria-label="Quick page launcher" aria-hidden={!launcherOpen}>
-          {nav.map((item, index) => {
+          {visibleNav.map((item, index) => {
             const Icon = item.icon;
             const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
             const highlighted = launcherTarget === item.path;
@@ -453,7 +449,7 @@ export default function AppShell({
           })}
         </div>
         <div className="mobile-quick-launcher-label" id="mobile-quick-launcher-label" aria-live="polite">
-          {nav[selectedLauncherIndex].label}
+          {visibleNav[selectedLauncherIndex].label}
         </div>
         <button
           className="mobile-quick-launcher-button"
@@ -467,7 +463,7 @@ export default function AppShell({
               suppressLauncherClickRef.current = false;
               return;
             }
-            setLauncherTarget(nav[currentLauncherIndex].path);
+            setLauncherTarget(visibleNav[currentLauncherIndex].path);
             setLauncherOpen((open) => !open);
           }}
           onPointerDown={handleLauncherPointerDown}

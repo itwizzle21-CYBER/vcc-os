@@ -70,6 +70,8 @@ export interface UserSettings {
   welcomeMessage: string;
   welcomeDurationSeconds: number;
   welcomeTransition: "rise" | "fade" | "focus" | "sweep";
+  vitaScanEnabled: boolean;
+  vccPetEnabled: boolean;
 }
 
 export type EvidenceStatus = "draft" | "confirmed" | "needs_review" | "superseded" | "rejected";

@@ -426,6 +426,8 @@ export function createZeroData(): AppData {
       welcomeMessage: "Preparing your command center",
       welcomeDurationSeconds: 4,
       welcomeTransition: "rise",
+      vitaScanEnabled: true,
+      vccPetEnabled: false,
     },
   };
 }

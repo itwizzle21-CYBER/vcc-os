@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { createPortal } from "react-dom";
 import {
   BellRing,
+  Bot,
   BrainCircuit,
   CalendarClock,
   Check,
@@ -15,6 +16,7 @@ import {
   Palette,
   RotateCcw,
   Save,
+  ScanLine,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -150,7 +152,7 @@ export default function App() {
       {path === "/missions" && <MissionsPage decisionState={decisionState} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} onWallpaperPreviewChange={setWallpaperPreview} />}
       {!isKnownPath && <NotFound />}
-      {isKnownPath && <VccAgent data={data} financialState={financialState} decisionState={decisionState} />}
+      {isKnownPath && <VccAgent data={data} financialState={financialState} decisionState={decisionState} petEnabled={data.settings.vccPetEnabled} />}
     </AppShell>
     <CloudSyncControl sync={cloudSync}/>
     </>
@@ -1811,6 +1813,14 @@ function SettingsPage({
             </div>
           </SettingsSection>
 
+          <SettingsSection id="settings-features" icon={Bot} title="Features" description="Choose which optional tools appear across VCC-OS." open={openSection === "settings-features"}>
+            <div className="settings-row-list">
+              <SettingFeatureRow title="VitaScan" description="Show the receipt scanner in desktop and mobile navigation." checked={data.settings.vitaScanEnabled} onChange={(vitaScanEnabled) => onChange({ ...data, settings: { ...data.settings, vitaScanEnabled } })} />
+              <SettingFeatureRow title="VCC companion mode" description="Give Ask VCC a small pet-like presence while keeping the chatbot compact." checked={data.settings.vccPetEnabled} onChange={(vccPetEnabled) => onChange({ ...data, settings: { ...data.settings, vccPetEnabled } })} />
+            </div>
+            {data.settings.vitaScanEnabled && <a className="settings-feature-link" href="/vitascan"><ScanLine size={17} aria-hidden="true" /> Open VitaScan</a>}
+          </SettingsSection>
+
           <SettingsSection id="settings-data" icon={Database} title="Data & storage" description="Move, protect, or reset the information stored in this browser." open={openSection === "settings-data"}>
             <div className="settings-data-stats" aria-label="Stored row counts">
               <span><strong>{data.sections.money.length}</strong><small>Money</small></span>
@@ -1894,6 +1904,7 @@ const settingsNavigation: Array<{ href: string; label: string; icon: LucideIcon 
   { href: "#settings-intelligence", label: "Intelligence", icon: BrainCircuit },
   { href: "#settings-notifications", label: "Notifications", icon: BellRing },
   { href: "#settings-dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "#settings-features", label: "Features", icon: Bot },
   { href: "#settings-data", label: "Data & storage", icon: Database },
   { href: "#settings-about", label: "About", icon: Info },
 ];

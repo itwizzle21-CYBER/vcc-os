@@ -20,7 +20,7 @@ const contextKey = "vcc.agent.context.v1";
 const setupPrompts = ["Help me start", "Walk me through VCC", "What data should I add first?"];
 const activePrompts = ["What should I do first?", "Can I safely spend?", "Where is my biggest risk?"];
 
-export default function VccAgent({ data, financialState, decisionState }: { data: AppData; financialState: FinancialState; decisionState: DecisionState }) {
+export default function VccAgent({ data, financialState, decisionState, petEnabled = false }: { data: AppData; financialState: FinancialState; decisionState: DecisionState; petEnabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -84,7 +84,7 @@ export default function VccAgent({ data, financialState, decisionState }: { data
   }
 
   return (
-    <aside className={`vcc-agent-widget${open ? " is-open" : ""}`} aria-label="VCC Agent">
+    <aside className={`vcc-agent-widget${open ? " is-open" : ""}${petEnabled ? " pet-enabled" : ""}`} aria-label="VCC Agent">
       {open && (
         <section className="vcc-agent-popover" role="dialog" aria-modal="false" aria-label="Chat with VCC Agent">
           <header>
@@ -137,7 +137,7 @@ export default function VccAgent({ data, financialState, decisionState }: { data
         aria-expanded={open}
       >
         <Bot size={23} />
-        {!open && <span>{isFreshStart ? "Need help starting?" : "Ask VCC"}</span>}
+        {!open && <Sparkles className="vcc-agent-launcher-spark" size={12} aria-hidden="true" />}
       </button>
     </aside>
   );
