@@ -42,6 +42,9 @@
 .cloud-sync-account small { margin: 0; color: #a7f3d0; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; }
 .cloud-sync-account strong { overflow-wrap: anywhere; color: #f0fdf4; font-size: .9rem; }
 .cloud-sync-account > svg:last-child { flex: 0 0 auto; }
+.cloud-sync-code { display: grid; gap: 8px; margin-top: 16px; color: #b6c1d9; font-size: .8rem; }
+.cloud-sync-code input { width: 100%; min-height: 56px; padding: 10px 14px; border: 1px solid rgba(125, 211, 252, .38); border-radius: 12px; outline: 0; background: rgba(2, 6, 23, .58); color: #f8fafc; font: 700 1.5rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .28em; text-align: center; }
+.cloud-sync-code input::placeholder { color: #64748b; }
 .cloud-sync-delivery-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 16px; padding: 12px; border: 1px solid rgba(125, 211, 252, .18); border-radius: 12px; background: rgba(56, 189, 248, .06); color: #b6c1d9; font-size: .8rem; line-height: 1.45; }
 .cloud-sync-delivery-note svg { flex: 0 0 auto; margin-top: 2px; color: #7dd3fc; }
 .cloud-sync-delivery-note strong { color: #e2e8f0; }

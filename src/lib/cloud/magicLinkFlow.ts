@@ -31,6 +31,10 @@ export function prefersGmailApp(userAgent: string): boolean {
   return /android|iphone|ipad|ipod/i.test(userAgent);
 }
 
+export function usesAndroidGmailIntent(userAgent: string): boolean {
+  return /android/i.test(userAgent);
+}
+
 export function gmailActionLabel(userAgent: string): string {
   if (/android/i.test(userAgent)) return "Open official Gmail app";
   if (/iphone|ipad|ipod/i.test(userAgent)) return "Open Gmail for this account";
@@ -39,4 +43,12 @@ export function gmailActionLabel(userAgent: string): string {
 
 export function shouldAutoCloseConfirmation(hasOpener: boolean, isStandaloneApp: boolean): boolean {
   return hasOpener && !isStandaloneApp;
+}
+
+export function normalizeLoginCode(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 6);
+}
+
+export function isCompleteLoginCode(value: string): boolean {
+  return /^\d{6}$/.test(value);
 }

@@ -1,23 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Cloud, CloudOff, ExternalLink, LoaderCircle, LogOut, Mail, MailCheck, RefreshCw, ShieldCheck, X } from "lucide-react";
 import type { VccCloudSync } from "../../lib/cloud/useVccCloudSync";
-import { gmailActionLabel, gmailInboxUrl, isMagicLinkConfirmation, magicLinkRetrySeconds, MAGIC_LINK_COOLDOWN_SECONDS, prefersGmailApp, shouldAutoCloseConfirmation } from "../../lib/cloud/magicLinkFlow";
+import { gmailActionLabel, gmailInboxUrl, isCompleteLoginCode, isMagicLinkConfirmation, magicLinkRetrySeconds, MAGIC_LINK_COOLDOWN_SECONDS, normalizeLoginCode, shouldAutoCloseConfirmation, usesAndroidGmailIntent } from "../../lib/cloud/magicLinkFlow";
 import "./cloud-sync-control.css";
 
 const RESEND_AT_KEY = "vcc-os:magic-link-resend-at";
+const LOGIN_EMAIL_KEY = "vcc-os:login-code-email";
 
 export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [sentEmail, setSentEmail] = useState("");
+  const [sentEmail, setSentEmail] = useState(() => window.sessionStorage.getItem(LOGIN_EMAIL_KEY) || "");
   const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [loginCode, setLoginCode] = useState("");
   const [now, setNow] = useState(Date.now());
   const [resendAt, setResendAt] = useState(() => Number(window.sessionStorage.getItem(RESEND_AT_KEY)) || 0);
   const [confirmationReturn, setConfirmationReturn] = useState(() => isMagicLinkConfirmation(window.location.search));
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
-  const busy = sending || sync.status === "connecting" || sync.status === "saving";
+  const busy = sending || verifying || sync.status === "connecting" || sync.status === "saving";
   const retrySeconds = Math.max(0, Math.ceil((resendAt - now) / 1000));
   const standaloneApp = window.matchMedia?.("(display-mode: standalone)").matches
     || Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
@@ -28,6 +31,13 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
     const timer = window.setInterval(() => setNow(Date.now()), 500);
     return () => window.clearInterval(timer);
   }, [resendAt]);
+
+  useEffect(() => {
+    if (!sync.email) return;
+    window.sessionStorage.removeItem(LOGIN_EMAIL_KEY);
+    setSentEmail("");
+    setLoginCode("");
+  }, [sync.email]);
 
   useEffect(() => {
     if (!confirmationReturn || !sync.email) return;
@@ -91,16 +101,19 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
     if (!normalizedEmail.includes("@")) { setError("Enter a valid email address."); return; }
     setSending(true);
     try {
-      await sync.sendMagicLink(normalizedEmail);
+      await sync.sendLoginCode(normalizedEmail);
       setSentEmail(normalizedEmail);
+      window.sessionStorage.setItem(LOGIN_EMAIL_KEY, normalizedEmail);
+      setLoginCode("");
       startCooldown();
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Could not send the sign-in link.";
       const wait = magicLinkRetrySeconds(message);
       if (wait) {
         setSentEmail(normalizedEmail);
+        window.sessionStorage.setItem(LOGIN_EMAIL_KEY, normalizedEmail);
         startCooldown(wait);
-        setError("A sign-in email was already requested. Wait for the timer before sending another.");
+        setError("A sign-in code was already requested. Wait for the timer before sending another.");
       } else {
         setError(message);
       }
@@ -111,7 +124,25 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
 
   function resetRequest() {
     setSentEmail("");
+    window.sessionStorage.removeItem(LOGIN_EMAIL_KEY);
+    setLoginCode("");
     setError("");
+  }
+
+  async function verifyCode() {
+    setError("");
+    if (!isCompleteLoginCode(loginCode)) {
+      setError("Enter the complete six-digit code from Gmail.");
+      return;
+    }
+    setVerifying(true);
+    try {
+      await sync.verifyLoginCode(sentEmail, loginCode);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "That code could not be verified.");
+    } finally {
+      setVerifying(false);
+    }
   }
 
   function closeConfirmation() {
@@ -122,7 +153,7 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
 
   function openGmail() {
     const target = gmailInboxUrl(sentEmail, window.navigator.userAgent);
-    if (prefersGmailApp(window.navigator.userAgent)) {
+    if (usesAndroidGmailIntent(window.navigator.userAgent)) {
       window.location.assign(target);
       return;
     }
@@ -140,7 +171,7 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
         <span className={`cloud-sync-icon ${confirmationReturn && sync.email ? "is-success" : ""}`}>
           {confirmationReturn && sync.email ? <ShieldCheck/> : sentEmail ? <MailCheck/> : <Cloud/>}
         </span>
-        <h2 id="cloud-sync-title">{confirmationReturn && sync.email ? "Device connected" : sentEmail ? "Check your Gmail" : "VCC everywhere"}</h2>
+        <h2 id="cloud-sync-title">{confirmationReturn && sync.email ? "Device connected" : sentEmail ? "Enter your VitaScan code" : "VCC everywhere"}</h2>
         {confirmationReturn && sync.email ? <>
           <p id="cloud-sync-description"><strong>{sync.email}</strong> is confirmed. VitaScan and VCC are now connected on this device.</p>
           <div className="cloud-sync-state" role="status"><Check size={16}/> Connection complete. {canAutoCloseConfirmation ? "Closing this sign-in tab..." : "Returning to VitaScan..."}</div>
@@ -152,29 +183,36 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
           <div className="cloud-sync-state"><Check size={16}/>{sync.message || "Your data is synced."}</div>
           <button className="cloud-sync-secondary" type="button" data-autofocus onClick={sync.signOut}><LogOut size={16}/> Sign out on this device</button>
         </> : sentEmail ? <>
-          <p id="cloud-sync-description">We sent a secure, one-time sign-in link to the Gmail account below.</p>
+          <p id="cloud-sync-description">We sent a secure six-digit code to the Gmail account below. Enter it here to load your desktop VCC data on this device.</p>
           <div className="cloud-sync-account" aria-label={`Confirmation sent to ${sentEmail}`}>
             <Mail size={18}/>
             <span><small>Confirmation destination</small><strong>{sentEmail}</strong></span>
             <Check size={17}/>
           </div>
-          <button className="cloud-sync-primary cloud-sync-gmail" type="button" data-autofocus onClick={openGmail}>
+          <label className="cloud-sync-code">
+            <span>Six-digit code</span>
+            <input data-autofocus type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={loginCode} onChange={(event) => setLoginCode(normalizeLoginCode(event.target.value))} placeholder="000000" aria-invalid={Boolean(error)} aria-describedby={error ? "cloud-sync-code-error" : undefined}/>
+          </label>
+          <button className="cloud-sync-primary" type="button" disabled={verifying || !isCompleteLoginCode(loginCode)} onClick={verifyCode}>
+            {verifying ? <LoaderCircle className="spin" size={17}/> : <ShieldCheck size={17}/>} Verify and sync
+          </button>
+          <button className="cloud-sync-secondary cloud-sync-gmail" type="button" onClick={openGmail}>
             <ExternalLink size={17}/> {gmailActionLabel(window.navigator.userAgent)}
           </button>
           <button className="cloud-sync-resend" type="button" disabled={sending || retrySeconds > 0} onClick={() => connect(sentEmail)}>
             {sending ? <LoaderCircle className="spin" size={17}/> : <RefreshCw size={17}/>}
-            {retrySeconds > 0 ? `Resend available in ${retrySeconds}s` : "Resend sign-in email"}
+            {retrySeconds > 0 ? `Resend available in ${retrySeconds}s` : "Resend sign-in code"}
           </button>
-          {error && <p className="cloud-sync-message" role="alert">{error}</p>}
+          {error && <p className="cloud-sync-message" id="cloud-sync-code-error" role="alert">{error}</p>}
           <div className="cloud-sync-delivery-note">
-            <Mail size={16}/><span>Confirm that Gmail shows <strong>{sentEmail}</strong> in the account menu. Check <strong>Spam</strong> and search for <strong>VitaScan</strong>. Only the newest link will work.</span>
+            <Mail size={16}/><span>Confirm that Gmail shows <strong>{sentEmail}</strong> in the account menu. Check <strong>Spam</strong> and search for <strong>VitaScan</strong>. Use only the newest code.</span>
           </div>
           <button className="cloud-sync-text-button" type="button" onClick={resetRequest}>Use a different email</button>
         </> : <>
-          <p id="cloud-sync-description">Use the same email on every device. We will send a secure passwordless sign-in link.</p>
+          <p id="cloud-sync-description">Use the same email on every device. We will send a secure six-digit sign-in code.</p>
           <form className="cloud-sync-form" onSubmit={(event) => { event.preventDefault(); connect(); }}>
             <label className="cloud-sync-email"><span>Email address</span><div><Mail size={17}/><input data-autofocus type="email" inputMode="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" aria-invalid={Boolean(error)} aria-describedby={error ? "cloud-sync-error" : undefined}/></div></label>
-            <button className="cloud-sync-primary" type="submit" disabled={busy || !sync.configured}>{busy ? <LoaderCircle className="spin"/> : <Cloud/>} Connect this device</button>
+            <button className="cloud-sync-primary" type="submit" disabled={busy || !sync.configured}>{busy ? <LoaderCircle className="spin"/> : <Cloud/>} Send sign-in code</button>
             {(error || sync.message) && <p className="cloud-sync-message" id="cloud-sync-error" role={error ? "alert" : "status"}>{error || sync.message}</p>}
             <small>Local data stays on this device until you sign in. The first signed-in device becomes the initial shared VCC copy.</small>
           </form>

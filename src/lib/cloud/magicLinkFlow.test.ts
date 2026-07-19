@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gmailActionLabel, gmailInboxUrl, isMagicLinkConfirmation, magicLinkRedirectUrl, magicLinkRetrySeconds, prefersGmailApp, shouldAutoCloseConfirmation } from "./magicLinkFlow";
+import { gmailActionLabel, gmailInboxUrl, isCompleteLoginCode, isMagicLinkConfirmation, magicLinkRedirectUrl, magicLinkRetrySeconds, normalizeLoginCode, prefersGmailApp, shouldAutoCloseConfirmation, usesAndroidGmailIntent } from "./magicLinkFlow";
 
 describe("magic link flow", () => {
   it("builds a production-safe confirmation return URL", () => {
@@ -35,6 +35,8 @@ describe("magic link flow", () => {
     expect(prefersGmailApp("Mozilla/5.0 (iPhone)")).toBe(true);
     expect(prefersGmailApp("Mozilla/5.0 (Linux; Android 15)")).toBe(true);
     expect(prefersGmailApp("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe(false);
+    expect(usesAndroidGmailIntent("Mozilla/5.0 (Linux; Android 15)")).toBe(true);
+    expect(usesAndroidGmailIntent("Mozilla/5.0 (iPhone)")).toBe(false);
     expect(gmailActionLabel("Mozilla/5.0 (Linux; Android 15)")).toBe("Open official Gmail app");
     expect(gmailActionLabel("Mozilla/5.0 (iPhone)")).toBe("Open Gmail for this account");
     expect(gmailActionLabel("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("Open this Gmail inbox");
@@ -44,5 +46,11 @@ describe("magic link flow", () => {
     expect(shouldAutoCloseConfirmation(true, false)).toBe(true);
     expect(shouldAutoCloseConfirmation(false, false)).toBe(false);
     expect(shouldAutoCloseConfirmation(true, true)).toBe(false);
+  });
+
+  it("normalizes and validates a six-digit VitaScan code", () => {
+    expect(normalizeLoginCode("12a 34-567")).toBe("123456");
+    expect(isCompleteLoginCode("123456")).toBe(true);
+    expect(isCompleteLoginCode("12345")).toBe(false);
   });
 });

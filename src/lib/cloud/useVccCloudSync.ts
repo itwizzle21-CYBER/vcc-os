@@ -3,7 +3,6 @@ import type { RealtimeChannel, Session } from "@supabase/supabase-js";
 import type { AppData } from "../types/app";
 import { mergeVitaReceipts, type VitaReceiptRecord } from "../vitascan/receiptSync";
 import { cloudConfigured, supabase } from "./client";
-import { magicLinkRedirectUrl } from "./magicLinkFlow";
 
 export type CloudSyncStatus = "offline" | "signed_out" | "connecting" | "synced" | "saving" | "error";
 export type VccCloudSync = {
@@ -11,7 +10,8 @@ export type VccCloudSync = {
   status: CloudSyncStatus;
   email: string;
   message: string;
-  sendMagicLink: (email: string) => Promise<void>;
+  sendLoginCode: (email: string) => Promise<void>;
+  verifyLoginCode: (email: string, token: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -105,7 +105,7 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
 
       ready.current = true;
       setStatus("synced");
-      setMessage("All VCC data is synced across signed-in devices.");
+      setMessage(hasRemoteState ? "Desktop VCC data is synced to this device." : "All VCC data is synced across signed-in devices.");
 
       channelRef.current = supabase!.channel(`vcc-state-${userId}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "vcc_app_state", filter: `user_id=eq.${userId}` }, (payload) => {
@@ -170,17 +170,25 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
     return () => window.clearTimeout(timer);
   }, [data, session]);
 
-  const sendMagicLink = useCallback(async (email: string) => {
+  const sendLoginCode = useCallback(async (email: string) => {
     if (!supabase) throw new Error("Cloud sync is not configured.");
     setStatus("connecting");
-    const returnPath = window.location.pathname.startsWith("/vitascan") ? "/vitascan" : "/settings";
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: magicLinkRedirectUrl(window.location.origin, returnPath) },
+      options: { shouldCreateUser: false },
     });
     if (error) { setStatus("error"); setMessage(error.message); throw error; }
     setStatus("signed_out");
-    setMessage("Check your email and open the secure sign-in link on this device.");
+    setMessage("Check Gmail for your six-digit VitaScan code and enter it on this device.");
+  }, []);
+
+  const verifyLoginCode = useCallback(async (email: string, token: string) => {
+    if (!supabase) throw new Error("Cloud sync is not configured.");
+    setStatus("connecting");
+    setMessage("Verifying this device and loading your desktop VCC data...");
+    const { data: result, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+    if (error) { setStatus("error"); setMessage(error.message); throw error; }
+    if (result.session) setSession(result.session);
   }, []);
 
   const signOut = useCallback(async () => {
@@ -191,5 +199,5 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
     setMessage("Signed out. This device will keep its local copy.");
   }, []);
 
-  return { configured: cloudConfigured, status, email: isSharedAccount(session) ? session.user.email || "VCC account" : "", message, sendMagicLink, signOut };
+  return { configured: cloudConfigured, status, email: isSharedAccount(session) ? session.user.email || "VCC account" : "", message, sendLoginCode, verifyLoginCode, signOut };
 }
