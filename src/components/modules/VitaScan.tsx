@@ -37,7 +37,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
     const signed = draft.direction === "expense" ? -amount : amount;
     const row = { id, cells: { description: draft.merchant, type: draft.direction, category: draft.category, amount: signed.toFixed(2), date: draft.date, account: draft.account, recurring: "No", notes: `VitaScan${draft.reference ? ` - Ref ${draft.reference}` : ""}` } };
     onChange({ ...data, sections: { ...data.sections, transactions: [...data.sections.transactions, row] } });
-    try { const result = await syncReceipt(draft, id); setMessage(result.synced ? "Saved to VCC and synced securely." : "Saved to this VCC. Cloud sync needs environment setup."); }
+    try { const result = await syncReceipt(draft, id); setMessage(result.synced ? "Saved to VCC and synced securely." : `Saved on this device. ${result.reason || "Connect cloud sync to share it."}`); }
     catch (error) { setMessage(`Saved locally; cloud sync needs attention: ${error instanceof Error ? error.message : "unknown error"}`); }
     setStatus("saved");
   }

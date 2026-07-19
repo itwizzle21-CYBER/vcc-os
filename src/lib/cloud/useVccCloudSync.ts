@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel, Session } from "@supabase/supabase-js";
 import type { AppData } from "../types/app";
+import { mergeVitaReceipts, type VitaReceiptRecord } from "../vitascan/receiptSync";
 import { cloudConfigured, supabase } from "./client";
 
 export type CloudSyncStatus = "offline" | "signed_out" | "connecting" | "synced" | "saving" | "error";
@@ -39,6 +40,7 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
   const lastSynced = useRef("");
   const ready = useRef(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const receiptRowsRef = useRef<VitaReceiptRecord[]>([]);
   const currentDevice = useRef(typeof window === "undefined" ? "server" : deviceId());
   dataRef.current = data;
 
@@ -65,18 +67,35 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
 
     async function connect() {
       const userId = session!.user.id;
-      const { data: remote, error } = await supabase!.from("vcc_app_state").select("data,device_id,revision").eq("user_id", userId).maybeSingle();
+      const [stateResult, receiptResult] = await Promise.all([
+        supabase!.from("vcc_app_state").select("data,device_id,revision").eq("user_id", userId).maybeSingle(),
+        supabase!.from("vita_receipts").select("transaction_id,merchant,amount,occurred_on,direction,account_name,category,reference_code").eq("user_id", userId),
+      ]);
       if (cancelled) return;
-      if (error) { setStatus("error"); setMessage(error.message); return; }
+      if (stateResult.error || receiptResult.error) {
+        const error = stateResult.error || receiptResult.error;
+        setStatus("error");
+        setMessage(error?.message || "Could not load shared VCC data.");
+        return;
+      }
 
-      if (remote && isAppData(remote.data)) {
-        const serialized = JSON.stringify(remote.data);
+      const remote = stateResult.data;
+      receiptRowsRef.current = (receiptResult.data || []) as VitaReceiptRecord[];
+      const remoteData = remote?.data;
+      const hasRemoteState = isAppData(remoteData);
+      const startingData = hasRemoteState ? remoteData : dataRef.current;
+      const sharedData = mergeVitaReceipts(startingData, receiptRowsRef.current);
+      const serialized = JSON.stringify(sharedData);
+      dataRef.current = sharedData;
+
+      if (hasRemoteState || sharedData !== startingData) {
         lastSynced.current = serialized;
-        applyRemoteData(remote.data);
-      } else {
-        const serialized = JSON.stringify(dataRef.current);
+        applyRemoteData(sharedData);
+      }
+
+      if (!hasRemoteState || sharedData !== startingData) {
         const { error: createError } = await supabase!.from("vcc_app_state").upsert({
-          user_id: userId, data: dataRef.current, device_id: currentDevice.current,
+          user_id: userId, data: sharedData, device_id: currentDevice.current,
           revision: Date.now(), updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
         if (createError) { setStatus("error"); setMessage(createError.message); return; }
@@ -91,13 +110,35 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
         .on("postgres_changes", { event: "*", schema: "public", table: "vcc_app_state", filter: `user_id=eq.${userId}` }, (payload) => {
           const row = payload.new as { data?: unknown; device_id?: string };
           if (row.device_id === currentDevice.current || !isAppData(row.data)) return;
-          const serialized = JSON.stringify(row.data);
+          const nextData = mergeVitaReceipts(row.data, receiptRowsRef.current);
+          const serialized = JSON.stringify(nextData);
           if (serialized === lastSynced.current) return;
           lastSynced.current = serialized;
-          applyRemoteData(row.data);
+          dataRef.current = nextData;
+          applyRemoteData(nextData);
           setStatus("synced");
           setMessage("Updated from another VCC device.");
-        }).subscribe();
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "vita_receipts", filter: `user_id=eq.${userId}` }, (payload) => {
+          const receipt = payload.new as VitaReceiptRecord;
+          receiptRowsRef.current = [
+            ...receiptRowsRef.current.filter((row) => row.transaction_id !== receipt.transaction_id),
+            receipt,
+          ];
+          const nextData = mergeVitaReceipts(dataRef.current, [receipt]);
+          if (nextData === dataRef.current) return;
+          dataRef.current = nextData;
+          lastSynced.current = JSON.stringify(nextData);
+          applyRemoteData(nextData);
+          setStatus("synced");
+          setMessage("A VitaScan receipt arrived from another device.");
+        })
+        .subscribe((channelStatus) => {
+          if (channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT") {
+            setStatus("error");
+            setMessage("Live device updates paused. Reopen VCC to reconnect.");
+          }
+        });
     }
 
     connect();
