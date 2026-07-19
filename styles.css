@@ -28,6 +28,10 @@
   --theme-radius-panel: 10px;
   --theme-radius-control: 8px;
   --theme-letter-spacing: 0;
+  --theme-overlay: rgba(8, 11, 18, 0.86);
+  --theme-overlay-strong: rgba(10, 14, 23, 0.98);
+  --theme-on-accent: #ffffff;
+  --theme-grid-line: rgba(255, 255, 255, 0.035);
 }
 
 :root[data-theme="light"] {
@@ -39,6 +43,10 @@
   --text: #17202a;
   --muted: #637083;
   --shadow-raised: 0 14px 34px rgba(48, 60, 78, 0.1);
+  --theme-overlay: rgba(255, 255, 255, 0.9);
+  --theme-overlay-strong: rgba(255, 255, 255, 0.98);
+  --theme-on-accent: #ffffff;
+  --theme-grid-line: rgba(23, 32, 42, 0.055);
 }
 
 :root[data-appearance="signature"] {
@@ -1286,6 +1294,255 @@ textarea {
   .vcc-switch-track > span {
     transition-duration: 0.01ms;
   }
+}
+
+/* Global light-theme contract for the legacy reference shell. */
+:root[data-theme="light"] {
+  --vcc-bg: var(--bg);
+  --vcc-panel: color-mix(in srgb, var(--surface) 94%, transparent);
+  --vcc-panel-strong: var(--surface);
+  --vcc-line: var(--border);
+  --vcc-line-strong: color-mix(in srgb, var(--accent) 38%, var(--border));
+  --vcc-text: var(--text);
+  --vcc-muted: var(--muted);
+}
+
+:root[data-theme="light"] html,
+:root[data-theme="light"] body,
+:root[data-theme="light"] .reference-shell.app-shell {
+  background: var(--bg);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell {
+  background:
+    radial-gradient(circle at 12% 0, var(--accent-soft), transparent 32rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 72%, var(--bg)), var(--bg) 42rem);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell::before {
+  background:
+    linear-gradient(90deg, var(--theme-grid-line) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-line) 1px, transparent 1px);
+}
+
+:root[data-theme="light"] .dashboard-top-nav,
+:root[data-theme="light"] .mobile-bottom-nav,
+:root[data-theme="light"] .mobile-drawer {
+  border-color: var(--border);
+  background: var(--theme-overlay-strong);
+  color: var(--text);
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+:root[data-theme="light"] .dashboard-top-brand,
+:root[data-theme="light"] .dashboard-top-nav nav a:hover,
+:root[data-theme="light"] .dashboard-top-nav nav a.active,
+:root[data-theme="light"] .dashboard-mobile-menu-trigger,
+:root[data-theme="light"] .mobile-quick-launcher-button {
+  color: var(--text);
+}
+
+:root[data-theme="light"] .dashboard-top-nav nav a,
+:root[data-theme="light"] .mobile-bottom-nav a,
+:root[data-theme="light"] .mobile-drawer a,
+:root[data-theme="light"] .reference-shell .topbar .eyebrow,
+:root[data-theme="light"] .reference-shell .eyebrow {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .dashboard-top-nav nav a:hover,
+:root[data-theme="light"] .dashboard-top-nav nav a.active,
+:root[data-theme="light"] .mobile-bottom-nav a.active,
+:root[data-theme="light"] .mobile-drawer a.active {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+:root[data-theme="light"] .base-panel,
+:root[data-theme="light"] .reference-shell .panel,
+:root[data-theme="light"] .reference-shell .summary-card,
+:root[data-theme="light"] .reference-shell .spreadsheet-panel,
+:root[data-theme="light"] .reference-shell .planner-panel,
+:root[data-theme="light"] .reference-shell .buy-next-panel,
+:root[data-theme="light"] .reference-shell .money-history-panel,
+:root[data-theme="light"] .reference-shell .money-hero-panel,
+:root[data-theme="light"] .reference-shell .bills-command-panel,
+:root[data-theme="light"] .reference-shell .transactions-command-panel,
+:root[data-theme="light"] .reference-shell .inventory-command-panel,
+:root[data-theme="light"] .reference-shell .savings-command-panel,
+:root[data-theme="light"] .reference-shell .goals-command-panel,
+:root[data-theme="light"] .reference-shell .reports-command-panel,
+:root[data-theme="light"] .reference-shell .settings-card,
+:root[data-theme="light"] .reference-shell .settings-hero,
+:root[data-theme="light"] .reference-shell .danger-panel {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface) var(--surface-alpha), transparent);
+  color: var(--text);
+  box-shadow: var(--shadow-raised);
+}
+
+:root[data-theme="light"] .dashboard-mission-row,
+:root[data-theme="light"] .dashboard-alert-row,
+:root[data-theme="light"] .reference-shell .money-hero-metrics span,
+:root[data-theme="light"] .reference-shell .setting-toggle,
+:root[data-theme="light"] .reference-shell .metric-line,
+:root[data-theme="light"] .reference-shell .mini-list div,
+:root[data-theme="light"] .reference-shell .objective-list a,
+:root[data-theme="light"] .reference-shell .history-list button,
+:root[data-theme="light"] .reference-shell .category-list div,
+:root[data-theme="light"] .reference-shell .notification-list a,
+:root[data-theme="light"] .reference-shell .report-list a,
+:root[data-theme="light"] .reference-shell .report-metric-grid a,
+:root[data-theme="light"] .reference-shell .report-callout,
+:root[data-theme="light"] .reference-shell .buy-next-grid a {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell .topbar h1,
+:root[data-theme="light"] .reference-shell .panel h2,
+:root[data-theme="light"] .reference-shell .summary-card strong,
+:root[data-theme="light"] .reference-shell .spreadsheet-toolbar h2,
+:root[data-theme="light"] .reference-shell .planner-form h2,
+:root[data-theme="light"] .reference-shell .buy-next-panel h2,
+:root[data-theme="light"] .reference-shell .bills-command-panel h2,
+:root[data-theme="light"] .reference-shell .transactions-command-panel h2,
+:root[data-theme="light"] .reference-shell .inventory-command-panel h2,
+:root[data-theme="light"] .reference-shell .savings-command-panel h2,
+:root[data-theme="light"] .reference-shell .goals-command-panel h2,
+:root[data-theme="light"] .reference-shell .reports-command-panel h2,
+:root[data-theme="light"] .dashboard-module-title strong,
+:root[data-theme="light"] .dashboard-module-card dd,
+:root[data-theme="light"] .inventory-inline-stats strong {
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell .summary-card span,
+:root[data-theme="light"] .dashboard-module-card dt,
+:root[data-theme="light"] .dashboard-module-title small,
+:root[data-theme="light"] .reference-shell .bills-inline-stats,
+:root[data-theme="light"] .reference-shell .transactions-inline-stats,
+:root[data-theme="light"] .reference-shell .inventory-inline-stats,
+:root[data-theme="light"] .reference-shell .savings-inline-stats,
+:root[data-theme="light"] .reference-shell .goals-inline-stats,
+:root[data-theme="light"] .reference-shell .toolbar-controls span,
+:root[data-theme="light"] .reference-shell .bills-search span,
+:root[data-theme="light"] .reference-shell .transactions-search span,
+:root[data-theme="light"] .reference-shell .inventory-search span,
+:root[data-theme="light"] .reference-shell .savings-search span,
+:root[data-theme="light"] .reference-shell .goals-search span,
+:root[data-theme="light"] .reference-shell .transactions-filter-controls span,
+:root[data-theme="light"] .reference-shell .savings-type-select span,
+:root[data-theme="light"] .reference-shell .goals-status-select span {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .reference-shell .spreadsheet-toolbar,
+:root[data-theme="light"] .reference-shell .spreadsheet-panel .spreadsheet-toolbar,
+:root[data-theme="light"] .reference-shell th,
+:root[data-theme="light"] .reference-shell td,
+:root[data-theme="light"] .reference-shell .row-actions,
+:root[data-theme="light"] .reference-shell .table-wrap {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: none;
+}
+
+:root[data-theme="light"] .reference-shell th {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .reference-shell td input,
+:root[data-theme="light"] .reference-shell td select,
+:root[data-theme="light"] .reference-shell .toolbar-controls input,
+:root[data-theme="light"] .reference-shell .toolbar-controls select,
+:root[data-theme="light"] .reference-shell .bills-search input,
+:root[data-theme="light"] .reference-shell .transactions-search input,
+:root[data-theme="light"] .reference-shell .inventory-search input,
+:root[data-theme="light"] .reference-shell .savings-search input,
+:root[data-theme="light"] .reference-shell .goals-search input,
+:root[data-theme="light"] .reference-shell .transactions-filter-controls select,
+:root[data-theme="light"] .reference-shell .savings-type-select select,
+:root[data-theme="light"] .reference-shell .settings-grid input,
+:root[data-theme="light"] .reference-shell .settings-grid select {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell .bills-status-tabs button,
+:root[data-theme="light"] .reference-shell .inventory-tabs button,
+:root[data-theme="light"] .reference-shell .goals-status-tabs button,
+:root[data-theme="light"] .reference-shell .reports-period-tabs button,
+:root[data-theme="light"] .reference-shell .toolbar-controls button,
+:root[data-theme="light"] .reference-shell .settings-actions button,
+:root[data-theme="light"] .reference-shell .settings-reset-grid button {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell .bills-status-tabs button.active,
+:root[data-theme="light"] .reference-shell .inventory-tabs button.active,
+:root[data-theme="light"] .reference-shell .goals-status-tabs button.active,
+:root[data-theme="light"] .reference-shell .reports-period-tabs button.active,
+:root[data-theme="light"] .reference-shell .toolbar-controls button:first-of-type {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+:root[data-theme="light"] .vcc-agent-popover,
+:root[data-theme="light"] .cloud-sync-dialog {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-raised);
+}
+
+:root[data-theme="light"] .vcc-agent-message > div,
+:root[data-theme="light"] .vcc-agent-input input,
+:root[data-theme="light"] .cloud-sync-email > div,
+:root[data-theme="light"] .cloud-sync-code input,
+:root[data-theme="light"] .cloud-sync-secondary,
+:root[data-theme="light"] .cloud-sync-resend {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .vcc-agent-popover header small,
+:root[data-theme="light"] .vcc-agent-input label,
+:root[data-theme="light"] .vcc-agent-message > div > small,
+:root[data-theme="light"] .vcc-agent-popover > footer,
+:root[data-theme="light"] .cloud-sync-dialog p,
+:root[data-theme="light"] .cloud-sync-email,
+:root[data-theme="light"] .cloud-sync-code,
+:root[data-theme="light"] .cloud-sync-dialog small {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .vitascan-app-shell {
+  background:
+    radial-gradient(circle at 20% 0, var(--accent-soft), transparent 32%),
+    var(--bg);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .scan-frame,
+:root[data-theme="light"] .scan-secondary,
+:root[data-theme="light"] .reset-scan,
+:root[data-theme="light"] .review-fields input,
+:root[data-theme="light"] .review-fields select {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 /* Bills status check-off */
