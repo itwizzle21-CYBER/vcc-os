@@ -25,18 +25,9 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --shadow-raised: 0 18px 40px rgba(0, 0, 0, 0.18);
   --surface-alpha: 94%;
-}
-
-:root[data-theme="midnight"] {
-  --bg: #080b12;
-  --surface: #101522;
-  --surface-2: #182033;
-}
-
-:root[data-theme="slate"] {
-  --bg: #111827;
-  --surface: #1f2937;
-  --surface-2: #273449;
+  --theme-radius-panel: 10px;
+  --theme-radius-control: 8px;
+  --theme-letter-spacing: 0;
 }
 
 :root[data-theme="light"] {
@@ -48,6 +39,91 @@
   --text: #17202a;
   --muted: #637083;
   --shadow-raised: 0 14px 34px rgba(48, 60, 78, 0.1);
+}
+
+:root[data-appearance="signature"] {
+  --bg: #08101d;
+  --surface: #111a2a;
+  --surface-2: #19263a;
+  --border: #2a3a52;
+  --muted: #9aacc2;
+  --shadow-raised: 0 20px 48px rgba(1, 7, 18, 0.28);
+}
+
+:root[data-theme="light"][data-appearance="signature"] {
+  --bg: #edf3fa;
+  --surface: #ffffff;
+  --surface-2: #f4f7fb;
+  --border: #d3deeb;
+  --text: #142033;
+  --muted: #607089;
+}
+
+:root[data-appearance="executive"] {
+  --bg: #101214;
+  --surface: #181b1e;
+  --surface-2: #24282c;
+  --border: #3c4147;
+  --text: #f5f1e8;
+  --muted: #aaa69d;
+  --shadow-raised: 0 14px 30px rgba(0, 0, 0, 0.24);
+  --theme-radius-panel: 4px;
+  --theme-radius-control: 3px;
+  --theme-letter-spacing: 0.006em;
+}
+
+:root[data-theme="light"][data-appearance="executive"] {
+  --bg: #eeeae2;
+  --surface: #fffdf8;
+  --surface-2: #f4f0e8;
+  --border: #d2c9ba;
+  --text: #25221e;
+  --muted: #706a61;
+}
+
+:root[data-appearance="nordic"] {
+  --bg: #0f181b;
+  --surface: #172326;
+  --surface-2: #223135;
+  --border: #35484c;
+  --text: #edf6f5;
+  --muted: #9fb3b1;
+  --shadow-raised: 0 20px 50px rgba(3, 15, 17, 0.22);
+  --theme-radius-panel: 16px;
+  --theme-radius-control: 11px;
+}
+
+:root[data-theme="light"][data-appearance="nordic"] {
+  --bg: #e9f0ef;
+  --surface: #fdfefe;
+  --surface-2: #f1f6f5;
+  --border: #cbdad8;
+  --text: #17302f;
+  --muted: #5f7775;
+}
+
+:root[data-appearance="contrast"] {
+  --bg: #000000;
+  --surface: #0b0b0b;
+  --surface-2: #181818;
+  --border: #f1f1f1;
+  --text: #ffffff;
+  --muted: #d2d2d2;
+  --accent: #ffd84d;
+  --accent-soft: rgba(255, 216, 77, 0.2);
+  --shadow-raised: 0 0 0 2px #ffffff;
+  --theme-radius-panel: 2px;
+  --theme-radius-control: 2px;
+}
+
+:root[data-theme="light"][data-appearance="contrast"] {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f2f2f2;
+  --border: #111111;
+  --text: #000000;
+  --muted: #343434;
+  --shadow-raised: 0 0 0 2px #111111;
 }
 
 :root[data-surface="minimal"] {

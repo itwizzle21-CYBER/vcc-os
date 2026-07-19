@@ -1,5 +1,5 @@
 import { Trash2 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useDeferredValue, useMemo, useRef, useState } from "react";
 import type { SectionConfig, SectionKey, SpreadsheetRow } from "../../lib/types/app";
 import { formatCurrency } from "../../lib/calculations/currency";
 
@@ -29,6 +29,7 @@ export default function Spreadsheet({
   addLabel = "Add Row",
 }: SpreadsheetProps) {
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [validationMessage, setValidationMessage] = useState("");
   const [newRowId, setNewRowId] = useState("");
   const tableRef = useRef<HTMLDivElement>(null);
@@ -55,17 +56,17 @@ export default function Spreadsheet({
     }));
     const filled = normalized.filter((row) => !blankRowIds.has(row.id));
     const blanks = normalized.filter((row) => blankRowIds.has(row.id));
-    const searched = search.trim()
+    const searched = deferredSearch.trim()
       ? filled.filter((row) =>
-          Object.values(row.cells).some((value) => String(value || "").toLowerCase().includes(search.toLowerCase()))
+          Object.values(row.cells).some((value) => String(value || "").toLowerCase().includes(deferredSearch.toLowerCase()))
         )
       : filled;
     const sorted = sortBy
       ? [...searched].sort((a, b) => String(a.cells[sortBy] || "").localeCompare(String(b.cells[sortBy] || ""), undefined, { numeric: true }))
       : searched;
-    const visibleBlanks = search.trim() ? blanks.filter((row) => row.id === newRowId) : blanks;
+    const visibleBlanks = deferredSearch.trim() ? blanks.filter((row) => row.id === newRowId) : blanks;
     return [...sorted, ...visibleBlanks];
-  }, [blankRowIds, config.columns, getComputedCell, newRowId, rows, search, sortBy]);
+  }, [blankRowIds, config.columns, deferredSearch, getComputedCell, newRowId, rows, sortBy]);
 
   function updateCell(rowId: string, columnKey: string, value: string) {
     if (preventDuplicateKey === columnKey && value.trim()) {

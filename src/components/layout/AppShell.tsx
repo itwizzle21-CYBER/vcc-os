@@ -23,7 +23,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { AppData, UserSettings } from "../../lib/types/app";
 
 const nav = [
@@ -50,6 +50,7 @@ export default function AppShell({
   children,
   currentPath,
   settings,
+  activeTheme,
   wallpaperPreview,
   data,
   onSettingsChange,
@@ -57,6 +58,7 @@ export default function AppShell({
   children: ReactNode;
   currentPath: string;
   settings: UserSettings;
+  activeTheme: "dark" | "light";
   wallpaperPreview?: Pick<UserSettings, "wallpaper" | "customWallpaper" | "backgroundOpacity" | "cardOpacity"> | null;
   data: AppData;
   onSettingsChange: (settings: UserSettings) => void;
@@ -67,6 +69,7 @@ export default function AppShell({
   const [launcherDragging, setLauncherDragging] = useState(false);
   const [launcherTarget, setLauncherTarget] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
   const brandRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLDivElement>(null);
@@ -82,9 +85,12 @@ export default function AppShell({
   } | null>(null);
   const visibleNav = useMemo(() => nav.filter((item) => item.path !== "/vitascan" || settings.vitaScanEnabled), [settings.vitaScanEnabled]);
   const dashboardNav = useMemo(() => visibleNav.filter((item) => primaryPaths.includes(item.path)), [visibleNav]);
+  const searchIndex = useMemo(() => buildSearchIndex(data), [data]);
   const results = useMemo(
-    () => buildSearchResults(data, query).filter((result) => settings.vitaScanEnabled || result.href !== "/vitascan"),
-    [data, query, settings.vitaScanEnabled],
+    () => searchIndex.filter((result) => result.searchText.includes(deferredQuery.trim().toLowerCase()))
+      .filter((result) => settings.vitaScanEnabled || result.href !== "/vitascan")
+      .slice(0, 8),
+    [deferredQuery, searchIndex, settings.vitaScanEnabled],
   );
   const isDashboard = normalize(currentPath) === "/";
   const accountName = settings.accountName.trim();
@@ -224,7 +230,7 @@ export default function AppShell({
 
   return (
     <div
-      className={`app-shell reference-shell theme-${settings.theme} accent-${settings.accent} density-${settings.density} ${hasWallpaper ? `has-wallpaper wallpaper-${visualSettings.wallpaper}` : "wallpaper-default"} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}
+      className={`app-shell reference-shell theme-${activeTheme} appearance-${settings.appearanceTheme} accent-${settings.accent} density-${settings.density} ${hasWallpaper ? `has-wallpaper wallpaper-${visualSettings.wallpaper}` : "wallpaper-default"} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}
       style={(hasWallpaper ? { "--vcc-wallpaper": `url(${JSON.stringify(wallpaperSource)})`, ...opacityStyle } : undefined) as CSSProperties | undefined}
     >
       <header className="dashboard-top-nav">
@@ -532,10 +538,10 @@ function lerp(from: number, to: number, amount: number) {
   return from + (to - from) * amount;
 }
 
-function buildSearchResults(data: AppData, query: string) {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return [];
-  const results: Array<{ label: string; detail: string; href: string }> = [];
+type SearchResult = { label: string; detail: string; href: string; searchText: string };
+
+function buildSearchIndex(data: AppData): SearchResult[] {
+  const results: SearchResult[] = [];
   const sectionToPath: Record<string, string> = {
     money: "/money",
     bills: "/bills",
@@ -550,21 +556,20 @@ function buildSearchResults(data: AppData, query: string) {
   };
 
   for (const item of nav) {
-    if (item.label.toLowerCase().includes(normalized)) results.push({ label: item.label, detail: "Navigation", href: item.path });
+    results.push({ label: item.label, detail: "Navigation", href: item.path, searchText: item.label.toLowerCase() });
   }
 
   for (const [section, rows] of Object.entries(data.sections)) {
     rows.slice(0, 40).forEach((row) => {
       const values = Object.values(row.cells).filter(Boolean).join(" ");
-      if (values.toLowerCase().includes(normalized)) {
-        results.push({
-          label: values.split(" ").slice(0, 4).join(" ") || section,
-          detail: section,
-          href: sectionToPath[section] || "/",
-        });
-      }
+      results.push({
+        label: values.split(" ").slice(0, 4).join(" ") || section,
+        detail: section,
+        href: sectionToPath[section] || "/",
+        searchText: values.toLowerCase(),
+      });
     });
   }
 
-  return results.slice(0, 8);
+  return results;
 }

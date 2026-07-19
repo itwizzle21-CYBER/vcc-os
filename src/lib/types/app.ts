@@ -9,7 +9,8 @@ export type SectionKey =
   | "inventory"
   | "goals";
 
-export type ThemeMode = "dark" | "midnight" | "slate" | "light";
+export type ThemeMode = "system" | "dark" | "light";
+export type AppearanceTheme = "signature" | "executive" | "nordic" | "contrast";
 export type AccentColor = "blue" | "green" | "gold" | "purple" | "red";
 export type Density = "comfortable" | "compact" | "ultra";
 export type SurfaceStyle = "glass" | "neumorphic" | "minimal";
@@ -51,6 +52,7 @@ export interface PaycheckHistoryRow {
 
 export interface UserSettings {
   theme: ThemeMode;
+  appearanceTheme: AppearanceTheme;
   accent: AccentColor;
   density: Density;
   accountName: string;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   BellRing,
@@ -13,6 +13,7 @@ import {
   Info,
   LayoutDashboard,
   MonitorCog,
+  Moon,
   Palette,
   RotateCcw,
   Save,
@@ -20,6 +21,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Sun,
   Upload,
   UserRound,
   X,
@@ -82,23 +84,34 @@ type WallpaperPreviewSettings = Pick<UserSettings, "wallpaper" | "customWallpape
 export default function App() {
   const [data, setData] = useState<AppData>(() => loadAppData());
   const [wallpaperPreview, setWallpaperPreview] = useState<WallpaperPreviewSettings | null>(null);
+  const [systemTheme, setSystemTheme] = useState<"dark" | "light">(() => getSystemTheme());
   const path = normalizePath(window.location.pathname);
   const isKnownPath = knownPaths.has(path);
   const financialState = useMemo(() => computeFinancialState(data), [data]);
   const decisionState = useMemo(() => computeDecisionEngine(financialState, data), [financialState, data]);
+  const activeTheme = data.settings.theme === "system" ? systemTheme : data.settings.theme;
   const normalizeAndSetData = useCallback((next: AppData) => {
     setData({ ...next, sections: { ...next.sections, inventory: next.sections.inventory.map(normalizeInventoryRow) } });
   }, []);
   const cloudSync = useVccCloudSync(data, normalizeAndSetData);
 
   useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const updateSystemTheme = () => setSystemTheme(media.matches ? "dark" : "light");
+    updateSystemTheme();
+    media.addEventListener("change", updateSystemTheme);
+    return () => media.removeEventListener("change", updateSystemTheme);
+  }, []);
+
+  useEffect(() => {
     saveAppData(data);
     document.title = path === "/vitascan" ? "VitaScan — VCC Receipt Scanner" : "VCC-OS";
-    document.documentElement.dataset.theme = data.settings.theme;
+    document.documentElement.dataset.theme = activeTheme;
+    document.documentElement.dataset.appearance = data.settings.appearanceTheme;
     document.documentElement.dataset.accent = data.settings.accent;
     document.documentElement.dataset.density = data.settings.density;
     document.documentElement.dataset.surface = data.settings.surfaceStyle;
-  }, [data, path]);
+  }, [activeTheme, data, path]);
 
   function updateData(next: AppData) {
     normalizeAndSetData(next);
@@ -135,7 +148,7 @@ export default function App() {
   return (
     <>
     {path === "/" && <WelcomeTransition settings={data.settings} />}
-    <AppShell currentPath={path} settings={data.settings} wallpaperPreview={wallpaperPreview} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
+    <AppShell currentPath={path} settings={data.settings} activeTheme={activeTheme} wallpaperPreview={wallpaperPreview} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
       {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} data={data} settings={data.settings} onSettingsChange={(settings) => updateData({ ...data, settings })} />}
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
@@ -354,13 +367,14 @@ function BillsPage({
   resetSection: (section: SectionKey) => void;
 }) {
   const [billSearch, setBillSearch] = useState("");
+  const deferredBillSearch = useDeferredValue(billSearch);
   const [statusFilter, setStatusFilter] = useState("all");
   const billRows = data.sections.bills.map(normalizeBillRow);
   const filledBillRows = billRows.filter((row) => !isBlankRow(row.cells));
   const visibleBillRows = billRows.filter((row) => {
     if (isBlankRow(row.cells)) return true;
     const status = billStatus(row);
-    const query = billSearch.trim().toLowerCase();
+    const query = deferredBillSearch.trim().toLowerCase();
     const matchesStatus = statusFilter === "all" || status === statusFilter;
     const matchesSearch = !query || [row.cells.name, row.cells.category, row.cells.status, row.cells.priority, row.cells.notes]
       .join(" ")
@@ -532,15 +546,16 @@ function TransactionsPage({
   resetSection: (section: SectionKey) => void;
 }) {
   const [transactionSearch, setTransactionSearch] = useState("");
+  const deferredTransactionSearch = useDeferredValue(transactionSearch);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const transactionRows = data.sections.transactions.map(normalizeTransactionRow);
   const visibleTransactionRows = transactionRows.filter((row) => {
-    if (isBlankRow(row.cells)) return !transactionSearch.trim() && categoryFilter === "all" && typeFilter === "all" && dateFilter === "all";
+    if (isBlankRow(row.cells)) return !deferredTransactionSearch.trim() && categoryFilter === "all" && typeFilter === "all" && dateFilter === "all";
     const type = transactionType(row);
     const category = transactionCategory(row);
-    const query = transactionSearch.trim().toLowerCase();
+    const query = deferredTransactionSearch.trim().toLowerCase();
     const matchesCategory = categoryFilter === "all" || category.toLowerCase() === categoryFilter.toLowerCase();
     const matchesType = typeFilter === "all" || type === typeFilter;
     const matchesSearch = !query || [row.cells.description, row.cells.category, row.cells.account, row.cells.notes]
@@ -715,6 +730,7 @@ function SavingsPage({
   resetSection: (section: SectionKey) => void;
 }) {
   const [savingsSearch, setSavingsSearch] = useState("");
+  const deferredSavingsSearch = useDeferredValue(savingsSearch);
   const [vaultType, setVaultType] = useState("all");
   const savingsRows = data.sections.savings.map(normalizeSavingsRow);
   const filledSavingsRows = savingsRows.filter((row) => !isBlankRow(row.cells));
@@ -727,8 +743,8 @@ function SavingsPage({
   const monthlyInterest = filledSavingsRows.reduce((sum, row) => sum + (toNumber(row.cells.balance) * toNumber(row.cells.interestRate)) / 100 / 12, 0);
   const progressPercent = totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0;
   const visibleSavingsRows = savingsRows.filter((row) => {
-    if (isBlankRow(row.cells)) return !savingsSearch.trim() && vaultType === "all";
-    const query = savingsSearch.trim().toLowerCase();
+    if (isBlankRow(row.cells)) return !deferredSavingsSearch.trim() && vaultType === "all";
+    const query = deferredSavingsSearch.trim().toLowerCase();
     const type = savingsType(row);
     const matchesType = vaultType === "all" || type === vaultType;
     const matchesSearch = !query || [row.cells.name, row.cells.institution, row.cells.type, row.cells.notes]
@@ -822,6 +838,7 @@ function GoalsPage({
   resetSection: (section: SectionKey) => void;
 }) {
   const [goalSearch, setGoalSearch] = useState("");
+  const deferredGoalSearch = useDeferredValue(goalSearch);
   const [goalStatus, setGoalStatus] = useState("all");
   const goalRows = data.sections.goals.map(normalizeGoalRow);
   const filledGoalRows = goalRows.filter((row) => !isBlankRow(row.cells));
@@ -831,8 +848,8 @@ function GoalsPage({
   const totalCurrent = activeGoals.reduce((sum, row) => sum + toNumber(row.cells.current), 0);
   const overallProgress = totalTarget > 0 ? Math.min(100, Math.round((totalCurrent / totalTarget) * 100)) : 0;
   const visibleGoalRows = goalRows.filter((row) => {
-    if (isBlankRow(row.cells)) return !goalSearch.trim() && goalStatus === "all";
-    const query = goalSearch.trim().toLowerCase();
+    if (isBlankRow(row.cells)) return !deferredGoalSearch.trim() && goalStatus === "all";
+    const query = deferredGoalSearch.trim().toLowerCase();
     const status = goalStatusValue(row);
     const matchesStatus = goalStatus === "all" || status === goalStatus;
     const matchesSearch = !query || [row.cells.name, row.cells.category, row.cells.priority, row.cells.status]
@@ -1176,10 +1193,11 @@ function dateInputValue(date: Date): string {
 function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">) {
   const [inventoryTab, setInventoryTab] = useState("all");
   const [inventorySearch, setInventorySearch] = useState("");
+  const deferredInventorySearch = useDeferredValue(inventorySearch);
   const inventoryRows = props.data.sections.inventory.map(normalizeInventoryRow);
   const filledInventoryRows = inventoryRows.filter((row) => !isBlankRow(row.cells));
   const searchedInventoryRows = filledInventoryRows.filter((row) => {
-    const query = inventorySearch.trim().toLowerCase();
+    const query = deferredInventorySearch.trim().toLowerCase();
     if (!query) return true;
     return [row.cells.item, row.cells.category, row.cells.alert, row.cells.notes]
       .join(" ")
@@ -1738,12 +1756,22 @@ function SettingsPage({
               </SettingControlRow>
               <button type="button" className="settings-preview-welcome" onClick={() => setWelcomePreviewId(Date.now())}>Preview welcome</button>
             </div>
-            <SettingControlRow label="Theme" description="Set the overall brightness and contrast.">
-              <SettingSegmented label="Theme" value={data.settings.theme} options={[
-                { value: "dark", label: "Dark" },
-                { value: "midnight", label: "Midnight" },
-                { value: "slate", label: "Slate" },
-                { value: "light", label: "Light" },
+            <div className="settings-appearance-studio">
+              <div className="settings-appearance-intro">
+                <div>
+                  <p className="settings-kicker">Visual system</p>
+                  <h3>Choose your workspace character</h3>
+                  <p>Each theme changes surfaces, borders, depth, typography rhythm, and chart treatment across VCC.</p>
+                </div>
+                <span className="settings-live-badge"><Sparkles size={14} aria-hidden="true" /> Live preview</span>
+              </div>
+              <AppearanceThemePicker value={data.settings.appearanceTheme} onChange={(appearanceTheme) => onChange({ ...data, settings: { ...data.settings, appearanceTheme } })} />
+            </div>
+            <SettingControlRow label="Light and dark mode" description="Follow your device automatically or choose a fixed mode.">
+              <SettingSegmented label="Light and dark mode" value={data.settings.theme} options={[
+                { value: "system", label: "System", icon: MonitorCog },
+                { value: "light", label: "Light", icon: Sun },
+                { value: "dark", label: "Dark", icon: Moon },
               ]} onChange={(theme) => onChange({ ...data, settings: { ...data.settings, theme: theme as AppData["settings"]["theme"] } })} />
             </SettingControlRow>
             <SettingControlRow label="Accent" description="Used for focus, selection, and key actions.">
@@ -1987,13 +2015,38 @@ function SettingControlRow({ label, description, children }: { label: string; de
   );
 }
 
-function SettingSegmented({ label, value, options, onChange }: { label: string; value: string; options: Array<{ value: string; label: string }>; onChange: (value: string) => void }) {
+function SettingSegmented({ label, value, options, onChange }: { label: string; value: string; options: Array<{ value: string; label: string; icon?: LucideIcon }>; onChange: (value: string) => void }) {
   return (
     <div className="settings-segmented" role="group" aria-label={label}>
-      {options.map((option) => (
-        <button key={option.value} type="button" className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)}>
-          {value === option.value && <Check size={14} aria-hidden="true" />}
+      {options.map((option) => {
+        const OptionIcon = option.icon;
+        return <button key={option.value} type="button" className={value === option.value ? "is-selected" : ""} aria-pressed={value === option.value} onClick={() => onChange(option.value)}>
+          {OptionIcon ? <OptionIcon size={15} aria-hidden="true" /> : value === option.value && <Check size={14} aria-hidden="true" />}
           <span>{option.label}</span>
+        </button>;
+      })}
+    </div>
+  );
+}
+
+const appearanceThemes = [
+  { value: "signature", name: "Signature", description: "Refined navy surfaces with luminous focus and balanced depth.", colors: ["#08111f", "#14213a", "#4f8cff"] },
+  { value: "executive", name: "Executive", description: "Graphite structure, decisive borders, and restrained professional contrast.", colors: ["#111315", "#25282c", "#c79a4b"] },
+  { value: "nordic", name: "Nordic", description: "Quiet cool surfaces, airy spacing, and calm editorial clarity.", colors: ["#e8edf2", "#f8fafb", "#347c78"] },
+  { value: "contrast", name: "High Contrast", description: "Maximum separation, stronger focus rings, and crisp data readability.", colors: ["#050505", "#1b1b1b", "#ffd84d"] },
+] as const;
+
+function AppearanceThemePicker({ value, onChange }: { value: AppData["settings"]["appearanceTheme"]; onChange: (value: AppData["settings"]["appearanceTheme"]) => void }) {
+  return (
+    <div className="settings-theme-grid" role="radiogroup" aria-label="Professional themes">
+      {appearanceThemes.map((theme) => (
+        <button key={theme.value} type="button" role="radio" aria-checked={value === theme.value} className={`settings-theme-card theme-preview-${theme.value}${value === theme.value ? " is-selected" : ""}`} onClick={() => onChange(theme.value)}>
+          <span className="settings-theme-card-top">
+            <span className="settings-theme-palette" aria-hidden="true">{theme.colors.map((color) => <i key={color} style={{ backgroundColor: color }} />)}</span>
+            {value === theme.value && <span className="settings-theme-selected"><Check size={13} aria-hidden="true" /> Active</span>}
+          </span>
+          <strong>{theme.name}</strong>
+          <small>{theme.description}</small>
         </button>
       ))}
     </div>
@@ -2696,6 +2749,11 @@ function moneySectionLabel(section: ReturnType<typeof moneySection>): string {
 function normalizePath(path: string) {
   if (path.length > 1 && path.endsWith("/")) return path.slice(0, -1);
   return path || "/";
+}
+
+function getSystemTheme(): "dark" | "light" {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "dark";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 const knownPaths = new Set([

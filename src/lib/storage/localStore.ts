@@ -111,6 +111,20 @@ function migrateAppData(raw: unknown): AppData {
     }];
   }
 
+  const sourceSettings = typeof source.settings === "object" && source.settings
+    ? source.settings as Omit<Partial<AppData["settings"]>, "theme" | "appearanceTheme"> & { theme?: string; appearanceTheme?: string }
+    : {};
+  const legacyTheme = sourceSettings.theme;
+  const theme = legacyTheme === "system" || legacyTheme === "dark" || legacyTheme === "light"
+    ? legacyTheme
+    : legacyTheme === "light" ? "light" : "dark";
+  const appearanceTheme = sourceSettings.appearanceTheme === "signature"
+    || sourceSettings.appearanceTheme === "executive"
+    || sourceSettings.appearanceTheme === "nordic"
+    || sourceSettings.appearanceTheme === "contrast"
+    ? sourceSettings.appearanceTheme
+    : legacyTheme === "slate" ? "executive" : "signature";
+
   return {
     ...starter,
     ...source,
@@ -120,7 +134,7 @@ function migrateAppData(raw: unknown): AppData {
     sortBy: { ...starter.sortBy, ...(typeof source.sortBy === "object" ? source.sortBy : {}) },
     paycheckPlanner: { ...starter.paycheckPlanner, ...(typeof source.paycheckPlanner === "object" ? source.paycheckPlanner : {}) },
     paycheckHistory: Array.isArray(source.paycheckHistory) ? source.paycheckHistory : starter.paycheckHistory,
-    settings: { ...starter.settings, ...(typeof source.settings === "object" ? source.settings : {}) },
+    settings: { ...starter.settings, ...sourceSettings, theme, appearanceTheme },
   } as AppData;
 }
 
