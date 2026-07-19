@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gmailActionLabel, gmailInboxUrl, isMagicLinkConfirmation, magicLinkRedirectUrl, magicLinkRetrySeconds, prefersGmailApp } from "./magicLinkFlow";
+import { gmailActionLabel, gmailInboxUrl, isMagicLinkConfirmation, magicLinkRedirectUrl, magicLinkRetrySeconds, prefersGmailApp, shouldAutoCloseConfirmation } from "./magicLinkFlow";
 
 describe("magic link flow", () => {
   it("builds a production-safe confirmation return URL", () => {
@@ -38,5 +38,11 @@ describe("magic link flow", () => {
     expect(gmailActionLabel("Mozilla/5.0 (Linux; Android 15)")).toBe("Open official Gmail app");
     expect(gmailActionLabel("Mozilla/5.0 (iPhone)")).toBe("Open Gmail for this account");
     expect(gmailActionLabel("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("Open this Gmail inbox");
+  });
+
+  it("only auto-closes a real browser popup", () => {
+    expect(shouldAutoCloseConfirmation(true, false)).toBe(true);
+    expect(shouldAutoCloseConfirmation(false, false)).toBe(false);
+    expect(shouldAutoCloseConfirmation(true, true)).toBe(false);
   });
 });

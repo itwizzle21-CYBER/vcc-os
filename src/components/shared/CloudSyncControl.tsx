@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Cloud, CloudOff, ExternalLink, LoaderCircle, LogOut, Mail, MailCheck, RefreshCw, ShieldCheck, X } from "lucide-react";
 import type { VccCloudSync } from "../../lib/cloud/useVccCloudSync";
-import { gmailActionLabel, gmailInboxUrl, isMagicLinkConfirmation, magicLinkRetrySeconds, MAGIC_LINK_COOLDOWN_SECONDS, prefersGmailApp } from "../../lib/cloud/magicLinkFlow";
+import { gmailActionLabel, gmailInboxUrl, isMagicLinkConfirmation, magicLinkRetrySeconds, MAGIC_LINK_COOLDOWN_SECONDS, prefersGmailApp, shouldAutoCloseConfirmation } from "../../lib/cloud/magicLinkFlow";
 import "./cloud-sync-control.css";
 
 const RESEND_AT_KEY = "vcc-os:magic-link-resend-at";
@@ -14,11 +14,14 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
   const [sending, setSending] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [resendAt, setResendAt] = useState(() => Number(window.sessionStorage.getItem(RESEND_AT_KEY)) || 0);
-  const [confirmationReturn] = useState(() => isMagicLinkConfirmation(window.location.search));
+  const [confirmationReturn, setConfirmationReturn] = useState(() => isMagicLinkConfirmation(window.location.search));
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const busy = sending || sync.status === "connecting" || sync.status === "saving";
   const retrySeconds = Math.max(0, Math.ceil((resendAt - now) / 1000));
+  const standaloneApp = window.matchMedia?.("(display-mode: standalone)").matches
+    || Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+  const canAutoCloseConfirmation = shouldAutoCloseConfirmation(Boolean(window.opener), standaloneApp);
 
   useEffect(() => {
     if (!resendAt || resendAt <= Date.now()) return;
@@ -29,13 +32,14 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
   useEffect(() => {
     if (!confirmationReturn || !sync.email) return;
     setOpen(true);
-    window.history.replaceState({}, "", window.location.pathname);
+    window.history.replaceState(window.history.state, "", window.location.pathname);
     const timer = window.setTimeout(() => {
+      setConfirmationReturn(false);
       setOpen(false);
-      window.close();
+      if (canAutoCloseConfirmation) window.close();
     }, 2400);
     return () => window.clearTimeout(timer);
-  }, [confirmationReturn, sync.email]);
+  }, [canAutoCloseConfirmation, confirmationReturn, sync.email]);
 
   useEffect(() => {
     if (!open) return;
@@ -111,8 +115,9 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
   }
 
   function closeConfirmation() {
+    setConfirmationReturn(false);
     setOpen(false);
-    window.close();
+    if (canAutoCloseConfirmation) window.close();
   }
 
   function openGmail() {
@@ -138,8 +143,10 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
         <h2 id="cloud-sync-title">{confirmationReturn && sync.email ? "Device connected" : sentEmail ? "Check your Gmail" : "VCC everywhere"}</h2>
         {confirmationReturn && sync.email ? <>
           <p id="cloud-sync-description"><strong>{sync.email}</strong> is confirmed. VitaScan and VCC are now connected on this device.</p>
-          <div className="cloud-sync-state" role="status"><Check size={16}/> Connection complete. Closing this window...</div>
-          <button className="cloud-sync-secondary" type="button" data-autofocus onClick={closeConfirmation}><X size={16}/> Close now</button>
+          <div className="cloud-sync-state" role="status"><Check size={16}/> Connection complete. {canAutoCloseConfirmation ? "Closing this sign-in tab..." : "Returning to VitaScan..."}</div>
+          <button className="cloud-sync-secondary" type="button" data-autofocus onClick={closeConfirmation}>
+            {canAutoCloseConfirmation ? <><X size={16}/> Close now</> : <><Check size={16}/> Continue to VitaScan</>}
+          </button>
         </> : sync.email ? <>
           <p id="cloud-sync-description">Signed in as <strong>{sync.email}</strong>. Changes from VitaScan, mobile, and desktop share one protected VCC account.</p>
           <div className="cloud-sync-state"><Check size={16}/>{sync.message || "Your data is synced."}</div>

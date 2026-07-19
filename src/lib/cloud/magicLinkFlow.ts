@@ -36,3 +36,7 @@ export function gmailActionLabel(userAgent: string): string {
   if (/iphone|ipad|ipod/i.test(userAgent)) return "Open Gmail for this account";
   return "Open this Gmail inbox";
 }
+
+export function shouldAutoCloseConfirmation(hasOpener: boolean, isStandaloneApp: boolean): boolean {
+  return hasOpener && !isStandaloneApp;
+}
