@@ -3,6 +3,7 @@ import type { RealtimeChannel, Session } from "@supabase/supabase-js";
 import type { AppData } from "../types/app";
 import { mergeVitaReceipts, type VitaReceiptRecord } from "../vitascan/receiptSync";
 import { cloudConfigured, supabase } from "./client";
+import { magicLinkRedirectUrl } from "./magicLinkFlow";
 
 export type CloudSyncStatus = "offline" | "signed_out" | "connecting" | "synced" | "saving" | "error";
 export type VccCloudSync = {
@@ -173,7 +174,10 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
     if (!supabase) throw new Error("Cloud sync is not configured.");
     setStatus("connecting");
     const returnPath = window.location.pathname.startsWith("/vitascan") ? "/vitascan" : "/settings";
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}${returnPath}` } });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: magicLinkRedirectUrl(window.location.origin, returnPath) },
+    });
     if (error) { setStatus("error"); setMessage(error.message); throw error; }
     setStatus("signed_out");
     setMessage("Check your email and open the secure sign-in link on this device.");
