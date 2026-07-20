@@ -3,7 +3,7 @@ import { parseReceiptText, type ReceiptDraft } from "./receiptParser";
 export type ReceiptReadStage = "preparing" | "loading" | "reading" | "checking";
 export type ReceiptReadProgress = { stage: ReceiptReadStage; progress: number; label: string };
 export type ReceiptImageQuality = { brightness: number; contrast: number; sharpness: number; warnings: string[] };
-export type ReceiptReadResult = { draft: ReceiptDraft; quality: ReceiptImageQuality; passes: number };
+export type ReceiptReadResult = { draft: ReceiptDraft; quality: ReceiptImageQuality; passes: number; ocrConfidence: number };
 
 type ProgressHandler = (progress: ReceiptReadProgress) => void;
 type OcrCandidate = { text: string; confidence: number; draft: ReceiptDraft };
@@ -21,8 +21,8 @@ export async function readReceiptImage(
   const worker = await createWorker(languages.split("+"), OEM.LSTM_ONLY, {
     logger: (message) => {
       if (!Number.isFinite(message.progress)) return;
-      const base = pass === 1 ? 0.08 : 0.56;
-      const span = pass === 1 ? 0.46 : 0.34;
+      const base = pass === 1 ? 0.08 : pass === 2 ? 0.48 : 0.73;
+      const span = pass === 1 ? 0.38 : pass === 2 ? 0.23 : 0.18;
       onProgress({
         stage: message.status.includes("recognizing") ? "reading" : "loading",
         progress: Math.min(0.92, base + message.progress * span),
@@ -48,12 +48,30 @@ export async function readReceiptImage(
         preserve_interword_spaces: "1",
         user_defined_dpi: "300",
       });
-      const natural = await worker.recognize(prepared.natural, { rotateAuto: true });
+      const natural = await worker.recognize(prepared.cropped, { rotateAuto: true });
       candidates.push(toCandidate(natural.data.text, natural.data.confidence, detectedBarcodes));
     }
 
+    if (needsFallbackPass(chooseBestReceiptCandidate(candidates))) {
+      pass = 3;
+      onProgress({ stage: "checking", progress: 0.74, label: "Recovering low-contrast totals and fine print…" });
+      await worker.setParameters({
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+        preserve_interword_spaces: "1",
+        user_defined_dpi: "300",
+      });
+      const binary = await worker.recognize(prepared.binary, { rotateAuto: true });
+      candidates.push(toCandidate(binary.data.text, binary.data.confidence, detectedBarcodes));
+    }
+
     onProgress({ stage: "checking", progress: 0.96, label: "Organizing totals, items, and codes…" });
-    return { draft: chooseBestReceiptCandidate(candidates).draft, quality: prepared.quality, passes: candidates.length };
+    const best = chooseBestReceiptCandidate(candidates);
+    return {
+      draft: mergeReceiptCandidates(candidates),
+      quality: prepared.quality,
+      passes: candidates.length,
+      ocrConfidence: Math.round(best.confidence),
+    };
   } finally {
     await worker.terminate();
   }
@@ -75,6 +93,52 @@ function chooseBestReceiptCandidate(candidates: OcrCandidate[]): OcrCandidate {
   return [...candidates].sort((left, right) => scoreReceiptCandidate(right) - scoreReceiptCandidate(left))[0];
 }
 
+export function mergeReceiptCandidates(candidates: OcrCandidate[]): ReceiptDraft {
+  const ranked = [...candidates].sort((left, right) => scoreReceiptCandidate(right) - scoreReceiptCandidate(left));
+  const best = ranked[0]?.draft || parseReceiptText("");
+  const usableMerchant = ranked.find(({ draft }) => draft.merchant.trim() && draft.merchant !== "Receipt")?.draft.merchant;
+  const usableAmount = ranked.find(({ draft }) => Number(draft.amount) > 0)?.draft.amount;
+  const usableDate = ranked.find(({ draft }) => draft.date)?.draft.date;
+  const usableReference = ranked.find(({ draft }) => draft.reference)?.draft.reference;
+  const usableCurrency = ranked.find(({ draft }) => draft.currencyCode)?.draft;
+  const rawText = ranked
+    .map(({ text }) => text.trim())
+    .sort((left, right) => receiptTextCompleteness(right) - receiptTextCompleteness(left))[0] || "";
+  const items = uniqueBy(ranked.flatMap(({ draft }) => draft.items), (item) => `${item.name.toLowerCase()}|${item.totalPrice.toFixed(2)}`);
+  const barcodes = [...new Set(ranked.flatMap(({ draft }) => draft.barcodes))];
+  const pluNumbers = [...new Set(ranked.flatMap(({ draft }) => draft.pluNumbers))];
+
+  return {
+    ...best,
+    merchant: usableMerchant || best.merchant,
+    amount: usableAmount || best.amount,
+    date: usableDate || best.date,
+    reference: usableReference || best.reference,
+    currencyCode: usableCurrency?.currencyCode || best.currencyCode,
+    currencySymbol: usableCurrency?.currencySymbol || best.currencySymbol,
+    items,
+    barcodes,
+    pluNumbers,
+    rawText,
+    confidence: Math.max(...ranked.map(({ draft }) => draft.confidence), 0),
+  };
+}
+
+function receiptTextCompleteness(text: string): number {
+  const lines = text.split("\n").filter((line) => line.trim()).length;
+  return lines * 4 + text.length / 40 + (/\btotal\b/i.test(text) ? 20 : 0);
+}
+
+function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const value = key(item);
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
+
 function toCandidate(text: string, confidence: number, detectedBarcodes: string[]): OcrCandidate {
   return { text, confidence, draft: parseReceiptText(text, detectedBarcodes) };
 }
@@ -88,7 +152,7 @@ function needsFallbackPass(candidate: OcrCandidate): boolean {
     || (!candidate.draft.items.length && lineCount > 7);
 }
 
-async function prepareReceiptImage(file: File): Promise<{ natural: HTMLCanvasElement; enhanced: HTMLCanvasElement; quality: ReceiptImageQuality }> {
+async function prepareReceiptImage(file: File): Promise<{ cropped: HTMLCanvasElement; enhanced: HTMLCanvasElement; binary: HTMLCanvasElement; quality: ReceiptImageQuality }> {
   const source = await decodeImage(file);
   const longestSide = Math.max(source.width, source.height);
   const targetScale = Math.min(3, Math.max(1, 2200 / Math.max(longestSide, 1)));
@@ -110,16 +174,37 @@ async function prepareReceiptImage(file: File): Promise<{ natural: HTMLCanvasEle
   const quality = measureReceiptQuality(naturalData);
   const bounds = findLikelyReceiptBounds(naturalData);
   const crop = bounds || { x: 0, y: 0, width, height };
-  const enhanced = document.createElement("canvas");
-  enhanced.width = crop.width;
-  enhanced.height = crop.height;
+  const cropped = document.createElement("canvas");
+  cropped.width = crop.width;
+  cropped.height = crop.height;
+  const croppedContext = cropped.getContext("2d", { willReadFrequently: true });
+  if (!croppedContext) throw new Error("Receipt image cropping is unavailable on this device.");
+  croppedContext.fillStyle = "#fff";
+  croppedContext.fillRect(0, 0, crop.width, crop.height);
+  croppedContext.drawImage(natural, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+
+  const enhanced = cloneCanvas(cropped);
   const enhancedContext = enhanced.getContext("2d", { willReadFrequently: true });
   if (!enhancedContext) throw new Error("Receipt image enhancement is unavailable on this device.");
-  enhancedContext.drawImage(natural, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
   const enhancedData = enhancedContext.getImageData(0, 0, crop.width, crop.height);
   enhanceThermalPrint(enhancedData);
   enhancedContext.putImageData(enhancedData, 0, 0);
-  return { natural, enhanced, quality };
+
+  const binary = cloneCanvas(cropped);
+  const binaryContext = binary.getContext("2d", { willReadFrequently: true });
+  if (!binaryContext) throw new Error("Receipt image recovery is unavailable on this device.");
+  const binaryData = binaryContext.getImageData(0, 0, crop.width, crop.height);
+  applyAdaptiveThreshold(binaryData);
+  binaryContext.putImageData(binaryData, 0, 0);
+  return { cropped, enhanced, binary, quality };
+}
+
+function cloneCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = source.width;
+  canvas.height = source.height;
+  canvas.getContext("2d")?.drawImage(source, 0, 0);
+  return canvas;
 }
 
 async function decodeImage(file: File): Promise<{ image: CanvasImageSource; width: number; height: number; close: () => void }> {
@@ -164,6 +249,24 @@ function enhanceThermalPrint(image: ImageData) {
     image.data[pixel] = boosted;
     image.data[pixel + 1] = boosted;
     image.data[pixel + 2] = boosted;
+    image.data[pixel + 3] = 255;
+  }
+}
+
+function applyAdaptiveThreshold(image: ImageData) {
+  const gray = new Uint8Array(image.width * image.height);
+  const histogram = new Uint32Array(256);
+  for (let pixel = 0, index = 0; pixel < image.data.length; pixel += 4, index += 1) {
+    const value = Math.round(image.data[pixel] * 0.299 + image.data[pixel + 1] * 0.587 + image.data[pixel + 2] * 0.114);
+    gray[index] = value;
+    histogram[value] += 1;
+  }
+  const threshold = Math.max(110, Math.min(215, Math.round((percentile(histogram, gray.length, 0.18) + percentile(histogram, gray.length, 0.82)) / 2)));
+  for (let pixel = 0, index = 0; pixel < image.data.length; pixel += 4, index += 1) {
+    const value = gray[index] < threshold ? 0 : 255;
+    image.data[pixel] = value;
+    image.data[pixel + 1] = value;
+    image.data[pixel + 2] = value;
     image.data[pixel + 3] = 255;
   }
 }

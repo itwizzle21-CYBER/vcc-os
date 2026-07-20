@@ -85,4 +85,14 @@ describe("VitaScan receipt parser", () => {
     expect(parseReceiptText("CITY SHOP\nTOTAL $4.20\nJul 20, 2026").date).toBe("2026-07-20");
     expect(parseReceiptText("CITY SHOP\nTOTAL 4.20 GBP\n20 July 2026").date).toBe("2026-07-20");
   });
+
+  it("reads whole-dollar totals from payment screenshots", () => {
+    const receipt = parseReceiptText("Cash App\nCoffee House\nYou paid $25\nCompleted\nJul 20, 2026");
+    expect(receipt).toMatchObject({ merchant: "Coffee House", amount: "25.00", account: "Cash App" });
+  });
+
+  it("recognizes common checkout total labels", () => {
+    expect(parseReceiptText("ONLINE STORE\nOrder total $42.18\n07/20/2026").amount).toBe("42.18");
+    expect(parseReceiptText("CAFE\nAmount charged 18.40 USD\n07/20/2026").amount).toBe("18.40");
+  });
 });

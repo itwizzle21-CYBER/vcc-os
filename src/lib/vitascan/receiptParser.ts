@@ -60,7 +60,7 @@ const currencyDefinitions = [
 ];
 
 const amountPattern = /-?(?:\d{1,3}(?:[.,'\u00a0 ]\d{3})+|\d+)(?:[.,]\d{2})/g;
-const totalWords = /\b(grand total|total paid|amount paid|payment total|balance due|total|importe total|suma total|gesamt|summe|somme|montant|totale|totaal|razem|celkem|toplam|合計|总计|總計|합계|итого)\b/i;
+const totalWords = /\b(grand total|order total|purchase total|total paid|amount paid|payment total|amount charged|you paid|charged|balance due|total|importe total|suma total|gesamt|summe|somme|montant|totale|totaal|razem|celkem|toplam|合計|总计|總計|합계|итого)\b/i;
 const subtotalWords = /\b(subtotal|sub total|taxable total|sous-total|zwischensumme|subtotaal|podsumowanie)\b/i;
 const nonItemWords = /\b(total|subtotal|tax|vat|iva|gst|hst|change|cash|card|credit|debit|tender|payment|balance|discount|coupon|savings|receipt|invoice|factura|facture|rechnung|rückgeld|monnaie|impuesto|steuer|merci|thank you)\b/i;
 
@@ -73,7 +73,7 @@ export function parseReceiptText(rawText: string, detectedBarcodes: string[] = [
   const items = extractLineItems(lines, barcodes, pluNumbers);
   const totalCandidates = lines.filter((line) => totalWords.test(line) && !subtotalWords.test(line));
   const totalLine = totalCandidates[totalCandidates.length - 1] || "";
-  const totalAmounts = extractAmounts(totalLine);
+  const totalAmounts = extractAmounts(totalLine, true);
   const preferredAmount = totalAmounts[totalAmounts.length - 1] ?? inferReceiptAmount(lines, items);
   const date = extractReceiptDate(text, currency.code);
   const income = /\b(received|deposit|paid you|cash in|direct deposit|refund received|crédito recibido)\b/i.test(text);
@@ -140,26 +140,29 @@ function detectCurrency(text: string): { code: string; symbol: string } {
   return { code: "", symbol: "" };
 }
 
-function extractAmounts(line: string): number[] {
-  return [...line.matchAll(new RegExp(amountPattern.source, "g"))]
+function extractAmounts(line: string, allowWhole = false): number[] {
+  const pattern = allowWhole
+    ? /-?(?:\d{1,3}(?:[.,'\u00a0 ]\d{3})+|\d+)(?:[.,]\s?\d{1,2})?/g
+    : new RegExp(amountPattern.source, "g");
+  return [...line.matchAll(pattern)]
     .map((match) => parseLocalizedNumber(match[0]))
     .filter((value) => Number.isFinite(value) && value > 0 && value < 100000000);
 }
 
 function inferReceiptAmount(lines: string[], items: ReceiptLineItem[]): number | undefined {
   const dueLines = lines.filter((line) => /\b(amount|due|paid|charged|balance|importe|montant|betrag|pagar|pagado)\b/i.test(line) && !/\b(change|cash back|refund)\b/i.test(line));
-  const dueAmounts = dueLines.flatMap(extractAmounts);
+  const dueAmounts = dueLines.flatMap((line) => extractAmounts(line, true));
   if (dueAmounts.length) return dueAmounts[dueAmounts.length - 1];
 
   if (items.length) {
     const itemTotal = items.reduce((total, item) => total + item.totalPrice, 0);
     const taxLines = lines.filter((line) => /\b(tax|vat|iva|gst|hst|impuesto|steuer|tva)\b/i.test(line));
-    const tax = taxLines.flatMap(extractAmounts).reduce((total, value) => total + value, 0);
+    const tax = taxLines.flatMap((line) => extractAmounts(line)).reduce((total, value) => total + value, 0);
     if (itemTotal > 0) return itemTotal + tax;
   }
 
   const eligible = lines.filter((line) => !looksLikeDateOrCode(line) && !/\b(change|cash back|phone|tel)\b/i.test(line));
-  const amounts = eligible.flatMap(extractAmounts);
+  const amounts = eligible.flatMap((line) => extractAmounts(line));
   return amounts[amounts.length - 1];
 }
 

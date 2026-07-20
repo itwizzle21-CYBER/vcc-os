@@ -12,6 +12,7 @@ import {
   RotateCcw,
   ScanLine,
   ShieldCheck,
+  Sparkles,
   ShoppingBasket,
   Smartphone,
 } from "lucide-react";
@@ -33,6 +34,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
   const [message, setMessage] = useState("");
   const [readProgress, setReadProgress] = useState<ReceiptReadProgress | null>(null);
   const [imageQuality, setImageQuality] = useState<ReceiptImageQuality | null>(null);
+  const [ocrConfidence, setOcrConfidence] = useState(0);
   const scanInputRef = useRef<HTMLInputElement>(null);
   const screenshotInputRef = useRef<HTMLInputElement>(null);
   const recent = useMemo(
@@ -64,10 +66,12 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
       return;
     }
 
+    if (preview) URL.revokeObjectURL(preview);
     setPreview(URL.createObjectURL(file));
     setDraft(emptyDraft);
     setStatus("scanning");
     setImageQuality(null);
+    setOcrConfidence(0);
     setReadProgress({ stage: "preparing", progress: 0.02, label: "Preparing the receipt…" });
     setMessage("Finding the receipt, strengthening faint print, and reading every line on this device…");
 
@@ -82,15 +86,16 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
       const nextDraft = result.draft;
       setDraft(nextDraft);
       setImageQuality(result.quality);
+      setOcrConfidence(result.ocrConfidence);
       setReadProgress(null);
       setStatus("ready");
       setMessage(canAdd(nextDraft)
-        ? `Strong read complete${result.passes > 1 ? " after a second faint-print pass" : ""}. Review it, then add it to VCC.`
-        : `The merchant or total is still unclear.${result.quality.warnings[0] ? ` ${result.quality.warnings[0]}` : " Retake with all four receipt corners visible."}`);
+        ? `Receipt read with ${result.passes} precision pass${result.passes === 1 ? "" : "es"}. Check the highlighted details, then add it to VCC.`
+        : `Some details need your help. Fill in the merchant and total below—there is no need to rescan a readable receipt.`);
     } catch (error) {
       setReadProgress(null);
       setStatus("ready");
-      setMessage(`This receipt could not be read. ${error instanceof Error ? error.message : "Retake it in bright, even light with the full receipt in frame."}`);
+      setMessage(`Automatic reading stopped. You can still enter the merchant and total below, or try another image. ${error instanceof Error ? error.message : ""}`.trim());
     }
   }
 
@@ -138,8 +143,18 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
     setMessage("");
     setReadProgress(null);
     setImageQuality(null);
+    setOcrConfidence(0);
     if (scanInputRef.current) scanInputRef.current.value = "";
     if (screenshotInputRef.current) screenshotInputRef.current.value = "";
+  }
+
+  function updateDraft<K extends keyof ReceiptDraft>(field: K, value: ReceiptDraft[K]) {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function receiveDroppedFile(files: FileList | null) {
+    const image = [...(files || [])].find((file) => file.type.startsWith("image/"));
+    if (image) void scan(image);
   }
 
   return <main className="vitascan-app-shell">
@@ -166,8 +181,15 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
         </span>
       </section>
 
-      <div className="vitascan-mobile-only">
-        <section className="vitascan-capture panel" aria-labelledby="scanner-title" aria-busy={status === "scanning"}>
+      <div className="vitascan-workbench">
+        <section
+          className="vitascan-capture panel"
+          aria-labelledby="scanner-title"
+          aria-busy={status === "scanning"}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => { event.preventDefault(); receiveDroppedFile(event.dataTransfer.files); }}
+          onPaste={(event) => receiveDroppedFile(event.clipboardData.files)}
+        >
           <div className="scanner-heading">
             <div><p className="eyebrow">Primary action</p><h2 id="scanner-title">Scan a receipt</h2></div>
             <span>1</span>
@@ -176,7 +198,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
           <div className={`scan-frame ${preview ? "has-preview" : ""}`}>
             {preview
               ? <img src={preview} alt="Receipt selected for scanning" />
-              : <><Camera size={42} aria-hidden="true" /><strong>Target the receipt</strong><span>Lay it flat in even light and keep all four corners inside the frame.</span></>}
+              : <><Camera size={42} aria-hidden="true" /><strong>Capture the whole receipt</strong><span>Take a photo, choose a screenshot, paste, or drop an image here.</span></>}
             {status === "scanning" && <div className="scan-reading">
               <LoaderCircle className="spin" aria-hidden="true" />
               <strong>{readProgress?.label || "Reading every detail…"}</strong>
@@ -193,22 +215,36 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
               <input ref={screenshotInputRef} type="file" accept="image/*" onChange={(event) => scan(event.target.files?.[0])} />
             </label>
           </div>
-          <p className="privacy-note"><ShieldCheck size={15} aria-hidden="true" /> Image reading happens on this device.</p>
+          <p className="privacy-note"><ShieldCheck size={15} aria-hidden="true" /> Multi-pass image reading happens privately on this device.</p>
         </section>
 
         {status !== "idle" && <section className="vitascan-result panel" aria-live="polite" aria-labelledby="result-title">
           <div className="result-heading">
             <div><p className="eyebrow">Scan result</p><h2 id="result-title">{status === "saved" ? "Added to VCC" : "Details captured"}</h2></div>
-            {draft.confidence > 0 && <span className="read-score">{draft.confidence}% read</span>}
+            {ocrConfidence > 0 && <span className="read-score"><Sparkles size={13} aria-hidden="true" /> {ocrConfidence}% OCR</span>}
           </div>
 
-          {draft.rawText && <>
-            <dl className="receipt-summary">
-              <div><dt>Merchant</dt><dd>{draft.merchant || "Not detected"}</dd></div>
-              <div><dt>Total</dt><dd>{draft.amount ? formatReceiptAmount(draft) : "Not detected"}</dd></div>
-              <div><dt>Date</dt><dd>{draft.date || "Use today's scan date"}</dd></div>
-              <div><dt>Payment</dt><dd>{draft.account}</dd></div>
-            </dl>
+          {status !== "scanning" && <>
+            <fieldset className="receipt-review">
+              <legend>Review receipt details</legend>
+              <label className={!draft.merchant.trim() || draft.merchant === "Receipt" ? "needs-value" : ""}>
+                <span>Merchant <small>Required</small></span>
+                <input value={draft.merchant === "Receipt" ? "" : draft.merchant} onChange={(event) => updateDraft("merchant", event.target.value)} placeholder="Store or payee" autoComplete="organization" />
+              </label>
+              <label className={!Number(draft.amount) ? "needs-value" : ""}>
+                <span>Total <small>Required</small></span>
+                <div className="money-input"><b>{draft.currencySymbol || "$"}</b><input type="number" inputMode="decimal" min="0.01" step="0.01" value={draft.amount} onChange={(event) => updateDraft("amount", event.target.value)} placeholder="0.00" /></div>
+              </label>
+              <label><span>Date</span><input type="date" value={draft.date} onChange={(event) => updateDraft("date", event.target.value)} /></label>
+              <label><span>Payment method</span><input value={draft.account === "Receipt" ? "" : draft.account} onChange={(event) => updateDraft("account", event.target.value)} placeholder="Cash, Visa, Cash App…" /></label>
+              <label><span>Category</span><select value={draft.category} onChange={(event) => updateDraft("category", event.target.value)}>
+                {["Groceries", "Restaurants", "Shopping", "Fuel", "Healthcare", "Bills", "Transfers", "Income", "Other"].map((category) => <option key={category}>{category}</option>)}
+              </select></label>
+              <label><span>Transaction type</span><select value={draft.direction} onChange={(event) => updateDraft("direction", event.target.value as ReceiptDraft["direction"])}>
+                <option value="expense">Expense</option><option value="income">Income</option><option value="transfer">Transfer</option>
+              </select></label>
+              <label className="review-wide"><span>Receipt / confirmation number</span><input value={draft.reference} onChange={(event) => updateDraft("reference", event.target.value)} placeholder="Optional" /></label>
+            </fieldset>
             {(draft.items.length > 0 || draft.barcodes.length > 0 || draft.pluNumbers.length > 0) && <section className="retail-intelligence" aria-labelledby="retail-intelligence-title">
               <div className="retail-intelligence-heading"><ShoppingBasket size={18} aria-hidden="true" /><h3 id="retail-intelligence-title">Retail intelligence</h3></div>
               <div className="retail-signals">
@@ -228,7 +264,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
               <strong>For an even stronger read</strong>
               <ul>{imageQuality.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
             </section> : null}
-            <details className="full-scan"><summary><ReceiptText size={17} aria-hidden="true" /> Every captured line</summary><pre>{draft.rawText}</pre></details>
+            {draft.rawText && <details className="full-scan"><summary><ReceiptText size={17} aria-hidden="true" /> Every captured line</summary><pre>{draft.rawText}</pre></details>}
           </>}
 
           {message && <p className={`scan-message ${canAdd(draft) ? "is-ready" : ""}`}><ShieldCheck size={16} aria-hidden="true" />{message}</p>}
@@ -245,7 +281,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
 
       <section className="vitascan-desktop-companion panel">
         <Smartphone size={30} aria-hidden="true" />
-        <div><p className="eyebrow">Mobile scanner</p><h2>Scan from your phone</h2><p>VitaScan capture is mobile-only. New scans sync here and into VCC Transactions.</p></div>
+        <div><p className="eyebrow">Works everywhere</p><h2>Phone camera or desktop screenshots</h2><p>Use the same high-quality scanner on any screen. Confirmed scans sync into VCC Transactions.</p></div>
         <a href={VCC_TRANSACTIONS_URL}>Open Transactions <ArrowUpRight size={16} /></a>
       </section>
 
@@ -258,13 +294,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
 
 function canAdd(draft: ReceiptDraft) {
   const amount = Number(draft.amount);
-  return Boolean(draft.rawText && draft.merchant.trim() && draft.merchant !== "Receipt" && Number.isFinite(amount) && amount > 0);
-}
-
-function formatReceiptAmount(draft: ReceiptDraft): string {
-  if (!draft.amount) return "";
-  if (draft.currencySymbol) return `${draft.currencySymbol}${draft.amount}`;
-  return draft.currencyCode ? `${draft.currencyCode} ${draft.amount}` : draft.amount;
+  return Boolean(draft.merchant.trim() && draft.merchant !== "Receipt" && Number.isFinite(amount) && amount > 0);
 }
 
 function formatItemAmount(amount: number, draft: ReceiptDraft): string {

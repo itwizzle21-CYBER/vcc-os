@@ -7,7 +7,7 @@
 .vitascan-mark svg { width: 20px; }
 .vitascan-sync { grid-column: 2; display: inline-flex; justify-self: start; gap: 5px; align-items: center; color: #94a3b8; font-size: .7rem; white-space: nowrap; }
 .vitascan-sync.online { color: #6ee7b7; }
-.vitascan-mobile-only { display: grid; gap: 12px; }
+.vitascan-workbench { display: grid; gap: 12px; }
 .vitascan-capture,.vitascan-result,.vitascan-recent,.vitascan-desktop-companion { min-width: 0; padding: 14px; border-radius: 18px; }
 .scanner-heading,.result-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .scanner-heading h2,.result-heading h2,.vitascan-recent h2,.vitascan-desktop-companion h2 { margin: 1px 0 0; font-size: 1.05rem; }
@@ -42,11 +42,19 @@
 .scan-message.is-ready { background: rgba(16,185,129,.09); color: #6ee7b7; }
 .spin { animation: vita-spin 1s linear infinite; }
 @keyframes vita-spin { to { transform: rotate(360deg); } }
-.read-score { padding: 5px 8px; border-radius: 999px; background: rgba(52,211,153,.1); color: #6ee7b7; font-size: .7rem; white-space: nowrap; }
-.receipt-summary { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 0; }
-.receipt-summary>div { min-width: 0; padding: 9px; border-radius: 10px; background: rgba(2,6,23,.45); }
-.receipt-summary dt { color: #94a3b8; font-size: .66rem; }
-.receipt-summary dd { overflow-wrap: anywhere; margin: 3px 0 0; font-size: .82rem; font-weight: 800; }
+.read-score { display: inline-flex; align-items: center; gap: 4px; padding: 5px 8px; border-radius: 999px; background: rgba(52,211,153,.1); color: #6ee7b7; font-size: .7rem; white-space: nowrap; }
+.receipt-review { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 0; padding: 0; border: 0; }
+.receipt-review legend { margin-bottom: 10px; color: #e0f2fe; font-size: .84rem; font-weight: 900; }
+.receipt-review label { display: grid; min-width: 0; gap: 5px; }
+.receipt-review label>span { display: flex; justify-content: space-between; gap: 5px; color: #a8b3cf; font-size: .68rem; font-weight: 750; }
+.receipt-review label small { color: #7dd3fc; font-size: .58rem; text-transform: uppercase; letter-spacing: .05em; }
+.receipt-review input,.receipt-review select { width: 100%; min-width: 0; min-height: 42px; box-sizing: border-box; padding: 9px 10px; border: 1px solid rgba(148,163,184,.22); border-radius: 10px; outline: none; background: rgba(2,6,23,.52); color: #f8fafc; font: inherit; font-size: .8rem; }
+.receipt-review input:focus,.receipt-review select:focus { border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56,189,248,.14); }
+.receipt-review .needs-value input,.receipt-review .needs-value .money-input { border-color: rgba(251,191,36,.7); box-shadow: 0 0 0 2px rgba(251,191,36,.08); }
+.receipt-review .review-wide { grid-column: 1/-1; }
+.money-input { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; overflow: hidden; border: 1px solid rgba(148,163,184,.22); border-radius: 10px; background: rgba(2,6,23,.52); }
+.money-input b { padding-left: 10px; color: #7dd3fc; font-size: .8rem; }
+.money-input input { border: 0; background: transparent; }
 .retail-intelligence { margin-top: 9px; padding: 10px; border: 1px solid rgba(56,189,248,.2); border-radius: 12px; background: rgba(14,165,233,.055); }
 .retail-intelligence-heading { display: flex; align-items: center; gap: 7px; color: #bae6fd; }
 .retail-intelligence-heading h3 { margin: 0; font-size: .83rem; }
@@ -83,7 +91,8 @@
   .vitascan-page { width: min(100%, 64rem); }
   .vitascan-hero { grid-template-columns: auto minmax(0,1fr) auto; }
   .vitascan-sync { grid-column: 3; grid-row: 1; justify-self: end; }
-  .vitascan-mobile-only { display: none; }
+  .vitascan-workbench { grid-template-columns: minmax(0,.92fr) minmax(0,1.08fr); align-items: start; }
+  .vitascan-workbench>.vitascan-capture:only-child { grid-column: 1/-1; width: min(100%, 34rem); justify-self: center; }
   .vitascan-desktop-companion { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 14px; }
   .vitascan-desktop-companion>svg { color: #38bdf8; }
   .vitascan-desktop-companion p { margin: 4px 0 0; color: #94a3b8; }

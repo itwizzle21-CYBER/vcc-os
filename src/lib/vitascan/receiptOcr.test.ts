@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scoreReceiptCandidate } from "./receiptOcr";
+import { mergeReceiptCandidates, scoreReceiptCandidate } from "./receiptOcr";
 import { parseReceiptText } from "./receiptParser";
 
 describe("VitaScan receipt OCR selection", () => {
@@ -19,5 +19,17 @@ describe("VitaScan receipt OCR selection", () => {
     const completeScore = scoreReceiptCandidate({ text: completeText, confidence: 78, draft: parseReceiptText(completeText) });
 
     expect(completeScore).toBeGreaterThan(shortScore);
+  });
+
+  it("fuses useful fields from complementary OCR passes", () => {
+    const merchantPass = "NORTH MARKET\nTHANK YOU\n07/20/2026";
+    const totalPass = "RECEIPT\nSUBTOTAL $9.99\nTAX $0.57\nTOTAL $10.56";
+    const merged = mergeReceiptCandidates([
+      { text: merchantPass, confidence: 88, draft: parseReceiptText(merchantPass) },
+      { text: totalPass, confidence: 76, draft: parseReceiptText(totalPass) },
+    ]);
+
+    expect(merged).toMatchObject({ merchant: "NORTH MARKET", amount: "10.56", date: "2026-07-20" });
+    expect(merged.rawText).toContain("TOTAL $10.56");
   });
 });
