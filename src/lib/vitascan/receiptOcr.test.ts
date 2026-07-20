@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { mergeReceiptCandidates, scoreReceiptCandidate } from "./receiptOcr";
+import { mergeReceiptCandidates, receiptOcrRuntimeOptions, scoreReceiptCandidate } from "./receiptOcr";
 import { parseReceiptText } from "./receiptParser";
 
 describe("VitaScan receipt OCR selection", () => {
+  it("self-hosts executable OCR assets for the production security policy", () => {
+    expect(receiptOcrRuntimeOptions.workerPath).not.toContain("cdn.jsdelivr.net");
+    expect(receiptOcrRuntimeOptions.corePath).not.toContain("cdn.jsdelivr.net");
+    expect(receiptOcrRuntimeOptions.workerBlobURL).toBe(false);
+  });
+
   it("prefers a complete retail read over a short uncertain pass", () => {
     const shortText = "NORTH MARKET\nTOTAL $10.56";
     const completeText = [

@@ -1,4 +1,6 @@
 import { parseReceiptText, type ReceiptDraft } from "./receiptParser";
+import ocrCorePath from "tesseract.js-core/tesseract-core-lstm.wasm.js?url";
+import ocrWorkerPath from "tesseract.js/dist/worker.min.js?url";
 
 export type ReceiptReadStage = "preparing" | "loading" | "reading" | "checking";
 export type ReceiptReadProgress = { stage: ReceiptReadStage; progress: number; label: string };
@@ -7,6 +9,13 @@ export type ReceiptReadResult = { draft: ReceiptDraft; quality: ReceiptImageQual
 
 type ProgressHandler = (progress: ReceiptReadProgress) => void;
 type OcrCandidate = { text: string; confidence: number; draft: ReceiptDraft };
+
+export const receiptOcrRuntimeOptions = {
+  workerPath: ocrWorkerPath,
+  corePath: ocrCorePath,
+  langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
+  workerBlobURL: false,
+} as const;
 
 export async function readReceiptImage(
   file: File,
@@ -19,6 +28,7 @@ export async function readReceiptImage(
   const { createWorker, OEM, PSM } = await import("tesseract.js");
   let pass = 1;
   const worker = await createWorker(languages.split("+"), OEM.LSTM_ONLY, {
+    ...receiptOcrRuntimeOptions,
     logger: (message) => {
       if (!Number.isFinite(message.progress)) return;
       const base = pass === 1 ? 0.08 : pass === 2 ? 0.48 : 0.73;

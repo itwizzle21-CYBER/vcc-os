@@ -1,4 +1,4 @@
-const CACHE = "vitascan-v3";
+const CACHE = "vitascan-v4";
 const APP_SHELL = ["/vitascan", "/vitascan.webmanifest", "/vitascan-logo.png?v=2", "/icons/vitascan-apple-180.png?v=2", "/icons/vitascan-android-192.png?v=2", "/icons/vitascan-android-512.png?v=2"];
 self.addEventListener("install", (event) => event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL))));
 self.addEventListener("activate", (event) => event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))));
