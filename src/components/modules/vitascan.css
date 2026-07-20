@@ -42,6 +42,19 @@
 .receipt-summary>div { min-width: 0; padding: 9px; border-radius: 10px; background: rgba(2,6,23,.45); }
 .receipt-summary dt { color: #94a3b8; font-size: .66rem; }
 .receipt-summary dd { overflow-wrap: anywhere; margin: 3px 0 0; font-size: .82rem; font-weight: 800; }
+.retail-intelligence { margin-top: 9px; padding: 10px; border: 1px solid rgba(56,189,248,.2); border-radius: 12px; background: rgba(14,165,233,.055); }
+.retail-intelligence-heading { display: flex; align-items: center; gap: 7px; color: #bae6fd; }
+.retail-intelligence-heading h3 { margin: 0; font-size: .83rem; }
+.retail-signals { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.retail-signals span { display: inline-flex; align-items: center; gap: 4px; padding: 5px 7px; border-radius: 8px; background: rgba(2,6,23,.42); color: #cbd5e1; font-size: .67rem; font-weight: 800; }
+.receipt-items { display: grid; gap: 0; margin: 9px 0 0; padding: 0; list-style: none; }
+.receipt-items li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; border-top: 1px solid rgba(148,163,184,.12); font-size: .72rem; }
+.receipt-items li>span { display: grid; min-width: 0; gap: 1px; }
+.receipt-items li strong { overflow-wrap: anywhere; }
+.receipt-items li small { color: #94a3b8; font-size: .62rem; }
+.receipt-items li b { flex: 0 0 auto; color: #e0f2fe; }
+.more-items,.code-list { margin: 7px 0 0; color: #94a3b8; font-size: .66rem; overflow-wrap: anywhere; }
+.code-list strong { color: #bae6fd; }
 .full-scan { margin-top: 9px; border: 1px solid rgba(148,163,184,.16); border-radius: 10px; }
 .full-scan summary { display: flex; align-items: center; gap: 7px; padding: 10px; cursor: pointer; color: #bae6fd; font-size: .78rem; font-weight: 800; }
 .full-scan pre { max-height: 12rem; overflow: auto; margin: 0; padding: 0 10px 10px; color: #cbd5e1; font: .7rem/1.5 ui-monospace,monospace; white-space: pre-wrap; overflow-wrap: anywhere; }

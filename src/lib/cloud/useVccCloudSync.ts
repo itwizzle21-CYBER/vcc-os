@@ -345,7 +345,7 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
     });
     if (error) { setStatus("error"); setMessage(error.message); throw error; }
     setStatus("signed_out");
-    setMessage("Check Gmail for your six-digit VitaScan code and enter it on this device.");
+    setMessage("Check Gmail for your VitaScan sign-in code and enter the complete code on this device.");
   }, []);
 
   const verifyLoginCode = useCallback(async (email: string, token: string) => {

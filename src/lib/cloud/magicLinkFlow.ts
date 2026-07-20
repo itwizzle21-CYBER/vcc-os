@@ -1,4 +1,5 @@
 export const MAGIC_LINK_COOLDOWN_SECONDS = 60;
+export const LOGIN_CODE_MAX_LENGTH = 8;
 
 export function magicLinkRedirectUrl(origin: string, returnPath: string): string {
   const url = new URL(returnPath, origin);
@@ -46,9 +47,9 @@ export function shouldAutoCloseConfirmation(hasOpener: boolean, isStandaloneApp:
 }
 
 export function normalizeLoginCode(value: string): string {
-  return value.replace(/\D/g, "").slice(0, 6);
+  return value.replace(/\D/g, "").slice(0, LOGIN_CODE_MAX_LENGTH);
 }
 
 export function isCompleteLoginCode(value: string): boolean {
-  return /^\d{6}$/.test(value);
+  return /^(?:\d{6}|\d{8})$/.test(value);
 }

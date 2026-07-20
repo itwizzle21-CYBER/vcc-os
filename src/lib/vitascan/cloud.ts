@@ -1,4 +1,4 @@
-import type { ReceiptDraft } from "./receiptParser";
+import { formatReceiptArchive, type ReceiptDraft } from "./receiptParser";
 import { cloudConfigured, supabase } from "../cloud/client";
 
 export const vitaCloudEnabled = cloudConfigured;
@@ -12,7 +12,7 @@ export async function syncReceipt(draft: ReceiptDraft, transactionId: string) {
     user_id: user.id, transaction_id: transactionId, merchant: draft.merchant,
     amount: Number(draft.amount), occurred_on: draft.date, direction: draft.direction,
     account_name: draft.account, category: draft.category, reference_code: draft.reference || null,
-    raw_text: draft.rawText, confidence: draft.confidence,
+    raw_text: formatReceiptArchive(draft), confidence: draft.confidence,
   }, { onConflict: "user_id,transaction_id" });
   if (error) throw error;
   return { synced: true };

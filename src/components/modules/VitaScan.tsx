@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
+  Barcode,
   Camera,
   Check,
   Cloud,
   FileImage,
   LoaderCircle,
+  Languages,
   ReceiptText,
   RotateCcw,
   ScanLine,
   ShieldCheck,
+  ShoppingBasket,
   Smartphone,
 } from "lucide-react";
 import type { AppData } from "../../lib/types/app";
-import { parseReceiptText, type ReceiptDraft } from "../../lib/vitascan/receiptParser";
+import { formatReceiptNotes, parseReceiptText, type ReceiptDraft } from "../../lib/vitascan/receiptParser";
 import { syncReceipt, vitaCloudEnabled } from "../../lib/vitascan/cloud";
 import { VCC_OFFICIAL_URL, VCC_TRANSACTIONS_URL } from "../../config/urls";
 import "./vitascan.css";
@@ -54,8 +57,9 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
 
     try {
       const { recognize } = await import("tesseract.js");
-      const result = await recognize(file, "eng");
-      const nextDraft = parseReceiptText(result.data.text);
+      const barcodePromise = detectImageBarcodes(file);
+      const result = await recognize(file, receiptOcrLanguages(window.navigator.languages));
+      const nextDraft = parseReceiptText(result.data.text, await barcodePromise);
       setDraft(nextDraft);
       setStatus("ready");
       setMessage(canAdd(nextDraft)
@@ -75,7 +79,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
     const amount = Math.abs(Number(draft.amount));
     const id = `vitascan-${crypto.randomUUID()}`;
     const signed = draft.direction === "expense" ? -amount : amount;
-    const notes = `VitaScan${draft.reference ? ` - Ref ${draft.reference}` : ""}${draft.rawText ? `\nFull scan:\n${draft.rawText}` : ""}`;
+    const notes = formatReceiptNotes(draft);
     const row = {
       id,
       cells: {
@@ -170,10 +174,25 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
           {draft.rawText && <>
             <dl className="receipt-summary">
               <div><dt>Merchant</dt><dd>{draft.merchant || "Not detected"}</dd></div>
-              <div><dt>Total</dt><dd>{draft.amount ? `$${draft.amount}` : "Not detected"}</dd></div>
+              <div><dt>Total</dt><dd>{draft.amount ? formatReceiptAmount(draft) : "Not detected"}</dd></div>
               <div><dt>Date</dt><dd>{draft.date || "Not detected"}</dd></div>
-              <div><dt>Account</dt><dd>{draft.account}</dd></div>
+              <div><dt>Payment</dt><dd>{draft.account}</dd></div>
             </dl>
+            {(draft.items.length > 0 || draft.barcodes.length > 0 || draft.pluNumbers.length > 0) && <section className="retail-intelligence" aria-labelledby="retail-intelligence-title">
+              <div className="retail-intelligence-heading"><ShoppingBasket size={18} aria-hidden="true" /><h3 id="retail-intelligence-title">Retail intelligence</h3></div>
+              <div className="retail-signals">
+                {draft.currencyCode && <span><Languages size={14} aria-hidden="true" />{draft.currencyCode}</span>}
+                {draft.items.length > 0 && <span><ShoppingBasket size={14} aria-hidden="true" />{draft.items.length} item{draft.items.length === 1 ? "" : "s"}</span>}
+                {draft.barcodes.length > 0 && <span><Barcode size={14} aria-hidden="true" />{draft.barcodes.length} barcode{draft.barcodes.length === 1 ? "" : "s"}</span>}
+              </div>
+              {draft.items.length > 0 && <ul className="receipt-items">{draft.items.slice(0, 12).map((item, index) => <li key={`${item.name}-${index}`}>
+                <span><strong>{item.name}</strong>{item.plu && <small>PLU {item.plu}</small>}{item.barcode && <small>{item.barcode}</small>}</span>
+                <b>{item.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ""}${item.unitPrice ? ` @ ${formatItemAmount(item.unitPrice, draft)}` : ""} · ` : ""}{formatItemAmount(item.totalPrice, draft)}</b>
+              </li>)}</ul>}
+              {draft.items.length > 12 && <p className="more-items">+{draft.items.length - 12} more items preserved in the transaction</p>}
+              {draft.pluNumbers.length > 0 && <p className="code-list"><strong>PLU</strong> {draft.pluNumbers.join(" · ")}</p>}
+              {draft.barcodes.length > 0 && <p className="code-list"><strong>Barcode</strong> {draft.barcodes.join(" · ")}</p>}
+            </section>}
             <details className="full-scan"><summary><ReceiptText size={17} aria-hidden="true" /> Every captured line</summary><pre>{draft.rawText}</pre></details>
           </>}
 
@@ -205,6 +224,59 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
 function canAdd(draft: ReceiptDraft) {
   const amount = Number(draft.amount);
   return Boolean(draft.rawText && draft.merchant.trim() && draft.date && Number.isFinite(amount) && amount > 0);
+}
+
+function formatReceiptAmount(draft: ReceiptDraft): string {
+  if (!draft.amount) return "";
+  if (draft.currencySymbol) return `${draft.currencySymbol}${draft.amount}`;
+  return draft.currencyCode ? `${draft.currencyCode} ${draft.amount}` : draft.amount;
+}
+
+function formatItemAmount(amount: number, draft: ReceiptDraft): string {
+  const value = amount.toFixed(2);
+  return draft.currencySymbol ? `${draft.currencySymbol}${value}` : draft.currencyCode ? `${draft.currencyCode} ${value}` : value;
+}
+
+function receiptOcrLanguages(languages: readonly string[]): string {
+  const languageMap: Record<string, string> = {
+    ar: "ara", cs: "ces", da: "dan", de: "deu", el: "ell", es: "spa", fi: "fin", fr: "fra",
+    he: "heb", hi: "hin", hu: "hun", id: "ind", it: "ita", ja: "jpn", ko: "kor", nl: "nld",
+    no: "nor", pl: "pol", pt: "por", ro: "ron", ru: "rus", sv: "swe", th: "tha", tr: "tur",
+    uk: "ukr", vi: "vie", zh: "chi_sim",
+  };
+  const selected = languages.map((language) => languageMap[language.toLowerCase().split("-")[0]]).filter(Boolean).slice(0, 2);
+  return [...new Set(["eng", ...selected])].join("+");
+}
+
+type BarcodeResult = { rawValue: string };
+type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => { detect: (source: ImageBitmap) => Promise<BarcodeResult[]> };
+
+async function detectImageBarcodes(file: File): Promise<string[]> {
+  const Detector = (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector;
+  if (Detector && typeof createImageBitmap === "function") {
+    const bitmap = await createImageBitmap(file);
+    try {
+      const detector = new Detector();
+      const results = await detector.detect(bitmap);
+      const values = [...new Set(results.map((result) => result.rawValue.trim()).filter(Boolean))];
+      if (values.length) return values;
+    } catch {
+      // Continue to the cross-browser decoder below.
+    } finally {
+      bitmap.close();
+    }
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const { BrowserMultiFormatReader } = await import("@zxing/browser");
+    const result = await new BrowserMultiFormatReader().decodeFromImageUrl(objectUrl);
+    return result.getText() ? [result.getText().trim()] : [];
+  } catch {
+    return [];
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 function RecentScans({ recent }: { recent: AppData["sections"]["transactions"] }) {

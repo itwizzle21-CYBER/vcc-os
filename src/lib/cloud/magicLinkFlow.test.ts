@@ -48,9 +48,11 @@ describe("magic link flow", () => {
     expect(shouldAutoCloseConfirmation(true, true)).toBe(false);
   });
 
-  it("normalizes and validates a six-digit VitaScan code", () => {
-    expect(normalizeLoginCode("12a 34-567")).toBe("123456");
+  it("normalizes and validates six- and eight-digit VitaScan codes", () => {
+    expect(normalizeLoginCode("12a 34-5678-90")).toBe("12345678");
     expect(isCompleteLoginCode("123456")).toBe(true);
+    expect(isCompleteLoginCode("12345678")).toBe(true);
     expect(isCompleteLoginCode("12345")).toBe(false);
+    expect(isCompleteLoginCode("1234567")).toBe(false);
   });
 });

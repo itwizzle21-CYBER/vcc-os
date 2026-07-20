@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Cloud, CloudOff, ExternalLink, LoaderCircle, LogOut, Mail, MailCheck, RefreshCw, ShieldCheck, X } from "lucide-react";
 import type { VccCloudSync } from "../../lib/cloud/useVccCloudSync";
-import { gmailActionLabel, gmailInboxUrl, isCompleteLoginCode, isMagicLinkConfirmation, magicLinkRetrySeconds, MAGIC_LINK_COOLDOWN_SECONDS, normalizeLoginCode, shouldAutoCloseConfirmation, usesAndroidGmailIntent } from "../../lib/cloud/magicLinkFlow";
+import { gmailActionLabel, gmailInboxUrl, isCompleteLoginCode, isMagicLinkConfirmation, LOGIN_CODE_MAX_LENGTH, magicLinkRetrySeconds, MAGIC_LINK_COOLDOWN_SECONDS, normalizeLoginCode, shouldAutoCloseConfirmation, usesAndroidGmailIntent } from "../../lib/cloud/magicLinkFlow";
 import "./cloud-sync-control.css";
 
 const RESEND_AT_KEY = "vcc-os:magic-link-resend-at";
@@ -133,7 +133,7 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
   async function verifyCode() {
     setError("");
     if (!isCompleteLoginCode(loginCode)) {
-      setError("Enter the complete six-digit code from Gmail.");
+      setError("Enter the complete six- or eight-digit code from Gmail.");
       return;
     }
     setVerifying(true);
@@ -202,19 +202,39 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
           {error && <p className="cloud-sync-message" role="alert">{error}</p>}
           <button className="cloud-sync-secondary" type="button" disabled={busy} onClick={sync.signOut}><LogOut size={16}/> Sign out on this device</button>
         </> : sentEmail ? <>
-          <p id="cloud-sync-description">We sent a secure six-digit code to the Gmail account below. Enter it here to load your desktop VCC data on this device.</p>
+          <p id="cloud-sync-description">We sent a secure sign-in code to the Gmail account below. Enter the complete six- or eight-digit code to load your VCC data.</p>
           <div className="cloud-sync-account" aria-label={`Confirmation sent to ${sentEmail}`}>
             <Mail size={18}/>
             <span><small>Confirmation destination</small><strong>{sentEmail}</strong></span>
             <Check size={17}/>
           </div>
-          <label className="cloud-sync-code">
-            <span>Six-digit code</span>
-            <input data-autofocus type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={loginCode} onChange={(event) => setLoginCode(normalizeLoginCode(event.target.value))} placeholder="000000" aria-invalid={Boolean(error)} aria-describedby={error ? "cloud-sync-code-error" : undefined}/>
-          </label>
-          <button className="cloud-sync-primary" type="button" disabled={verifying || !isCompleteLoginCode(loginCode)} onClick={verifyCode}>
-            {verifying ? <LoaderCircle className="spin" size={17}/> : <ShieldCheck size={17}/>} Verify and sync
-          </button>
+          <form className="cloud-sync-code-form" onSubmit={(event) => { event.preventDefault(); void verifyCode(); }}>
+            <label className="cloud-sync-code" htmlFor="vcc-one-time-code">
+              <span>Verification code</span>
+              <input
+                id="vcc-one-time-code"
+                name="one-time-code"
+                data-autofocus
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="one-time-code"
+                enterKeyHint="done"
+                autoCapitalize="off"
+                spellCheck={false}
+                maxLength={LOGIN_CODE_MAX_LENGTH}
+                value={loginCode}
+                onChange={(event) => setLoginCode(normalizeLoginCode(event.target.value))}
+                placeholder="00000000"
+                aria-invalid={Boolean(error)}
+                aria-describedby={`${error ? "cloud-sync-code-error " : ""}cloud-sync-code-help`}
+              />
+            </label>
+            <small id="cloud-sync-code-help">Tap the code suggestion above your phone keyboard to fill it automatically.</small>
+            <button className="cloud-sync-primary" type="submit" disabled={verifying || !isCompleteLoginCode(loginCode)}>
+              {verifying ? <LoaderCircle className="spin" size={17}/> : <ShieldCheck size={17}/>} Verify and sync
+            </button>
+          </form>
           <button className="cloud-sync-secondary cloud-sync-gmail" type="button" onClick={openGmail}>
             <ExternalLink size={17}/> {gmailActionLabel(window.navigator.userAgent)}
           </button>
@@ -228,7 +248,7 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
           </div>
           <button className="cloud-sync-text-button" type="button" onClick={resetRequest}>Use a different email</button>
         </> : <>
-          <p id="cloud-sync-description">Use the same email on every device. We will send a secure six-digit sign-in code.</p>
+          <p id="cloud-sync-description">Use the same email on every device. We will send a secure sign-in code.</p>
           <form className="cloud-sync-form" onSubmit={(event) => { event.preventDefault(); connect(); }}>
             <label className="cloud-sync-email"><span>Email address</span><div><Mail size={17}/><input data-autofocus type="email" inputMode="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" aria-invalid={Boolean(error)} aria-describedby={error ? "cloud-sync-error" : undefined}/></div></label>
             <button className="cloud-sync-primary" type="submit" disabled={busy || !sync.configured}>{busy ? <LoaderCircle className="spin"/> : <Cloud/>} Send sign-in code</button>
