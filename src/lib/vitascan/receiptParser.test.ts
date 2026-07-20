@@ -72,4 +72,17 @@ describe("VitaScan receipt parser", () => {
     const receipt = parseReceiptText("LOCAL SHOP\nBREAD $2.00\nMILK $3.00\nTAX $0.40\n07/19/2026");
     expect(receipt.amount).toBe("5.40");
   });
+
+  it("reads compact two-digit receipt dates", () => {
+    const usReceipt = parseReceiptText("WELCOME TO NORTH MARKET\nTOTAL $10.56\n07/20/26");
+    const ukReceipt = parseReceiptText("LONDON GROCER\nTOTAL 8.20 GBP\n20/07/26");
+
+    expect(usReceipt).toMatchObject({ merchant: "NORTH MARKET", date: "2026-07-20" });
+    expect(ukReceipt.date).toBe("2026-07-20");
+  });
+
+  it("reads named receipt dates", () => {
+    expect(parseReceiptText("CITY SHOP\nTOTAL $4.20\nJul 20, 2026").date).toBe("2026-07-20");
+    expect(parseReceiptText("CITY SHOP\nTOTAL 4.20 GBP\n20 July 2026").date).toBe("2026-07-20");
+  });
 });

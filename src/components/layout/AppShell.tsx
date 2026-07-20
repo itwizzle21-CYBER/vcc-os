@@ -235,9 +235,9 @@ export default function AppShell({
     >
       <header className="dashboard-top-nav">
         <a className="dashboard-top-brand has-profile" href="/settings" aria-label={`Open ${accountName || "account"} profile`}>
-          <span><UserCircle size={20} aria-hidden="true" /></span>
+          <span className="vcc-brand-mark"><img src="/vcc-logo.png" alt="" /></span>
           <div className="dashboard-brand-copy">
-            <small>Profile</small>
+            <small>{timeGreeting()},</small>
             <strong>{firstName}</strong>
           </div>
         </a>
@@ -274,7 +274,7 @@ export default function AppShell({
       <aside className="sidebar">
         <div className="brand-wrap" ref={brandRef}>
           <button className="brand" type="button" onClick={() => setBrandOpen((open) => !open)} aria-expanded={brandOpen}>
-            <span>V</span>
+            <span className="vcc-brand-mark"><img src="/vcc-logo.png" alt="" /></span>
             <div>
               <strong>VCC OS</strong>
               <small>{settings.localMode ? "Local Mode" : settings.profileLabel}</small>
@@ -374,7 +374,7 @@ export default function AppShell({
         <nav className="mobile-drawer" id="mobile-navigation" aria-label="Primary mobile navigation" ref={mobileMenuRef}>
           <div className="mobile-drawer-head">
             <a href="/" className="mobile-brand" onClick={() => setMobileMenuOpen(false)}>
-              <span>V</span>
+              <span className="vcc-brand-mark"><img src="/vcc-logo.png" alt="" /></span>
               <strong>VCC OS</strong>
             </a>
             <button type="button" aria-label="Close navigation menu" onClick={() => setMobileMenuOpen(false)}>

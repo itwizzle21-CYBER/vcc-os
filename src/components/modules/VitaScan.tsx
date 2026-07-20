@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { AppData } from "../../lib/types/app";
 import { formatReceiptNotes, parseReceiptText, type ReceiptDraft } from "../../lib/vitascan/receiptParser";
+import { readReceiptImage, type ReceiptImageQuality, type ReceiptReadProgress } from "../../lib/vitascan/receiptOcr";
 import { syncReceipt, vitaCloudEnabled } from "../../lib/vitascan/cloud";
 import { VCC_OFFICIAL_URL, VCC_TRANSACTIONS_URL } from "../../config/urls";
 import "./vitascan.css";
@@ -30,6 +31,8 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
   const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [message, setMessage] = useState("");
+  const [readProgress, setReadProgress] = useState<ReceiptReadProgress | null>(null);
+  const [imageQuality, setImageQuality] = useState<ReceiptImageQuality | null>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
   const screenshotInputRef = useRef<HTMLInputElement>(null);
   const recent = useMemo(
@@ -40,7 +43,18 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
   useEffect(() => {
     document.body.classList.add("vitascan-body");
-    return () => document.body.classList.remove("vitascan-body");
+    const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    const appleIcon = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
+    const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    manifest?.setAttribute("href", "/vitascan.webmanifest");
+    appleIcon?.setAttribute("href", "/icons/vitascan-apple-180.png?v=2");
+    favicon?.setAttribute("href", "/icons/vitascan-android-192.png?v=2");
+    return () => {
+      document.body.classList.remove("vitascan-body");
+      manifest?.setAttribute("href", "/vcc.webmanifest");
+      appleIcon?.setAttribute("href", "/icons/vcc-apple-180.png?v=1");
+      favicon?.setAttribute("href", "/icons/vcc-android-192.png?v=1");
+    };
   }, []);
 
   async function scan(file?: File) {
@@ -53,21 +67,30 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
     setPreview(URL.createObjectURL(file));
     setDraft(emptyDraft);
     setStatus("scanning");
-    setMessage("Reading every visible line on this device…");
+    setImageQuality(null);
+    setReadProgress({ stage: "preparing", progress: 0.02, label: "Preparing the receipt…" });
+    setMessage("Finding the receipt, strengthening faint print, and reading every line on this device…");
 
     try {
-      const { recognize } = await import("tesseract.js");
       const barcodePromise = detectImageBarcodes(file);
-      const result = await recognize(file, receiptOcrLanguages(window.navigator.languages));
-      const nextDraft = parseReceiptText(result.data.text, await barcodePromise);
+      const result = await readReceiptImage(
+        file,
+        receiptOcrLanguages(window.navigator.languages),
+        await barcodePromise,
+        setReadProgress,
+      );
+      const nextDraft = result.draft;
       setDraft(nextDraft);
+      setImageQuality(result.quality);
+      setReadProgress(null);
       setStatus("ready");
       setMessage(canAdd(nextDraft)
-        ? "Receipt details are ready to send to VCC Transactions."
-        : "The total or merchant was not clear enough. Retake the scan with the full receipt in frame.");
-    } catch {
+        ? `Strong read complete${result.passes > 1 ? " after a second faint-print pass" : ""}. Review it, then add it to VCC.`
+        : `The merchant or total is still unclear.${result.quality.warnings[0] ? ` ${result.quality.warnings[0]}` : " Retake with all four receipt corners visible."}`);
+    } catch (error) {
+      setReadProgress(null);
       setStatus("ready");
-      setMessage("This image could not be read. Retake it in bright, even light with the full receipt in frame.");
+      setMessage(`This receipt could not be read. ${error instanceof Error ? error.message : "Retake it in bright, even light with the full receipt in frame."}`);
     }
   }
 
@@ -79,7 +102,8 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
     const amount = Math.abs(Number(draft.amount));
     const id = `vitascan-${crypto.randomUUID()}`;
     const signed = draft.direction === "expense" ? -amount : amount;
-    const notes = formatReceiptNotes(draft);
+    const savedDraft = { ...draft, date: draft.date || new Date().toISOString().slice(0, 10) };
+    const notes = `${formatReceiptNotes(savedDraft)}${draft.date ? "" : "\nReceipt date was unreadable; VitaScan used the scan date."}`;
     const row = {
       id,
       cells: {
@@ -87,7 +111,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
         type: draft.direction,
         category: draft.category,
         amount: signed.toFixed(2),
-        date: draft.date,
+        date: savedDraft.date,
         account: draft.account,
         recurring: "No",
         notes,
@@ -97,7 +121,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
     onChange({ ...data, sections: { ...data.sections, transactions: [...data.sections.transactions, row] } });
 
     try {
-      const result = await syncReceipt(draft, id);
+      const result = await syncReceipt(savedDraft, id);
       setMessage(result.synced
         ? "Added to Transactions and synced across your VCC devices."
         : `Added to Transactions on this device. ${result.reason || "Connect cloud sync to share it."}`);
@@ -112,6 +136,8 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
     setDraft(emptyDraft);
     setStatus("idle");
     setMessage("");
+    setReadProgress(null);
+    setImageQuality(null);
     if (scanInputRef.current) scanInputRef.current.value = "";
     if (screenshotInputRef.current) screenshotInputRef.current.value = "";
   }
@@ -150,8 +176,13 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
           <div className={`scan-frame ${preview ? "has-preview" : ""}`}>
             {preview
               ? <img src={preview} alt="Receipt selected for scanning" />
-              : <><Camera size={42} aria-hidden="true" /><strong>Fill the frame</strong><span>Keep the entire receipt or payment screenshot visible.</span></>}
-            {status === "scanning" && <div className="scan-reading"><LoaderCircle className="spin" aria-hidden="true" /><strong>Reading every detail…</strong></div>}
+              : <><Camera size={42} aria-hidden="true" /><strong>Target the receipt</strong><span>Lay it flat in even light and keep all four corners inside the frame.</span></>}
+            {status === "scanning" && <div className="scan-reading">
+              <LoaderCircle className="spin" aria-hidden="true" />
+              <strong>{readProgress?.label || "Reading every detail…"}</strong>
+              <progress max="1" value={readProgress?.progress || 0.02} aria-label="Receipt reading progress" />
+              <small>{Math.round((readProgress?.progress || 0.02) * 100)}%</small>
+            </div>}
           </div>
 
           <div className="scan-actions">
@@ -175,7 +206,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
             <dl className="receipt-summary">
               <div><dt>Merchant</dt><dd>{draft.merchant || "Not detected"}</dd></div>
               <div><dt>Total</dt><dd>{draft.amount ? formatReceiptAmount(draft) : "Not detected"}</dd></div>
-              <div><dt>Date</dt><dd>{draft.date || "Not detected"}</dd></div>
+              <div><dt>Date</dt><dd>{draft.date || "Use today's scan date"}</dd></div>
               <div><dt>Payment</dt><dd>{draft.account}</dd></div>
             </dl>
             {(draft.items.length > 0 || draft.barcodes.length > 0 || draft.pluNumbers.length > 0) && <section className="retail-intelligence" aria-labelledby="retail-intelligence-title">
@@ -193,6 +224,10 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
               {draft.pluNumbers.length > 0 && <p className="code-list"><strong>PLU</strong> {draft.pluNumbers.join(" · ")}</p>}
               {draft.barcodes.length > 0 && <p className="code-list"><strong>Barcode</strong> {draft.barcodes.join(" · ")}</p>}
             </section>}
+            {imageQuality?.warnings.length ? <section className="scan-quality" aria-label="Photo tips">
+              <strong>For an even stronger read</strong>
+              <ul>{imageQuality.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+            </section> : null}
             <details className="full-scan"><summary><ReceiptText size={17} aria-hidden="true" /> Every captured line</summary><pre>{draft.rawText}</pre></details>
           </>}
 
@@ -223,7 +258,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
 
 function canAdd(draft: ReceiptDraft) {
   const amount = Number(draft.amount);
-  return Boolean(draft.rawText && draft.merchant.trim() && draft.date && Number.isFinite(amount) && amount > 0);
+  return Boolean(draft.rawText && draft.merchant.trim() && draft.merchant !== "Receipt" && Number.isFinite(amount) && amount > 0);
 }
 
 function formatReceiptAmount(draft: ReceiptDraft): string {
@@ -254,8 +289,9 @@ type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => { de
 async function detectImageBarcodes(file: File): Promise<string[]> {
   const Detector = (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector;
   if (Detector && typeof createImageBitmap === "function") {
-    const bitmap = await createImageBitmap(file);
+    let bitmap: ImageBitmap | null = null;
     try {
+      bitmap = await createImageBitmap(file);
       const detector = new Detector();
       const results = await detector.detect(bitmap);
       const values = [...new Set(results.map((result) => result.rawValue.trim()).filter(Boolean))];
@@ -263,7 +299,7 @@ async function detectImageBarcodes(file: File): Promise<string[]> {
     } catch {
       // Continue to the cross-browser decoder below.
     } finally {
-      bitmap.close();
+      bitmap?.close();
     }
   }
 

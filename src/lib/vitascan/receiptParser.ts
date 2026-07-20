@@ -184,14 +184,28 @@ function parseLocalizedNumber(value: string): number {
 function extractReceiptDate(text: string, currencyCode: string): string {
   const iso = text.match(/\b(20\d{2})[-/.]([01]?\d)[-/.]([0-3]?\d)\b/);
   if (iso) return validIsoDate(iso[1], iso[2], iso[3]);
-  const local = text.match(/\b([0-3]?\d)[-/.]([0-3]?\d)[-/.](20\d{2})\b/);
+  const named = text.match(/\b([0-3]?\d)[ \t]+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[ \t]+(\d{2,4})\b/i)
+    || text.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[ \t]+([0-3]?\d),?[ \t]+(\d{2,4})\b/i);
+  if (named) {
+    const monthFirst = /\p{L}/u.test(named[1]);
+    const day = monthFirst ? named[2] : named[1];
+    const monthName = monthFirst ? named[1] : named[2];
+    const month = String(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].findIndex((value) => monthName.toLowerCase().startsWith(value)) + 1);
+    return validIsoDate(normalizeReceiptYear(named[3]), month, day);
+  }
+  const local = text.match(/\b([0-3]?\d)[-/.]([0-3]?\d)[-/.](\d{2,4})\b/);
   if (!local) return "";
   const first = Number(local[1]);
   const second = Number(local[2]);
   const monthFirst = second > 12 || (first <= 12 && second <= 12 && ["USD", "CAD"].includes(currencyCode));
   const month = monthFirst ? local[1] : local[2];
   const day = monthFirst ? local[2] : local[1];
-  return validIsoDate(local[3], month, day);
+  return validIsoDate(normalizeReceiptYear(local[3]), month, day);
+}
+
+function normalizeReceiptYear(year: string): string {
+  if (year.length === 4) return year;
+  return String(Number(year) >= 70 ? 1900 + Number(year) : 2000 + Number(year));
 }
 
 function validIsoDate(year: string, month: string, day: string): string {
@@ -207,15 +221,21 @@ function detectPaymentMethod(text: string): string {
 }
 
 function detectMerchant(lines: string[], provider?: string): string {
-  const candidate = lines.slice(0, 10).find((line) => {
-    if (provider && line.toLowerCase().includes(provider.toLowerCase())) return false;
-    if (!/\p{L}/u.test(line) || line.length > 80) return false;
-    return !/\b(receipt|invoice|transaction|order|date|time|tel|phone|tax id|vat|gst|www\.|https?|cashier|register|terminal|store #)\b/i.test(line)
-      && !totalWords.test(line)
-      && !extractAmounts(line).length
-      && !/^\s*\d+[\s-]+\d+/.test(line);
+  const candidates = lines.slice(0, 12).flatMap((source, index) => {
+    const line = source.replace(/^\s*(?:welcome to|bienvenue chez|bienvenido a|willkommen bei)\s+/i, "").trim();
+    if (provider && line.toLowerCase().includes(provider.toLowerCase())) return [];
+    if (!/\p{L}/u.test(line) || line.length > 80) return [];
+    if (/\b(receipt|invoice|transaction|order|date|time|tel|phone|tax id|vat|gst|www\.|https?|cashier|register|terminal|store #|thank you|merci)\b/i.test(line)
+      || totalWords.test(line)
+      || extractAmounts(line).length
+      || /^\s*\d+[\s-]+\d+/.test(line)
+      || /\b(?:street|st\.?|road|rd\.?|avenue|ave\.?|boulevard|blvd\.?|drive|dr\.?)\b.*\d/i.test(line)) return [];
+    const letters = [...line].filter((character) => /\p{L}/u.test(character));
+    const uppercaseRatio = letters.length ? letters.filter((character) => character === character.toUpperCase()).length / letters.length : 0;
+    const score = 100 - index * 7 + Math.min(18, letters.length / 2) + (uppercaseRatio > 0.8 ? 9 : 0);
+    return [{ line, score }];
   });
-  return candidate || provider || "Receipt";
+  return candidates.sort((left, right) => right.score - left.score)[0]?.line || provider || "Receipt";
 }
 
 function extractLineItems(lines: string[], receiptBarcodes: string[], receiptPluNumbers: string[]): ReceiptLineItem[] {

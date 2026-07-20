@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1600" viewBox="0 0 900 1600">
+  <rect width="900" height="1600" fill="#3b4554"/>
+  <rect x="90" y="40" width="720" height="1520" rx="10" fill="#ffffff"/>
+  <g fill="#111111" font-family="Arial, Helvetica, sans-serif" font-size="34">
+    <text x="450" y="125" text-anchor="middle" font-size="50" font-weight="700">NORTH MARKET</text>
+    <text x="450" y="175" text-anchor="middle">125 MAIN STREET</text>
+    <text x="450" y="220" text-anchor="middle">STORE 104  REGISTER 03</text>
+    <text x="135" y="295">07/20/2026  14:31</text>
+    <text x="135" y="350">--------------------------------</text>
+    <text x="135" y="425">4011 BANANAS</text><text x="760" y="425" text-anchor="end">1.29</text>
+    <text x="135" y="485">WHOLE MILK 2 x 2.50</text><text x="760" y="485" text-anchor="end">5.00</text>
+    <text x="135" y="545">SOURDOUGH BREAD</text><text x="760" y="545" text-anchor="end">3.49</text>
+    <text x="135" y="610">--------------------------------</text>
+    <text x="135" y="675">SUBTOTAL</text><text x="760" y="675" text-anchor="end">9.78</text>
+    <text x="135" y="735">TAX</text><text x="760" y="735" text-anchor="end">0.78</text>
+    <text x="135" y="810" font-size="44" font-weight="700">TOTAL</text>
+    <text x="760" y="810" text-anchor="end" font-size="44" font-weight="700">$10.56</text>
+    <text x="135" y="895">VISA **** 4242</text>
+    <text x="135" y="955">RECEIPT # WM1048892</text>
+    <text x="135" y="1015">UPC 036000291452</text>
+    <text x="450" y="1125" text-anchor="middle" font-size="40" font-weight="700">THANK YOU</text>
+  </g>
+</svg>

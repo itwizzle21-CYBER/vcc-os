@@ -19,7 +19,12 @@
 .scan-frame>span { max-width: 17rem; padding-inline: 20px; font-size: .8rem; line-height: 1.45; }
 .scan-frame.has-preview { background: #020617; }
 .scan-frame img { width: 100%; height: 100%; object-fit: contain; }
-.scan-reading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; background: rgba(2,6,23,.82); color: #e0f2fe; }
+.scan-reading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 24px; background: rgba(2,6,23,.86); color: #e0f2fe; }
+.scan-reading strong { max-width: 17rem; font-size: .85rem; }
+.scan-reading progress { width: min(15rem,70vw); height: 7px; overflow: hidden; border: 0; border-radius: 999px; accent-color: #38bdf8; }
+.scan-reading progress::-webkit-progress-bar { border-radius: 999px; background: rgba(148,163,184,.2); }
+.scan-reading progress::-webkit-progress-value { border-radius: 999px; background: linear-gradient(90deg,#38bdf8,#6366f1); }
+.scan-reading small { color: #94a3b8; font-size: .7rem; }
 .scan-actions { display: grid; gap: 0; }
 .scan-button,.scan-secondary,.save-scan,.reset-scan { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; box-sizing: border-box; margin-top: 10px; min-height: 46px; padding: 11px; border: 1px solid transparent; border-radius: 12px; font: inherit; font-size: .85rem; font-weight: 800; cursor: pointer; transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease, opacity 140ms ease; }
 .scan-button,.save-scan { background: linear-gradient(135deg,#0ea5e9,#4f46e5); color: #fff; text-decoration: none; }
@@ -55,6 +60,9 @@
 .receipt-items li b { flex: 0 0 auto; color: #e0f2fe; }
 .more-items,.code-list { margin: 7px 0 0; color: #94a3b8; font-size: .66rem; overflow-wrap: anywhere; }
 .code-list strong { color: #bae6fd; }
+.scan-quality { margin-top: 9px; padding: 9px 10px; border: 1px solid rgba(251,191,36,.18); border-radius: 10px; background: rgba(245,158,11,.07); color: #fde68a; font-size: .7rem; }
+.scan-quality strong { font-size: .72rem; }
+.scan-quality ul { display: grid; gap: 3px; margin: 5px 0 0; padding-left: 17px; color: #fcd34d; }
 .full-scan { margin-top: 9px; border: 1px solid rgba(148,163,184,.16); border-radius: 10px; }
 .full-scan summary { display: flex; align-items: center; gap: 7px; padding: 10px; cursor: pointer; color: #bae6fd; font-size: .78rem; font-weight: 800; }
 .full-scan pre { max-height: 12rem; overflow: auto; margin: 0; padding: 0 10px 10px; color: #cbd5e1; font: .7rem/1.5 ui-monospace,monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
