@@ -3589,7 +3589,20 @@ td input[readonly] {
 .report-chart-key .income::before { background: #25d39b; }
 .report-chart-key .expense::before { background: #ff6666; }
 .report-chart-figure figcaption { font-size: 0.78rem; }
-.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0 0 0 0) !important; white-space: nowrap !important; clip-path: inset(50%) !important; }
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  min-width: 1px !important;
+  max-width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  clip-path: inset(50%) !important;
+  border: 0 !important;
+}
 
 .chart-slide-controls { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) 2.25rem; align-items: center; gap: 0.45rem; }
 .chart-slide-controls > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.35rem; }

@@ -46,8 +46,9 @@ import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
-import { loadAppData, resetAllData, resetSection, saveAppData } from "./lib/storage/localStore";
-import type { AppData, SectionKey, SpreadsheetRow, UserSettings } from "./lib/types/app";
+import { loadAppData, resetAllData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
+import { applyVisualSettings, getSystemTheme } from "./lib/theme/themePreference";
+import type { AppData, SectionKey, SpreadsheetRow, ThemeMode, UserSettings } from "./lib/types/app";
 import { useVccCloudSync } from "./lib/cloud/useVccCloudSync";
 
 const worldwideTransactionCategories = [
@@ -84,6 +85,7 @@ type WallpaperPreviewSettings = Pick<UserSettings, "wallpaper" | "customWallpape
 
 export default function App() {
   const [data, setData] = useState<AppData>(() => loadAppData());
+  const themePreferenceRef = useRef<ThemeMode>(data.settings.theme);
   const [wallpaperPreview, setWallpaperPreview] = useState<WallpaperPreviewSettings | null>(null);
   const [systemTheme, setSystemTheme] = useState<"dark" | "light">(() => getSystemTheme());
   const path = normalizePath(window.location.pathname);
@@ -92,7 +94,13 @@ export default function App() {
   const decisionState = useMemo(() => computeDecisionEngine(financialState, data), [financialState, data]);
   const activeTheme = data.settings.theme === "system" ? systemTheme : data.settings.theme;
   const normalizeAndSetData = useCallback((next: AppData) => {
-    setData({ ...next, sections: { ...next.sections, inventory: next.sections.inventory.map(normalizeInventoryRow) } });
+    const normalized = {
+      ...next,
+      settings: { ...next.settings, theme: themePreferenceRef.current },
+      sections: { ...next.sections, inventory: next.sections.inventory.map(normalizeInventoryRow) },
+    };
+    saveAppData(normalized);
+    setData(normalized);
   }, []);
   const cloudSync = useVccCloudSync(data, normalizeAndSetData);
 
@@ -107,14 +115,15 @@ export default function App() {
   useEffect(() => {
     saveAppData(data);
     document.title = path === "/vitascan" ? "VitaScan — VCC Receipt Scanner" : "VCC-OS";
-    document.documentElement.dataset.theme = activeTheme;
-    document.documentElement.dataset.appearance = data.settings.appearanceTheme;
-    document.documentElement.dataset.accent = data.settings.accent;
-    document.documentElement.dataset.density = data.settings.density;
-    document.documentElement.dataset.surface = data.settings.surfaceStyle;
+    applyVisualSettings(data.settings);
   }, [activeTheme, data, path]);
 
   function updateData(next: AppData) {
+    if (next.settings.theme !== themePreferenceRef.current) {
+      themePreferenceRef.current = next.settings.theme;
+      saveThemePreference(next.settings.theme);
+    }
+    applyVisualSettings({ ...next.settings, theme: themePreferenceRef.current });
     normalizeAndSetData(next);
   }
 
@@ -2773,11 +2782,6 @@ function moneySectionLabel(section: ReturnType<typeof moneySection>): string {
 function normalizePath(path: string) {
   if (path.length > 1 && path.endsWith("/")) return path.slice(0, -1);
   return path || "/";
-}
-
-function getSystemTheme(): "dark" | "light" {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 const knownPaths = new Set([

@@ -1,4 +1,4 @@
-import type { AppData, SectionKey, SpreadsheetRow } from "../types/app";
+import type { AppData, SectionKey, SpreadsheetRow, ThemeMode } from "../types/app";
 import { isBlankRow, toNumber } from "../calculations/currency";
 import { normalizeInventoryRow } from "../engine/inventoryEngine";
 import { syncConfirmedReceiptTransactions } from "../engine/carLoanEngine";
@@ -6,6 +6,7 @@ import { createVerifiedCarLoanData } from "./carLoanReference";
 import { createStarterData, createZeroData, sectionConfigs } from "./defaultData";
 
 const STORAGE_KEY = "vcc-os:data:v2";
+export const THEME_PREFERENCE_KEY = "vcc-os:theme-preference";
 const LEGACY_KEYS = ["vcc-os:data", "vcc_os_data", "vccData", "vcc-os-financial-state"];
 const BLANK_RESET_MARKER = "__vcc_blank_reset__";
 
@@ -17,9 +18,9 @@ export function loadAppData(): AppData {
     if (isEmptyAppData(migrated) && !hasBlankResetMarker(migrated)) {
       const starter = createStarterData();
       saveAppData(starter);
-      return starter;
+      return withLocalThemePreference(starter);
     }
-    return migrated;
+    return withLocalThemePreference(migrated);
   }
 
   for (const key of LEGACY_KEYS) {
@@ -27,18 +28,39 @@ export function loadAppData(): AppData {
     if (legacy) {
       const migrated = migrateAppData(legacy);
       saveAppData(migrated);
-      return migrated;
+      return withLocalThemePreference(migrated);
     }
   }
 
   const starter = createStarterData();
   saveAppData(starter);
-  return starter;
+  return withLocalThemePreference(starter);
 }
 
 export function saveAppData(data: AppData) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, version: 3 }));
+}
+
+export function loadThemePreference(fallback: ThemeMode): ThemeMode {
+  if (typeof window === "undefined") return fallback;
+  const stored = window.localStorage.getItem(THEME_PREFERENCE_KEY);
+  return isThemeMode(stored) ? stored : fallback;
+}
+
+export function saveThemePreference(theme: ThemeMode): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(THEME_PREFERENCE_KEY, theme);
+}
+
+function withLocalThemePreference(data: AppData): AppData {
+  const theme = loadThemePreference(data.settings.theme);
+  if (theme === data.settings.theme) return data;
+  return { ...data, settings: { ...data.settings, theme } };
+}
+
+function isThemeMode(value: string | null): value is ThemeMode {
+  return value === "system" || value === "dark" || value === "light";
 }
 
 export function resetSection(data: AppData, section: SectionKey): AppData {
