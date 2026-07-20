@@ -502,6 +502,66 @@
   min-width: 10rem;
 }
 
+:root[data-theme="light"] .settings-wallpaper-dialog {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 28px 80px color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+:root[data-theme="light"] .settings-wallpaper-vcc-preview {
+  background: linear-gradient(180deg, var(--surface-2), var(--bg) 78%);
+}
+
+:root[data-theme="light"] .settings-wallpaper-vcc-preview.has-preview-image {
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, var(--settings-preview-start-alpha, 0.16)), rgba(238, 243, 250, var(--settings-preview-end-alpha, 0.42)) 78%),
+    var(--settings-wallpaper-preview),
+    var(--bg);
+  background-position: center;
+  background-size: cover;
+}
+
+:root[data-theme="light"] .settings-wallpaper-vcc-preview::after {
+  background:
+    radial-gradient(circle at 22% 12%, var(--accent-soft), transparent 22rem),
+    linear-gradient(90deg, rgba(255, 255, 255, var(--settings-preview-side-alpha, 0.25)), rgba(255, 255, 255, var(--settings-preview-middle-alpha, 0.05)) 42%, rgba(255, 255, 255, var(--settings-preview-side-alpha, 0.25)));
+}
+
+:root[data-theme="light"] .settings-wallpaper-preview-nav,
+:root[data-theme="light"] .settings-wallpaper-preview-card {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, var(--settings-preview-card-alpha, 0.84));
+  color: var(--text);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+:root[data-theme="light"] .settings-wallpaper-preview-card.is-wide {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 82%, #2563eb), color-mix(in srgb, var(--accent) 52%, #06b6d4)),
+    var(--accent);
+  color: #ffffff;
+}
+
+:root[data-theme="light"] .settings-wallpaper-preview-card small,
+:root[data-theme="light"] .settings-wallpaper-preview-card span {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .settings-wallpaper-preview-card strong {
+  color: var(--text);
+}
+
+:root[data-theme="light"] .settings-wallpaper-preview-card.is-wide small,
+:root[data-theme="light"] .settings-wallpaper-preview-card.is-wide strong,
+:root[data-theme="light"] .settings-wallpaper-preview-card.is-wide span {
+  color: #ffffff;
+}
+
+:root[data-theme="light"] .settings-wallpaper-tuning,
+:root[data-theme="light"] .settings-wallpaper-dialog-actions {
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .premium-settings .settings-detail-panel {
     animation: settings-detail-enter 220ms var(--ease-out) both;
@@ -757,6 +817,131 @@
   line-height: 1.48;
 }
 
+.settings-layer-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.3rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.settings-layer-heading h3,
+.settings-layer-heading p {
+  margin: 0;
+}
+
+.settings-layer-heading h3 {
+  margin-top: 0.18rem;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.settings-layer-heading > div > p:last-child {
+  max-width: 43rem;
+  margin-top: 0.28rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.settings-combination-badge {
+  display: inline-flex;
+  min-height: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  padding: 0 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.settings-layer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.72rem;
+}
+
+.settings-layer-card {
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--theme-radius-panel);
+  background: var(--surface);
+  padding: 0.9rem;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.settings-layer-card > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.62rem;
+}
+
+.settings-layer-card > header > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.settings-layer-card > header strong {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.settings-layer-card > header small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.settings-layer-card > header > span:last-child {
+  max-width: 8rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  padding: 0.28rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-layer-icon {
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  place-items: center;
+  border-radius: var(--theme-radius-control);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.settings-layer-card .settings-segmented,
+.settings-layer-card .settings-wallpaper-summary {
+  width: 100%;
+}
+
+.settings-layer-card .settings-wallpaper-summary {
+  grid-template-columns: 4.6rem minmax(0, 1fr);
+}
+
+.settings-layer-card .settings-wallpaper-current {
+  width: 4.6rem;
+}
+
+.settings-layer-card .settings-wallpaper-summary button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
 .theme-preview-signature { border-top: 3px solid #4f8cff; }
 .theme-preview-executive { border-top: 3px solid #c79a4b; }
 .theme-preview-nordic { border-top: 3px solid #347c78; }
@@ -786,6 +971,14 @@
 @media (max-width: 39.999rem) {
   .settings-appearance-intro {
     flex-direction: column;
+  }
+
+  .settings-layer-heading {
+    flex-direction: column;
+  }
+
+  .settings-layer-grid {
+    grid-template-columns: 1fr;
   }
 
   .settings-theme-grid {

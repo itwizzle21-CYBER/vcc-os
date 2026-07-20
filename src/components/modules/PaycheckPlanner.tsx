@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatCurrency, formatDateMDY, toNumber, weekBounds } from "../../lib/calculations/currency";
 import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner } from "../../lib/types/app";
+import BufferedTextInput from "../shared/BufferedTextInput";
 
 export default function PaycheckPlanner({
   data,
@@ -126,13 +127,14 @@ function PlannerInput({
   return (
     <label>
       <span>{label}</span>
-      <input
+      <BufferedTextInput
         type={isLockedDate ? "text" : type}
         aria-label={label}
         className={type === "date" ? "calendar-input" : undefined}
         value={isLockedDate ? formatDateMDY(value) : value}
         disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
+        onValueChange={onChange}
+        delay={280}
         onClick={(event) => {
           if (type === "date" && !disabled) openDatePicker(event.currentTarget);
         }}

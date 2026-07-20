@@ -1,7 +1,8 @@
 import { Trash2 } from "lucide-react";
-import { useDeferredValue, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { SectionConfig, SectionKey, SpreadsheetRow } from "../../lib/types/app";
 import { formatCurrency } from "../../lib/calculations/currency";
+import BufferedTextInput from "./BufferedTextInput";
 
 interface SpreadsheetProps {
   config: SectionConfig;
@@ -29,7 +30,6 @@ export default function Spreadsheet({
   addLabel = "Add Row",
 }: SpreadsheetProps) {
   const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search);
   const [validationMessage, setValidationMessage] = useState("");
   const [newRowId, setNewRowId] = useState("");
   const tableRef = useRef<HTMLDivElement>(null);
@@ -56,17 +56,17 @@ export default function Spreadsheet({
     }));
     const filled = normalized.filter((row) => !blankRowIds.has(row.id));
     const blanks = normalized.filter((row) => blankRowIds.has(row.id));
-    const searched = deferredSearch.trim()
+    const searched = search.trim()
       ? filled.filter((row) =>
-          Object.values(row.cells).some((value) => String(value || "").toLowerCase().includes(deferredSearch.toLowerCase()))
+          Object.values(row.cells).some((value) => String(value || "").toLowerCase().includes(search.toLowerCase()))
         )
       : filled;
     const sorted = sortBy
       ? [...searched].sort((a, b) => String(a.cells[sortBy] || "").localeCompare(String(b.cells[sortBy] || ""), undefined, { numeric: true }))
       : searched;
-    const visibleBlanks = deferredSearch.trim() ? blanks.filter((row) => row.id === newRowId) : blanks;
+    const visibleBlanks = search.trim() ? blanks.filter((row) => row.id === newRowId) : blanks;
     return [...sorted, ...visibleBlanks];
-  }, [blankRowIds, config.columns, deferredSearch, getComputedCell, newRowId, rows, sortBy]);
+  }, [blankRowIds, config.columns, getComputedCell, newRowId, rows, search, sortBy]);
 
   function updateCell(rowId: string, columnKey: string, value: string) {
     if (preventDuplicateKey === columnKey && value.trim()) {
@@ -214,7 +214,7 @@ export default function Spreadsheet({
             </select>
           </label>
           <label>
-            <input aria-label={`Search ${config.title} rows`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Search ${config.title} rows`} />
+            <BufferedTextInput aria-label={`Search ${config.title} rows`} value={search} onValueChange={setSearch} placeholder={`Search ${config.title} rows`} />
           </label>
           <button type="button" onClick={addRow}>
             {addLabel}
@@ -319,7 +319,7 @@ export default function Spreadsheet({
                   }
                   return (
                     <td key={column.key} data-label={column.label}>
-                      <input
+                      <BufferedTextInput
                         type={inputType}
                         className={column.type === "date" ? "calendar-input" : undefined}
                         data-row-index={rowIndex}
@@ -331,13 +331,14 @@ export default function Spreadsheet({
                         readOnly={readOnly}
                         aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
                         aria-readonly={readOnly}
-                        onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value)}
-                        onChange={(event) => updateCell(row.id, column.key, event.target.value)}
+                        delay={320}
+                        onValueFocus={(currentValue) => handleCellFocus(row.id, column.key, currentValue)}
+                        onValueChange={(nextValue) => updateCell(row.id, column.key, nextValue)}
                         onClick={(event) => {
                           if (column.type === "date" && !readOnly) openDatePicker(event.currentTarget);
                         }}
-                        onBlur={(event) => {
-                          commitCell(row.id, column.key, event.currentTarget.value);
+                        onValueBlur={(currentValue) => {
+                          commitCell(row.id, column.key, currentValue);
                           activeCellRef.current = null;
                         }}
                         onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}

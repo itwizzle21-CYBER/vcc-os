@@ -36,15 +36,16 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #eef2f7;
+  background: #f5f7fb;
+  --bg: #f5f7fb;
   --surface: #ffffff;
-  --surface-2: #f5f7fb;
-  --border: #d9e0ea;
-  --text: #17202a;
-  --muted: #637083;
-  --shadow-raised: 0 14px 34px rgba(48, 60, 78, 0.1);
-  --theme-overlay: rgba(255, 255, 255, 0.9);
-  --theme-overlay-strong: rgba(255, 255, 255, 0.98);
+  --surface-2: #f8fafc;
+  --border: #cbd5e1;
+  --text: #101828;
+  --muted: #526177;
+  --shadow-raised: 0 16px 38px rgba(15, 23, 42, 0.09);
+  --theme-overlay: rgba(255, 255, 255, 0.94);
+  --theme-overlay-strong: rgba(255, 255, 255, 0.985);
   --theme-on-accent: #ffffff;
   --theme-grid-line: rgba(23, 32, 42, 0.055);
 }
@@ -59,7 +60,7 @@
 }
 
 :root[data-theme="light"][data-appearance="signature"] {
-  --bg: #edf3fa;
+  --bg: #f3f7fc;
   --surface: #ffffff;
   --surface-2: #f4f7fb;
   --border: #d3deeb;
@@ -81,7 +82,7 @@
 }
 
 :root[data-theme="light"][data-appearance="executive"] {
-  --bg: #eeeae2;
+  --bg: #f7f3eb;
   --surface: #fffdf8;
   --surface-2: #f4f0e8;
   --border: #d2c9ba;
@@ -102,7 +103,7 @@
 }
 
 :root[data-theme="light"][data-appearance="nordic"] {
-  --bg: #e9f0ef;
+  --bg: #f1f8f7;
   --surface: #fdfefe;
   --surface-2: #f1f6f5;
   --border: #cbdad8;
@@ -1462,6 +1463,7 @@ textarea {
 :root[data-theme="light"] .reference-shell td select,
 :root[data-theme="light"] .reference-shell .toolbar-controls input,
 :root[data-theme="light"] .reference-shell .toolbar-controls select,
+:root[data-theme="light"] .reference-shell .planner-form input,
 :root[data-theme="light"] .reference-shell .bills-search input,
 :root[data-theme="light"] .reference-shell .transactions-search input,
 :root[data-theme="light"] .reference-shell .inventory-search input,
@@ -1474,6 +1476,11 @@ textarea {
   border-color: var(--border);
   background: var(--surface-2);
   color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell .planner-form input::placeholder {
+  color: color-mix(in srgb, var(--muted) 82%, transparent);
+  opacity: 1;
 }
 
 :root[data-theme="light"] .reference-shell .bills-status-tabs button,
@@ -4984,11 +4991,24 @@ td input[readonly] {
 }
 
 .dashboard-intelligence-panel {
+  --dashboard-stack-info: #7cc5ff;
+  --dashboard-stack-success: #56e7b8;
+  --dashboard-stack-warning: #ffd070;
+  --dashboard-stack-text: var(--vcc-text);
+  --dashboard-stack-muted: var(--vcc-muted);
+  --dashboard-stack-subtle: color-mix(in srgb, var(--vcc-text) 74%, transparent);
+  --dashboard-stack-track: color-mix(in srgb, var(--vcc-text) 10%, transparent);
   display: grid;
   align-content: start;
   gap: 1rem;
   min-width: 0;
   padding: 1.1rem;
+}
+
+:root[data-theme="light"] .dashboard-intelligence-panel {
+  --dashboard-stack-info: #165d91;
+  --dashboard-stack-success: #066b51;
+  --dashboard-stack-warning: #7a4a00;
 }
 
 .dashboard-intelligence-heading {
@@ -5004,13 +5024,14 @@ td input[readonly] {
   flex-shrink: 0;
   place-items: center;
   border-radius: 0.7rem;
-  background: rgba(100, 183, 255, 0.15);
-  color: #64b7ff;
+  border: 1px solid color-mix(in srgb, var(--dashboard-stack-info) 24%, transparent);
+  background: color-mix(in srgb, var(--dashboard-stack-info) 13%, transparent);
+  color: var(--dashboard-stack-info);
 }
 
 .dashboard-intelligence-heading h2 {
   margin: 0;
-  color: #f5f5f7;
+  color: var(--dashboard-stack-text);
   font-size: 1rem;
   font-weight: 950;
 }
@@ -5021,15 +5042,23 @@ td input[readonly] {
   gap: 0.65rem;
 }
 
-.dashboard-mission-row {
+.dashboard-intelligence-panel .dashboard-mission-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: 0.75rem;
   align-items: start;
-  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  border-top: 1px solid var(--vcc-line);
   border-radius: 0.65rem;
+  background: transparent;
   padding-top: 0.65rem;
-  color: inherit;
+  color: var(--dashboard-stack-text);
+}
+
+:root[data-theme="light"] .dashboard-intelligence-panel .dashboard-mission-row,
+:root[data-theme="light"] .dashboard-intelligence-panel .dashboard-alert-row {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
 }
 
 .dashboard-mission-row:first-child,
@@ -5039,12 +5068,13 @@ td input[readonly] {
 }
 
 .dashboard-mission-row:hover {
-  color: inherit;
+  background: color-mix(in srgb, var(--dashboard-stack-info) 7%, transparent);
+  color: var(--dashboard-stack-text);
   transform: translateX(2px);
 }
 
 .dashboard-mission-row:focus-visible {
-  outline: 3px solid rgba(100, 183, 255, 0.72);
+  outline: 3px solid color-mix(in srgb, var(--dashboard-stack-info) 72%, transparent);
   outline-offset: 3px;
 }
 
@@ -5057,14 +5087,14 @@ td input[readonly] {
 
 .dashboard-mission-row strong,
 .dashboard-alert-row strong {
-  color: #f5f5f7;
+  color: var(--dashboard-stack-text);
   font-size: 0.92rem;
   font-weight: 900;
 }
 
 .dashboard-mission-row span,
 .dashboard-alert-row span {
-  color: #9fa3ac;
+  color: var(--dashboard-stack-muted);
   font-size: 0.84rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -5075,21 +5105,21 @@ td input[readonly] {
   width: 1.45rem;
   height: 1.45rem;
   place-items: center;
-  border: 1px solid rgba(100, 183, 255, 0.34);
+  border: 1px solid color-mix(in srgb, var(--dashboard-stack-info) 42%, transparent);
   border-radius: 999px;
-  background: rgba(100, 183, 255, 0.1);
-  color: #64b7ff;
+  background: color-mix(in srgb, var(--dashboard-stack-info) 12%, transparent);
+  color: var(--dashboard-stack-info);
 }
 
 .dashboard-mission-row.complete .mission-check-indicator {
-  border-color: rgba(37, 211, 155, 0.42);
-  background: rgba(37, 211, 155, 0.14);
-  color: #25d39b;
+  border-color: color-mix(in srgb, var(--dashboard-stack-success) 42%, transparent);
+  background: color-mix(in srgb, var(--dashboard-stack-success) 13%, transparent);
+  color: var(--dashboard-stack-success);
 }
 
 .dashboard-mission-row small,
 .mission-row small {
-  color: #c4c8d1;
+  color: var(--dashboard-stack-subtle, #c4c8d1);
   font-size: 0.74rem;
   font-weight: 850;
 }
@@ -5100,7 +5130,7 @@ td input[readonly] {
   height: 0.38rem;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--dashboard-stack-track, rgba(255, 255, 255, 0.08));
 }
 
 .dashboard-mission-row b,
@@ -5113,12 +5143,12 @@ td input[readonly] {
 
 .dashboard-mission-row.complete strong,
 .mission-row.complete strong {
-  color: #25d39b;
+  color: var(--dashboard-stack-success, #25d39b);
 }
 
 .dashboard-mission-row > svg {
   margin-top: 0.18rem;
-  color: #64b7ff;
+  color: var(--dashboard-stack-info);
 }
 
 .stack-priority {
@@ -5147,17 +5177,37 @@ td input[readonly] {
   color: #27d79a;
 }
 
+.dashboard-intelligence-panel .priority-critical,
+.dashboard-intelligence-panel .priority-high {
+  background: color-mix(in srgb, var(--dashboard-stack-warning) 14%, transparent);
+  color: var(--dashboard-stack-warning);
+}
+
+.dashboard-intelligence-panel .priority-medium {
+  background: color-mix(in srgb, var(--dashboard-stack-info) 13%, transparent);
+  color: var(--dashboard-stack-info);
+}
+
+.dashboard-intelligence-panel .priority-low {
+  background: color-mix(in srgb, var(--dashboard-stack-success) 13%, transparent);
+  color: var(--dashboard-stack-success);
+}
+
 .dashboard-alert-row {
   border-top: 1px solid rgba(255, 255, 255, 0.055);
   padding-top: 0.65rem;
 }
 
+.dashboard-intelligence-panel .dashboard-alert-row {
+  background: transparent;
+}
+
 .dashboard-alert-row.info strong {
-  color: #64b7ff;
+  color: var(--dashboard-stack-info);
 }
 
 .dashboard-alert-row.success strong {
-  color: #27d79a;
+  color: var(--dashboard-stack-success);
 }
 
 .dashboard-kpi-row {
@@ -8023,6 +8073,83 @@ body {
   background: rgba(8, 11, 18, 0.74);
 }
 
+.reference-shell.has-wallpaper .dashboard-intelligence-panel {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper {
+  --vcc-panel: color-mix(in srgb, var(--surface) 88%, transparent);
+  --vcc-panel-strong: color-mix(in srgb, var(--surface) 94%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(248, 250, 252, var(--vcc-wallpaper-top-alpha, 0.25)),
+      rgba(238, 243, 250, var(--vcc-wallpaper-bottom-alpha, 0.62)) 38rem
+    );
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper::before {
+  background: var(--vcc-wallpaper);
+  background-position: var(--vcc-wallpaper-position);
+  background-repeat: no-repeat;
+  background-size: var(--vcc-wallpaper-size);
+  mask-image: none;
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper::after {
+  background:
+    radial-gradient(circle at 18% 12%, var(--accent-soft), transparent 34rem),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, var(--vcc-wallpaper-side-alpha, 0.4)),
+      rgba(255, 255, 255, var(--vcc-wallpaper-middle-alpha, 0.08)) 34%,
+      rgba(255, 255, 255, var(--vcc-wallpaper-side-alpha, 0.4))
+    );
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper .topbar h1 {
+  color: #ffffff;
+  text-shadow: 0 2px 18px rgba(4, 7, 12, 0.8), 0 1px 2px rgba(4, 7, 12, 0.72);
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper .panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .base-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .spreadsheet-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .planner-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .buy-next-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .money-history-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .bills-command-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .transactions-command-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .inventory-command-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .savings-command-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .goals-command-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .reports-command-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-section,
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-card,
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-hero,
+:root[data-theme="light"] .reference-shell.has-wallpaper .danger-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .summary-card {
+  border-color: color-mix(in srgb, var(--border) 82%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 24%, transparent), transparent),
+    color-mix(in srgb, var(--surface) calc(var(--vcc-card-alpha, 0.84) * 100%), transparent);
+  color: var(--text);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--text) 12%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper .dashboard-intelligence-panel {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper .dashboard-top-nav {
+  border-color: color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  color: var(--text);
+}
+
 @media (max-width: 57.999rem) {
   .reference-shell.has-wallpaper {
     background-attachment: scroll;
@@ -8274,5 +8401,335 @@ body {
   .mobile-quick-launcher-menu a,
   .mobile-quick-launcher-label {
     transition-duration: 1ms;
+  }
+}
+
+/* Full daylight system contract. Keep this last so legacy dark surface rules
+   cannot leak into light mode on desktop or mobile. */
+:root[data-theme="light"] .reference-shell {
+  --vcc-panel: color-mix(in srgb, var(--surface) 96%, transparent);
+  --vcc-panel-strong: var(--surface);
+  --vcc-line: var(--border);
+  --vcc-line-strong: color-mix(in srgb, var(--accent) 34%, var(--border));
+  --vcc-text: var(--text);
+  --vcc-muted: var(--muted);
+  background:
+    radial-gradient(circle at 10% -4%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 30rem),
+    linear-gradient(180deg, #ffffff 0, var(--bg) 30rem);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell:not(.has-wallpaper)::before {
+  opacity: 0.48;
+}
+
+:root[data-theme="light"] .dashboard-top-nav,
+:root[data-theme="light"] .mobile-drawer,
+:root[data-theme="light"] .mobile-bottom-nav {
+  border-color: color-mix(in srgb, var(--border) 92%, transparent);
+  background: color-mix(in srgb, var(--surface) 97%, transparent);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="light"] .dashboard-top-nav nav a,
+:root[data-theme="light"] .dashboard-top-brand,
+:root[data-theme="light"] .dashboard-mobile-menu-trigger,
+:root[data-theme="light"] .mobile-drawer-nav a,
+:root[data-theme="light"] .mobile-drawer-search,
+:root[data-theme="light"] .mobile-bottom-nav a {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .dashboard-top-nav nav a:hover,
+:root[data-theme="light"] .dashboard-top-nav nav a.active,
+:root[data-theme="light"] .mobile-drawer-nav a:hover,
+:root[data-theme="light"] .mobile-drawer-nav a.active,
+:root[data-theme="light"] .mobile-bottom-nav a.active {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  color: color-mix(in srgb, var(--accent) 82%, #15345f);
+}
+
+:root[data-theme="light"] .base-panel,
+:root[data-theme="light"] .reference-shell .panel,
+:root[data-theme="light"] .reference-shell .summary-card,
+:root[data-theme="light"] .reference-shell .spreadsheet-panel,
+:root[data-theme="light"] .reference-shell .planner-panel,
+:root[data-theme="light"] .reference-shell .buy-next-panel,
+:root[data-theme="light"] .reference-shell .money-history-panel,
+:root[data-theme="light"] .reference-shell .money-hero-panel,
+:root[data-theme="light"] .reference-shell .bills-command-panel,
+:root[data-theme="light"] .reference-shell .transactions-command-panel,
+:root[data-theme="light"] .reference-shell .inventory-command-panel,
+:root[data-theme="light"] .reference-shell .savings-command-panel,
+:root[data-theme="light"] .reference-shell .goals-command-panel,
+:root[data-theme="light"] .reference-shell .reports-command-panel,
+:root[data-theme="light"] .reference-shell .settings-account-header,
+:root[data-theme="light"] .reference-shell .settings-section,
+:root[data-theme="light"] .reference-shell .settings-section-body,
+:root[data-theme="light"] .reference-shell .settings-card,
+:root[data-theme="light"] .reference-shell .settings-hero,
+:root[data-theme="light"] .reference-shell .settings-layer-card,
+:root[data-theme="light"] .reference-shell .settings-theme-card,
+:root[data-theme="light"] .reference-shell .danger-panel,
+:root[data-theme="light"] .reference-shell .dashboard-intelligence-panel,
+:root[data-theme="light"] .reference-shell .dashboard-module-card {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface) var(--surface-alpha), transparent);
+  color: var(--text);
+  box-shadow: var(--shadow-raised);
+}
+
+:root[data-theme="light"] .reference-shell .summary-card,
+:root[data-theme="light"] .reference-shell .dashboard-mission-row,
+:root[data-theme="light"] .reference-shell .dashboard-alert-row,
+:root[data-theme="light"] .reference-shell .metric-line,
+:root[data-theme="light"] .reference-shell .mini-list > *,
+:root[data-theme="light"] .reference-shell .objective-list > *,
+:root[data-theme="light"] .reference-shell .history-list > *,
+:root[data-theme="light"] .reference-shell .category-list > *,
+:root[data-theme="light"] .reference-shell .notification-list > *,
+:root[data-theme="light"] .reference-shell .report-list > *,
+:root[data-theme="light"] .reference-shell .report-metric-grid > *,
+:root[data-theme="light"] .reference-shell .report-callout,
+:root[data-theme="light"] .reference-shell .buy-next-grid > * {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-intelligence-panel .dashboard-mission-row,
+:root[data-theme="light"] .reference-shell .dashboard-intelligence-panel .dashboard-alert-row {
+  background: var(--surface);
+}
+
+:root[data-theme="light"] .mission-banner {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  background:
+    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 18rem),
+    linear-gradient(135deg, #ffffff, color-mix(in srgb, var(--accent) 8%, #ffffff) 54%, #ecfeff);
+  color: var(--text);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.11);
+}
+
+:root[data-theme="light"] .mission-banner::before {
+  opacity: 0.18;
+}
+
+:root[data-theme="light"] .mission-banner p,
+:root[data-theme="light"] .mission-banner h2,
+:root[data-theme="light"] .mission-banner small,
+:root[data-theme="light"] .mission-banner strong,
+:root[data-theme="light"] .mission-banner > svg {
+  color: var(--text);
+  text-shadow: none;
+}
+
+:root[data-theme="light"] .mission-banner p,
+:root[data-theme="light"] .mission-banner small {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .mission-priority {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+  background: var(--surface);
+  color: color-mix(in srgb, var(--accent) 82%, #15345f);
+}
+
+:root[data-theme="light"] .welcome-transition {
+  background:
+    radial-gradient(circle at 50% 22%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 28rem),
+    var(--bg);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .welcome-transition h1,
+:root[data-theme="light"] .welcome-transition strong {
+  color: var(--text);
+  text-shadow: none;
+}
+
+:root[data-theme="light"] .welcome-transition p,
+:root[data-theme="light"] .welcome-transition small {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .reference-shell input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+:root[data-theme="light"] .reference-shell select,
+:root[data-theme="light"] .reference-shell textarea,
+:root[data-theme="light"] .settings-wallpaper-dialog input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+:root[data-theme="light"] .settings-wallpaper-dialog select,
+:root[data-theme="light"] .settings-wallpaper-dialog textarea {
+  border-color: var(--border);
+  background: #ffffff;
+  color: var(--text);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.035);
+}
+
+:root[data-theme="light"] .reference-shell input::placeholder,
+:root[data-theme="light"] .reference-shell textarea::placeholder,
+:root[data-theme="light"] .settings-wallpaper-dialog input::placeholder,
+:root[data-theme="light"] .settings-wallpaper-dialog textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 76%, transparent);
+  opacity: 1;
+}
+
+:root[data-theme="light"] .reference-shell select option {
+  background: #ffffff;
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell input:focus,
+:root[data-theme="light"] .reference-shell select:focus,
+:root[data-theme="light"] .reference-shell textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--border));
+  background: #ffffff;
+  color: var(--text);
+  outline-color: color-mix(in srgb, var(--accent) 44%, transparent);
+}
+
+:root[data-theme="light"] .reference-shell .spreadsheet-toolbar,
+:root[data-theme="light"] .reference-shell .table-wrap,
+:root[data-theme="light"] .reference-shell table,
+:root[data-theme="light"] .reference-shell th,
+:root[data-theme="light"] .reference-shell td,
+:root[data-theme="light"] .reference-shell tbody tr,
+:root[data-theme="light"] .reference-shell .row-actions {
+  border-color: var(--border);
+  background: #ffffff;
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell th,
+:root[data-theme="light"] .reference-shell thead tr {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .reference-shell tbody tr:hover,
+:root[data-theme="light"] .reference-shell tbody tr:focus-within {
+  background: color-mix(in srgb, var(--accent) 5%, #ffffff);
+}
+
+:root[data-theme="light"] .reference-shell button:not(.mission-banner):not(.mobile-quick-launcher-button),
+:root[data-theme="light"] .settings-wallpaper-dialog button {
+  border-color: var(--border);
+}
+
+:root[data-theme="light"] .reference-shell .toolbar-controls button,
+:root[data-theme="light"] .reference-shell .chart-slide-controls button,
+:root[data-theme="light"] .reference-shell .bills-status-tabs button,
+:root[data-theme="light"] .reference-shell .inventory-tabs button,
+:root[data-theme="light"] .reference-shell .goals-status-tabs button,
+:root[data-theme="light"] .reference-shell .reports-period-tabs button,
+:root[data-theme="light"] .reference-shell .settings-segmented,
+:root[data-theme="light"] .reference-shell .settings-segmented button,
+:root[data-theme="light"] .reference-shell .settings-actions button,
+:root[data-theme="light"] .reference-shell .settings-reset-grid button {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell .chart-slide-controls button[aria-selected="true"],
+:root[data-theme="light"] .reference-shell .bills-status-tabs button.active,
+:root[data-theme="light"] .reference-shell .inventory-tabs button.active,
+:root[data-theme="light"] .reference-shell .goals-status-tabs button.active,
+:root[data-theme="light"] .reference-shell .reports-period-tabs button.active,
+:root[data-theme="light"] .reference-shell .settings-segmented button.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+  color: color-mix(in srgb, var(--accent) 82%, #15345f);
+}
+
+:root[data-theme="light"] .settings-wallpaper-modal {
+  background: rgba(15, 23, 42, 0.42);
+}
+
+:root[data-theme="light"] .settings-wallpaper-dialog,
+:root[data-theme="light"] .vcc-agent-popover,
+:root[data-theme="light"] .cloud-sync-dialog {
+  border-color: var(--border);
+  background: #ffffff;
+  color: var(--text);
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.2);
+}
+
+:root[data-theme="light"] .cloud-sync-trigger {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+  background: rgba(255, 255, 255, 0.94);
+  color: color-mix(in srgb, var(--accent) 82%, #15345f);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.13);
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-navigation {
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  border-radius: var(--theme-radius-panel);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  padding: 0.75rem 0.6rem;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(22px) saturate(112%);
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-navigation a {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-navigation a:hover,
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-navigation a.is-active {
+  background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell.has-wallpaper .panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .base-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .spreadsheet-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .planner-panel,
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-section,
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-section-body,
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-layer-card,
+:root[data-theme="light"] .reference-shell.has-wallpaper .settings-theme-card,
+:root[data-theme="light"] .reference-shell.has-wallpaper .summary-card,
+:root[data-theme="light"] .reference-shell.has-wallpaper .dashboard-intelligence-panel {
+  background: color-mix(in srgb, var(--surface) 93%, transparent);
+  color: var(--text);
+}
+
+@media (max-width: 64rem) {
+  :root[data-theme="light"] .mobile-quick-launcher,
+  :root[data-theme="light"] .mobile-quick-launcher.is-open {
+    border-color: color-mix(in srgb, var(--border) 88%, transparent);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.17), inset 0 1px 0 #ffffff;
+  }
+
+  :root[data-theme="light"] .mobile-quick-launcher-menu a {
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+
+  :root[data-theme="light"] .mobile-quick-launcher-menu a:hover,
+  :root[data-theme="light"] .mobile-quick-launcher-menu a:focus-visible,
+  :root[data-theme="light"] .mobile-quick-launcher-menu a.is-target,
+  :root[data-theme="light"] .mobile-quick-launcher-menu a.active {
+    background: color-mix(in srgb, var(--accent) 11%, #ffffff);
+    color: color-mix(in srgb, var(--accent) 82%, #15345f);
+  }
+
+  :root[data-theme="light"] .mobile-quick-launcher-label {
+    color: var(--muted);
+  }
+
+  :root[data-theme="light"] .reference-shell.has-wallpaper .settings-navigation {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  :root[data-theme="light"] .reference-shell.has-wallpaper .settings-navigation a {
+    border-color: color-mix(in srgb, var(--border) 86%, transparent);
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
   }
 }

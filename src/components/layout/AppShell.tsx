@@ -23,8 +23,9 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { AppData, UserSettings } from "../../lib/types/app";
+import BufferedTextInput from "../shared/BufferedTextInput";
 
 const nav = [
   { path: "/", label: "Dashboard", icon: Home },
@@ -69,7 +70,6 @@ export default function AppShell({
   const [launcherDragging, setLauncherDragging] = useState(false);
   const [launcherTarget, setLauncherTarget] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query);
   const brandRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLDivElement>(null);
@@ -87,10 +87,10 @@ export default function AppShell({
   const dashboardNav = useMemo(() => visibleNav.filter((item) => primaryPaths.includes(item.path)), [visibleNav]);
   const searchIndex = useMemo(() => buildSearchIndex(data), [data]);
   const results = useMemo(
-    () => searchIndex.filter((result) => result.searchText.includes(deferredQuery.trim().toLowerCase()))
+    () => searchIndex.filter((result) => result.searchText.includes(query.trim().toLowerCase()))
       .filter((result) => settings.vitaScanEnabled || result.href !== "/vitascan")
       .slice(0, 8),
-    [deferredQuery, searchIndex, settings.vitaScanEnabled],
+    [query, searchIndex, settings.vitaScanEnabled],
   );
   const isDashboard = normalize(currentPath) === "/";
   const accountName = settings.accountName.trim();
@@ -339,7 +339,7 @@ export default function AppShell({
             <div className="search-shell">
               <label className="search-pill">
                 <Search size={16} />
-                <input aria-label="Search VCC OS" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search VCC OS" />
+                <BufferedTextInput aria-label="Search VCC OS" value={query} onValueChange={setQuery} placeholder="Search VCC OS" />
               </label>
               {query.trim() && (
                 <div className="search-results">
@@ -390,7 +390,7 @@ export default function AppShell({
           </a>
           <div className="mobile-drawer-search">
             <Search size={16} />
-            <input aria-label="Search VCC OS" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search VCC OS" />
+            <BufferedTextInput aria-label="Search VCC OS" value={query} onValueChange={setQuery} placeholder="Search VCC OS" />
           </div>
           <div className="mobile-drawer-results">
             {query.trim() && (

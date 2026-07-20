@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   BellRing,
@@ -38,6 +38,7 @@ import VitaScan from "./components/modules/VitaScan";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import CloudSyncControl from "./components/shared/CloudSyncControl";
+import BufferedTextInput from "./components/shared/BufferedTextInput";
 import { formatCurrency, formatDateMDY, isBlankRow, toNumber } from "./lib/calculations/currency";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { isCarPaymentBill, isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
@@ -367,14 +368,13 @@ function BillsPage({
   resetSection: (section: SectionKey) => void;
 }) {
   const [billSearch, setBillSearch] = useState("");
-  const deferredBillSearch = useDeferredValue(billSearch);
   const [statusFilter, setStatusFilter] = useState("all");
   const billRows = data.sections.bills.map(normalizeBillRow);
   const filledBillRows = billRows.filter((row) => !isBlankRow(row.cells));
   const visibleBillRows = billRows.filter((row) => {
     if (isBlankRow(row.cells)) return true;
     const status = billStatus(row);
-    const query = deferredBillSearch.trim().toLowerCase();
+    const query = billSearch.trim().toLowerCase();
     const matchesStatus = statusFilter === "all" || status === statusFilter;
     const matchesSearch = !query || [row.cells.name, row.cells.category, row.cells.status, row.cells.priority, row.cells.notes]
       .join(" ")
@@ -417,7 +417,7 @@ function BillsPage({
         <div className="bills-filter-row">
           <label className="bills-search">
             <span>Search bills</span>
-            <input aria-label="Search bills" value={billSearch} onChange={(event) => setBillSearch(event.target.value)} placeholder="Search bills, categories, status" />
+            <BufferedTextInput aria-label="Search bills" value={billSearch} onValueChange={setBillSearch} placeholder="Search bills, categories, status" />
           </label>
           <div className="bills-status-tabs" role="tablist" aria-label="Bill status filter">
             {[
@@ -546,16 +546,15 @@ function TransactionsPage({
   resetSection: (section: SectionKey) => void;
 }) {
   const [transactionSearch, setTransactionSearch] = useState("");
-  const deferredTransactionSearch = useDeferredValue(transactionSearch);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const transactionRows = data.sections.transactions.map(normalizeTransactionRow);
   const visibleTransactionRows = transactionRows.filter((row) => {
-    if (isBlankRow(row.cells)) return !deferredTransactionSearch.trim() && categoryFilter === "all" && typeFilter === "all" && dateFilter === "all";
+    if (isBlankRow(row.cells)) return !transactionSearch.trim() && categoryFilter === "all" && typeFilter === "all" && dateFilter === "all";
     const type = transactionType(row);
     const category = transactionCategory(row);
-    const query = deferredTransactionSearch.trim().toLowerCase();
+    const query = transactionSearch.trim().toLowerCase();
     const matchesCategory = categoryFilter === "all" || category.toLowerCase() === categoryFilter.toLowerCase();
     const matchesType = typeFilter === "all" || type === typeFilter;
     const matchesSearch = !query || [row.cells.description, row.cells.category, row.cells.account, row.cells.notes]
@@ -606,7 +605,7 @@ function TransactionsPage({
         <div className="transactions-filter-row">
           <label className="transactions-search">
             <span>Search transactions</span>
-            <input aria-label="Search transactions" value={transactionSearch} onChange={(event) => setTransactionSearch(event.target.value)} placeholder="Search descriptions, categories, accounts" />
+            <BufferedTextInput aria-label="Search transactions" value={transactionSearch} onValueChange={setTransactionSearch} placeholder="Search descriptions, categories, accounts" />
           </label>
           <div className="transactions-filter-controls">
             <label>
@@ -730,7 +729,6 @@ function SavingsPage({
   resetSection: (section: SectionKey) => void;
 }) {
   const [savingsSearch, setSavingsSearch] = useState("");
-  const deferredSavingsSearch = useDeferredValue(savingsSearch);
   const [vaultType, setVaultType] = useState("all");
   const savingsRows = data.sections.savings.map(normalizeSavingsRow);
   const filledSavingsRows = savingsRows.filter((row) => !isBlankRow(row.cells));
@@ -743,8 +741,8 @@ function SavingsPage({
   const monthlyInterest = filledSavingsRows.reduce((sum, row) => sum + (toNumber(row.cells.balance) * toNumber(row.cells.interestRate)) / 100 / 12, 0);
   const progressPercent = totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0;
   const visibleSavingsRows = savingsRows.filter((row) => {
-    if (isBlankRow(row.cells)) return !deferredSavingsSearch.trim() && vaultType === "all";
-    const query = deferredSavingsSearch.trim().toLowerCase();
+    if (isBlankRow(row.cells)) return !savingsSearch.trim() && vaultType === "all";
+    const query = savingsSearch.trim().toLowerCase();
     const type = savingsType(row);
     const matchesType = vaultType === "all" || type === vaultType;
     const matchesSearch = !query || [row.cells.name, row.cells.institution, row.cells.type, row.cells.notes]
@@ -775,7 +773,7 @@ function SavingsPage({
         <div className="savings-filter-row">
           <label className="savings-search">
             <span>Search vaults</span>
-            <input aria-label="Search savings vaults" value={savingsSearch} onChange={(event) => setSavingsSearch(event.target.value)} placeholder="Search names, institutions, notes" />
+            <BufferedTextInput aria-label="Search savings vaults" value={savingsSearch} onValueChange={setSavingsSearch} placeholder="Search names, institutions, notes" />
           </label>
           <label className="savings-type-select">
             <span>Type</span>
@@ -838,7 +836,6 @@ function GoalsPage({
   resetSection: (section: SectionKey) => void;
 }) {
   const [goalSearch, setGoalSearch] = useState("");
-  const deferredGoalSearch = useDeferredValue(goalSearch);
   const [goalStatus, setGoalStatus] = useState("all");
   const goalRows = data.sections.goals.map(normalizeGoalRow);
   const filledGoalRows = goalRows.filter((row) => !isBlankRow(row.cells));
@@ -848,8 +845,8 @@ function GoalsPage({
   const totalCurrent = activeGoals.reduce((sum, row) => sum + toNumber(row.cells.current), 0);
   const overallProgress = totalTarget > 0 ? Math.min(100, Math.round((totalCurrent / totalTarget) * 100)) : 0;
   const visibleGoalRows = goalRows.filter((row) => {
-    if (isBlankRow(row.cells)) return !deferredGoalSearch.trim() && goalStatus === "all";
-    const query = deferredGoalSearch.trim().toLowerCase();
+    if (isBlankRow(row.cells)) return !goalSearch.trim() && goalStatus === "all";
+    const query = goalSearch.trim().toLowerCase();
     const status = goalStatusValue(row);
     const matchesStatus = goalStatus === "all" || status === goalStatus;
     const matchesSearch = !query || [row.cells.name, row.cells.category, row.cells.priority, row.cells.status]
@@ -880,7 +877,7 @@ function GoalsPage({
         <div className="goals-filter-row">
           <label className="goals-search">
             <span>Search goals</span>
-            <input aria-label="Search goals" value={goalSearch} onChange={(event) => setGoalSearch(event.target.value)} placeholder="Search goals, categories, priorities" />
+            <BufferedTextInput aria-label="Search goals" value={goalSearch} onValueChange={setGoalSearch} placeholder="Search goals, categories, priorities" />
           </label>
           <label className="goals-status-select">
             <span>Status</span>
@@ -1193,11 +1190,10 @@ function dateInputValue(date: Date): string {
 function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">) {
   const [inventoryTab, setInventoryTab] = useState("all");
   const [inventorySearch, setInventorySearch] = useState("");
-  const deferredInventorySearch = useDeferredValue(inventorySearch);
   const inventoryRows = props.data.sections.inventory.map(normalizeInventoryRow);
   const filledInventoryRows = inventoryRows.filter((row) => !isBlankRow(row.cells));
   const searchedInventoryRows = filledInventoryRows.filter((row) => {
-    const query = deferredInventorySearch.trim().toLowerCase();
+    const query = inventorySearch.trim().toLowerCase();
     if (!query) return true;
     return [row.cells.item, row.cells.category, row.cells.alert, row.cells.notes]
       .join(" ")
@@ -1258,7 +1254,7 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
         </div>
         <label className="inventory-search">
           <span>Search inventory</span>
-          <input aria-label="Search inventory" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Search items, categories, alerts" />
+          <BufferedTextInput aria-label="Search inventory" value={inventorySearch} onValueChange={setInventorySearch} placeholder="Search items, categories, alerts" />
         </label>
         <div className="inventory-inline-stats">
           <span>{inventoryStats.visible} shown</span>
@@ -1669,6 +1665,8 @@ function SettingsPage({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("") || "VC";
+  const colorModeLabel = data.settings.theme === "system" ? "System" : titleCase(data.settings.theme);
+  const backgroundLabel = wallpaperOptions.find((option) => option.value === data.settings.wallpaper)?.label || "Default";
 
   function openSettingsSection(id: string) {
     setOpenSection(id);
@@ -1766,14 +1764,50 @@ function SettingsPage({
                 <span className="settings-live-badge"><Sparkles size={14} aria-hidden="true" /> Live preview</span>
               </div>
               <AppearanceThemePicker value={data.settings.appearanceTheme} onChange={(appearanceTheme) => onChange({ ...data, settings: { ...data.settings, appearanceTheme } })} />
+              <div className="settings-layer-heading">
+                <div>
+                  <p className="settings-kicker">Independent layers</p>
+                  <h3>Mix interface and canvas</h3>
+                  <p>Color mode controls contrast and readability. Background controls the canvas beneath it. Choose both; neither selection turns the other off.</p>
+                </div>
+                <span className="settings-combination-badge">{colorModeLabel} + {backgroundLabel}</span>
+              </div>
+              <div className="settings-layer-grid">
+                <section className="settings-layer-card" aria-labelledby="color-mode-title">
+                  <header>
+                    <span className="settings-layer-icon"><MonitorCog size={18} aria-hidden="true" /></span>
+                    <div>
+                      <strong id="color-mode-title">Color mode</strong>
+                      <small>Interface contrast</small>
+                    </div>
+                    <span>{colorModeLabel}</span>
+                  </header>
+                  <SettingSegmented label="Light and dark mode" value={data.settings.theme} options={[
+                    { value: "system", label: "System", icon: MonitorCog },
+                    { value: "light", label: "Light", icon: Sun },
+                    { value: "dark", label: "Dark", icon: Moon },
+                  ]} onChange={(theme) => onChange({ ...data, settings: { ...data.settings, theme: theme as AppData["settings"]["theme"] } })} />
+                </section>
+                <section className="settings-layer-card" aria-labelledby="background-layer-title">
+                  <header>
+                    <span className="settings-layer-icon"><Palette size={18} aria-hidden="true" /></span>
+                    <div>
+                      <strong id="background-layer-title">Background</strong>
+                      <small>Workspace canvas</small>
+                    </div>
+                    <span>{backgroundLabel}</span>
+                  </header>
+                  <WallpaperPicker
+                    value={data.settings.wallpaper}
+                    customWallpaper={data.settings.customWallpaper}
+                    backgroundOpacity={data.settings.backgroundOpacity}
+                    cardOpacity={data.settings.cardOpacity}
+                    onChange={(wallpaper, customWallpaper = data.settings.customWallpaper, backgroundOpacity = data.settings.backgroundOpacity, cardOpacity = data.settings.cardOpacity) => onChange({ ...data, settings: { ...data.settings, wallpaper, customWallpaper, backgroundOpacity, cardOpacity } })}
+                    onPreviewChange={onWallpaperPreviewChange}
+                  />
+                </section>
+              </div>
             </div>
-            <SettingControlRow label="Light and dark mode" description="Follow your device automatically or choose a fixed mode.">
-              <SettingSegmented label="Light and dark mode" value={data.settings.theme} options={[
-                { value: "system", label: "System", icon: MonitorCog },
-                { value: "light", label: "Light", icon: Sun },
-                { value: "dark", label: "Dark", icon: Moon },
-              ]} onChange={(theme) => onChange({ ...data, settings: { ...data.settings, theme: theme as AppData["settings"]["theme"] } })} />
-            </SettingControlRow>
             <SettingControlRow label="Accent" description="Used for focus, selection, and key actions.">
               <AccentPicker value={data.settings.accent} onChange={(accent) => onChange({ ...data, settings: { ...data.settings, accent: accent as AppData["settings"]["accent"] } })} />
             </SettingControlRow>
@@ -1790,16 +1824,6 @@ function SettingsPage({
                 { value: "neumorphic", label: "Depth" },
                 { value: "minimal", label: "Minimal" },
               ]} onChange={(surfaceStyle) => onChange({ ...data, settings: { ...data.settings, surfaceStyle: surfaceStyle as AppData["settings"]["surfaceStyle"] } })} />
-            </SettingControlRow>
-            <SettingControlRow label="Background" description="Choose a wallpaper or bring your own.">
-              <WallpaperPicker
-                value={data.settings.wallpaper}
-                customWallpaper={data.settings.customWallpaper}
-                backgroundOpacity={data.settings.backgroundOpacity}
-                cardOpacity={data.settings.cardOpacity}
-                onChange={(wallpaper, customWallpaper = data.settings.customWallpaper, backgroundOpacity = data.settings.backgroundOpacity, cardOpacity = data.settings.cardOpacity) => onChange({ ...data, settings: { ...data.settings, wallpaper, customWallpaper, backgroundOpacity, cardOpacity } })}
-                onPreviewChange={onWallpaperPreviewChange}
-              />
             </SettingControlRow>
           </SettingsSection>
 
@@ -2415,7 +2439,7 @@ function SettingInput({ label, description, value, onChange }: { label: string; 
   return (
     <label className="settings-text-field">
       <span className="settings-row-copy"><strong>{label}</strong><small>{description}</small></span>
-      <input aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} />
+      <BufferedTextInput aria-label={label} value={value} onValueChange={onChange} delay={280} />
     </label>
   );
 }
