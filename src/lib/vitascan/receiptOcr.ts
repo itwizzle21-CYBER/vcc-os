@@ -1,6 +1,8 @@
 import { parseReceiptText, type ReceiptDraft } from "./receiptParser";
 import ocrCorePath from "tesseract.js-core/tesseract-core-lstm.wasm.js?url";
+import ocrSimdCorePath from "tesseract.js-core/tesseract-core-simd-lstm.wasm.js?url";
 import ocrWorkerPath from "tesseract.js/dist/worker.min.js?url";
+import { simd } from "wasm-feature-detect";
 
 export type ReceiptReadStage = "preparing" | "loading" | "reading" | "checking";
 export type ReceiptReadProgress = { stage: ReceiptReadStage; progress: number; label: string };
@@ -9,13 +11,29 @@ export type ReceiptReadResult = { draft: ReceiptDraft; quality: ReceiptImageQual
 
 type ProgressHandler = (progress: ReceiptReadProgress) => void;
 type OcrCandidate = { text: string; confidence: number; draft: ReceiptDraft };
+type TesseractModule = typeof import("tesseract.js");
+type ReceiptWorker = Awaited<ReturnType<TesseractModule["createWorker"]>>;
+
+let cachedWorker: { languages: string; promise: Promise<ReceiptWorker> } | null = null;
+let activeProgress: ProgressHandler | null = null;
+let activePass = 1;
 
 export const receiptOcrRuntimeOptions = {
   workerPath: ocrWorkerPath,
-  corePath: ocrCorePath,
-  langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
+  langPath: "https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int",
+  cachePath: "vitascan-fast-v1",
   workerBlobURL: false,
 } as const;
+
+export const receiptOcrCorePaths = [ocrCorePath, ocrSimdCorePath] as const;
+
+export async function warmReceiptReader(languages: string): Promise<void> {
+  await getReceiptWorker(languages);
+}
+
+export function receiptImageScale(width: number, height: number): number {
+  return Math.min(2, Math.max(0.35, 1200 / Math.max(width, height, 1)));
+}
 
 export async function readReceiptImage(
   file: File,
@@ -24,22 +42,13 @@ export async function readReceiptImage(
   onProgress: ProgressHandler,
 ): Promise<ReceiptReadResult> {
   onProgress({ stage: "preparing", progress: 0.03, label: "Straightening and enhancing receipt…" });
-  const prepared = await prepareReceiptImage(file);
-  const { createWorker, OEM, PSM } = await import("tesseract.js");
-  let pass = 1;
-  const worker = await createWorker(languages.split("+"), OEM.LSTM_ONLY, {
-    ...receiptOcrRuntimeOptions,
-    logger: (message) => {
-      if (!Number.isFinite(message.progress)) return;
-      const base = pass === 1 ? 0.08 : pass === 2 ? 0.48 : 0.73;
-      const span = pass === 1 ? 0.38 : pass === 2 ? 0.23 : 0.18;
-      onProgress({
-        stage: message.status.includes("recognizing") ? "reading" : "loading",
-        progress: Math.min(0.92, base + message.progress * span),
-        label: receiptProgressLabel(message.status),
-      });
-    },
-  });
+  activeProgress = onProgress;
+  activePass = 1;
+  const [prepared, worker, { PSM }] = await Promise.all([
+    prepareReceiptImage(file),
+    getReceiptWorker(languages),
+    import("tesseract.js"),
+  ]);
 
   try {
     await worker.setParameters({
@@ -47,31 +56,20 @@ export async function readReceiptImage(
       preserve_interword_spaces: "1",
       user_defined_dpi: "300",
     });
-    const enhanced = await worker.recognize(prepared.enhanced, { rotateAuto: true });
+    const enhanced = await worker.recognize(prepared.enhanced, { rotateAuto: false });
     const candidates: OcrCandidate[] = [toCandidate(enhanced.data.text, enhanced.data.confidence, detectedBarcodes)];
 
     if (needsFallbackPass(candidates[0])) {
-      pass = 2;
+      activePass = 2;
       onProgress({ stage: "checking", progress: 0.55, label: "Checking faint print and item rows…" });
       await worker.setParameters({
         tessedit_pageseg_mode: PSM.SPARSE_TEXT,
         preserve_interword_spaces: "1",
         user_defined_dpi: "300",
       });
-      const natural = await worker.recognize(prepared.cropped, { rotateAuto: true });
+      const fallbackImage = prepared.quality.contrast < 34 ? prepared.binary : prepared.cropped;
+      const natural = await worker.recognize(fallbackImage, { rotateAuto: false });
       candidates.push(toCandidate(natural.data.text, natural.data.confidence, detectedBarcodes));
-    }
-
-    if (needsFallbackPass(chooseBestReceiptCandidate(candidates))) {
-      pass = 3;
-      onProgress({ stage: "checking", progress: 0.74, label: "Recovering low-contrast totals and fine print…" });
-      await worker.setParameters({
-        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-        preserve_interword_spaces: "1",
-        user_defined_dpi: "300",
-      });
-      const binary = await worker.recognize(prepared.binary, { rotateAuto: true });
-      candidates.push(toCandidate(binary.data.text, binary.data.confidence, detectedBarcodes));
     }
 
     onProgress({ stage: "checking", progress: 0.96, label: "Organizing totals, items, and codes…" });
@@ -82,9 +80,48 @@ export async function readReceiptImage(
       passes: candidates.length,
       ocrConfidence: Math.round(best.confidence),
     };
+  } catch (error) {
+    if (cachedWorker?.languages === languages) {
+      const failedWorker = cachedWorker;
+      cachedWorker = null;
+      void failedWorker.promise.then((instance) => instance.terminate()).catch(() => undefined);
+    }
+    throw error;
   } finally {
-    await worker.terminate();
+    activeProgress = null;
   }
+}
+
+async function getReceiptWorker(languages: string): Promise<ReceiptWorker> {
+  if (cachedWorker?.languages === languages) return cachedWorker.promise;
+  const previous = cachedWorker;
+  const promise = createReceiptWorker(languages);
+  cachedWorker = { languages, promise };
+  if (previous) void previous.promise.then((worker) => worker.terminate()).catch(() => undefined);
+  try {
+    return await promise;
+  } catch (error) {
+    if (cachedWorker?.promise === promise) cachedWorker = null;
+    throw error;
+  }
+}
+
+async function createReceiptWorker(languages: string): Promise<ReceiptWorker> {
+  const [{ createWorker, OEM }, supportsSimd] = await Promise.all([import("tesseract.js"), simd()]);
+  return createWorker(languages.split("+"), OEM.LSTM_ONLY, {
+    ...receiptOcrRuntimeOptions,
+    corePath: supportsSimd ? ocrSimdCorePath : ocrCorePath,
+    logger: (message) => {
+      if (!activeProgress || !Number.isFinite(message.progress)) return;
+      const base = activePass === 1 ? 0.08 : 0.58;
+      const span = activePass === 1 ? 0.46 : 0.32;
+      activeProgress({
+        stage: message.status.includes("recognizing") ? "reading" : "loading",
+        progress: Math.min(0.92, base + message.progress * span),
+        label: receiptProgressLabel(message.status),
+      });
+    },
+  });
 }
 
 export function scoreReceiptCandidate(candidate: Pick<OcrCandidate, "text" | "confidence" | "draft">): number {
@@ -155,17 +192,15 @@ function toCandidate(text: string, confidence: number, detectedBarcodes: string[
 
 function needsFallbackPass(candidate: OcrCandidate): boolean {
   const lineCount = candidate.text.split("\n").filter((line) => line.trim()).length;
-  return candidate.confidence < 72
-    || lineCount < 5
+  return candidate.confidence < 55
+    || lineCount < 4
     || !candidate.draft.amount
-    || candidate.draft.merchant === "Receipt"
-    || (!candidate.draft.items.length && lineCount > 7);
+    || candidate.draft.merchant === "Receipt";
 }
 
 async function prepareReceiptImage(file: File): Promise<{ cropped: HTMLCanvasElement; enhanced: HTMLCanvasElement; binary: HTMLCanvasElement; quality: ReceiptImageQuality }> {
   const source = await decodeImage(file);
-  const longestSide = Math.max(source.width, source.height);
-  const targetScale = Math.min(3, Math.max(1, 2200 / Math.max(longestSide, 1)));
+  const targetScale = receiptImageScale(source.width, source.height);
   const width = Math.max(1, Math.round(source.width * targetScale));
   const height = Math.max(1, Math.round(source.height * targetScale));
   const natural = document.createElement("canvas");

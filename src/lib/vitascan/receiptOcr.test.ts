@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { mergeReceiptCandidates, receiptOcrRuntimeOptions, scoreReceiptCandidate } from "./receiptOcr";
+import { mergeReceiptCandidates, receiptImageScale, receiptOcrCorePaths, receiptOcrRuntimeOptions, scoreReceiptCandidate } from "./receiptOcr";
 import { parseReceiptText } from "./receiptParser";
 
 describe("VitaScan receipt OCR selection", () => {
   it("self-hosts executable OCR assets for the production security policy", () => {
     expect(receiptOcrRuntimeOptions.workerPath).not.toContain("cdn.jsdelivr.net");
-    expect(receiptOcrRuntimeOptions.corePath).not.toContain("cdn.jsdelivr.net");
+    expect(receiptOcrCorePaths.every((path) => !path.includes("cdn.jsdelivr.net"))).toBe(true);
     expect(receiptOcrRuntimeOptions.workerBlobURL).toBe(false);
+    expect(receiptOcrRuntimeOptions.langPath).toContain("4.0.0_best_int");
+    expect(receiptOcrRuntimeOptions.cachePath).toBe("vitascan-fast-v1");
+  });
+
+  it("shrinks high-resolution phone images before OCR", () => {
+    const scale = receiptImageScale(1170, 2532);
+    expect(scale).toBeLessThan(0.5);
+    expect(Math.round(1170 * scale)).toBe(555);
+    expect(Math.round(2532 * scale)).toBe(1200);
   });
 
   it("prefers a complete retail read over a short uncertain pass", () => {

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import type { AppData } from "../../lib/types/app";
 import { formatReceiptNotes, parseReceiptText, type ReceiptDraft } from "../../lib/vitascan/receiptParser";
-import { readReceiptImage, type ReceiptImageQuality, type ReceiptReadProgress } from "../../lib/vitascan/receiptOcr";
+import { readReceiptImage, warmReceiptReader, type ReceiptImageQuality, type ReceiptReadProgress } from "../../lib/vitascan/receiptOcr";
 import { syncReceipt, vitaCloudEnabled } from "../../lib/vitascan/cloud";
 import { VCC_OFFICIAL_URL, VCC_TRANSACTIONS_URL } from "../../config/urls";
 import "./vitascan.css";
@@ -37,12 +37,19 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
   const [ocrConfidence, setOcrConfidence] = useState(0);
   const scanInputRef = useRef<HTMLInputElement>(null);
   const screenshotInputRef = useRef<HTMLInputElement>(null);
+  const scanSequenceRef = useRef(0);
   const recent = useMemo(
     () => data.sections.transactions.filter((row) => row.cells.notes?.includes("VitaScan")).slice(-5).reverse(),
     [data]
   );
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void warmReceiptReader(receiptOcrLanguages()).catch(() => undefined);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, []);
   useEffect(() => {
     document.body.classList.add("vitascan-body");
     const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
@@ -74,15 +81,11 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
     setOcrConfidence(0);
     setReadProgress({ stage: "preparing", progress: 0.02, label: "Preparing the receipt…" });
     setMessage("Finding the receipt, strengthening faint print, and reading every line on this device…");
+    const scanSequence = ++scanSequenceRef.current;
 
     try {
       const barcodePromise = detectImageBarcodes(file);
-      const result = await readReceiptImage(
-        file,
-        receiptOcrLanguages(window.navigator.languages),
-        await barcodePromise,
-        setReadProgress,
-      );
+      const result = await readReceiptImage(file, receiptOcrLanguages(), [], setReadProgress);
       const nextDraft = result.draft;
       setDraft(nextDraft);
       setImageQuality(result.quality);
@@ -92,6 +95,10 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
       setMessage(canAdd(nextDraft)
         ? `Receipt read with ${result.passes} precision pass${result.passes === 1 ? "" : "es"}. Check the highlighted details, then add it to VCC.`
         : `Some details need your help. Fill in the merchant and total below—there is no need to rescan a readable receipt.`);
+      void barcodePromise.then((detectedBarcodes) => {
+        if (!detectedBarcodes.length || scanSequenceRef.current !== scanSequence) return;
+        setDraft((current) => ({ ...current, barcodes: [...new Set([...current.barcodes, ...detectedBarcodes])] }));
+      });
     } catch (error) {
       setReadProgress(null);
       setStatus("ready");
@@ -137,6 +144,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
   }
 
   function reset() {
+    scanSequenceRef.current += 1;
     setPreview("");
     setDraft(emptyDraft);
     setStatus("idle");
@@ -302,15 +310,8 @@ function formatItemAmount(amount: number, draft: ReceiptDraft): string {
   return draft.currencySymbol ? `${draft.currencySymbol}${value}` : draft.currencyCode ? `${draft.currencyCode} ${value}` : value;
 }
 
-function receiptOcrLanguages(languages: readonly string[]): string {
-  const languageMap: Record<string, string> = {
-    ar: "ara", cs: "ces", da: "dan", de: "deu", el: "ell", es: "spa", fi: "fin", fr: "fra",
-    he: "heb", hi: "hin", hu: "hun", id: "ind", it: "ita", ja: "jpn", ko: "kor", nl: "nld",
-    no: "nor", pl: "pol", pt: "por", ro: "ron", ru: "rus", sv: "swe", th: "tha", tr: "tur",
-    uk: "ukr", vi: "vie", zh: "chi_sim",
-  };
-  const selected = languages.map((language) => languageMap[language.toLowerCase().split("-")[0]]).filter(Boolean).slice(0, 2);
-  return [...new Set(["eng", ...selected])].join("+");
+function receiptOcrLanguages(): string {
+  return "eng";
 }
 
 type BarcodeResult = { rawValue: string };
@@ -333,16 +334,7 @@ async function detectImageBarcodes(file: File): Promise<string[]> {
     }
   }
 
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const { BrowserMultiFormatReader } = await import("@zxing/browser");
-    const result = await new BrowserMultiFormatReader().decodeFromImageUrl(objectUrl);
-    return result.getText() ? [result.getText().trim()] : [];
-  } catch {
-    return [];
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
+  return [];
 }
 
 function RecentScans({ recent }: { recent: AppData["sections"]["transactions"] }) {
