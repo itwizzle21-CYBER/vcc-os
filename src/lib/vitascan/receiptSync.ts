@@ -9,6 +9,7 @@ export type VitaReceiptRecord = {
   account_name: string;
   category: string;
   reference_code: string | null;
+  raw_text?: string | null;
 };
 
 export function vitaReceiptToTransaction(receipt: VitaReceiptRecord): SpreadsheetRow {
@@ -25,7 +26,7 @@ export function vitaReceiptToTransaction(receipt: VitaReceiptRecord): Spreadshee
       date: receipt.occurred_on,
       account: receipt.account_name,
       recurring: "No",
-      notes: `VitaScan${receipt.reference_code ? ` - Ref ${receipt.reference_code}` : ""}`,
+      notes: `VitaScan${receipt.reference_code ? ` - Ref ${receipt.reference_code}` : ""}${receipt.raw_text ? `\nFull scan:\n${receipt.raw_text}` : ""}`,
     },
   };
 }

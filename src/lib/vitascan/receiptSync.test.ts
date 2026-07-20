@@ -34,4 +34,10 @@ describe("VitaScan receipt cloud merge", () => {
     expect(merged.sections.transactions.filter((row) => row.id === receipt.transaction_id)).toHaveLength(1);
     expect(mergedAgain).toBe(merged);
   });
+
+  it("keeps the complete OCR text with the VCC transaction", () => {
+    const transaction = vitaReceiptToTransaction({ ...receipt, raw_text: "Subtotal $12.00\nTax $2.25\nTotal $14.25" });
+    expect(transaction.cells.notes).toContain("Full scan:");
+    expect(transaction.cells.notes).toContain("Tax $2.25");
+  });
 });

@@ -12,4 +12,11 @@ describe("VitaScan receipt parser", () => {
     expect(receipt.direction).toBe("income");
     expect(receipt.category).toBe("Income");
   });
+
+  it("prefers the labeled total and never invents a missing date", () => {
+    const receipt = parseReceiptText("Corner Market\nSubtotal $18.00\nTax $1.44\nTotal $19.44");
+    expect(receipt.amount).toBe("19.44");
+    expect(receipt.date).toBe("");
+    expect(receipt.rawText).toContain("Tax $1.44");
+  });
 });

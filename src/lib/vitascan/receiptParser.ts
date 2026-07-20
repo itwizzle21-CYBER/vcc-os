@@ -19,9 +19,17 @@ export function parseReceiptText(rawText: string): ReceiptDraft {
   const money = [...text.matchAll(/(?:\$\s*)?(-?\d{1,3}(?:,\d{3})*(?:\.\d{2}))/g)]
     .map((match) => ({ raw: match[0], value: Math.abs(Number(match[1].replace(/,/g, ""))) }))
     .filter((item) => Number.isFinite(item.value) && item.value > 0 && item.value < 1000000);
-  const preferred = money.find((item) => /\$/.test(item.raw)) || money[0];
+  const totalLine = lines.find((line) => /\b(grand total|total paid|amount paid|payment total|total)\b/i.test(line) && !/\b(subtotal|taxable total)\b/i.test(line));
+  const totalLineMatches = totalLine
+    ? [...totalLine.matchAll(/(?:\$\s*)?(-?\d{1,3}(?:,\d{3})*(?:\.\d{2}))/g)]
+    : [];
+  const totalLineAmount = totalLineMatches[totalLineMatches.length - 1];
+  const totalValue = totalLineAmount ? Math.abs(Number(totalLineAmount[1].replace(/,/g, ""))) : 0;
+  const preferred = (totalValue > 0 && totalValue < 1000000
+    ? { raw: totalLineAmount?.[0] || "", value: totalValue }
+    : undefined) || money.find((item) => /\$/.test(item.raw)) || money[0];
   const dateMatch = text.match(/\b(20\d{2})[-/]([01]?\d)[-/]([0-3]?\d)\b/) || text.match(/\b([01]?\d)[/]([0-3]?\d)[/](20\d{2})\b/);
-  let date = new Date().toISOString().slice(0, 10);
+  let date = "";
   if (dateMatch) date = dateMatch[1].length === 4
     ? `${dateMatch[1]}-${dateMatch[2].padStart(2, "0")}-${dateMatch[3].padStart(2, "0")}`
     : `${dateMatch[3]}-${dateMatch[1].padStart(2, "0")}-${dateMatch[2].padStart(2, "0")}`;
