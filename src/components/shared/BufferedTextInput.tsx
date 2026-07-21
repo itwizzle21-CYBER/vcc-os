@@ -25,6 +25,7 @@ function BufferedTextInput({
 }: BufferedTextInputProps) {
   const [draft, setDraft] = useState(value);
   const focusedRef = useRef(false);
+  const valueRef = useRef(value);
   const lastSentRef = useRef(value);
   const changeRef = useRef(onValueChange);
   const blurRef = useRef(onValueBlur);
@@ -35,6 +36,8 @@ function BufferedTextInput({
     blurRef.current = onValueBlur;
     focusRef.current = onValueFocus;
   }, [onValueBlur, onValueChange, onValueFocus]);
+
+  valueRef.current = value;
 
   useEffect(() => {
     if (!focusedRef.current) {
@@ -71,6 +74,11 @@ function BufferedTextInput({
         focusedRef.current = false;
         flush(draft);
         blurRef.current?.(draft, event);
+        window.setTimeout(() => {
+          if (focusedRef.current) return;
+          lastSentRef.current = valueRef.current;
+          setDraft(valueRef.current);
+        }, 0);
       }}
     />
   );

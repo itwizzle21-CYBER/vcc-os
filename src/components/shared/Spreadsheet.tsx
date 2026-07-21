@@ -363,6 +363,7 @@ function billStatusValue(value: string): "paid" | "unpaid" | "overdue" {
 }
 
 function formatLooseCurrency(value: string): string {
+  if (!value.trim()) return "";
   const number = Number(value.replace(/[$,\s]/g, ""));
   if (!Number.isFinite(number)) return value;
   return formatCurrency(number);

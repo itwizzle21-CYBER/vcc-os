@@ -2,8 +2,10 @@ import { expect, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
+    if (window.sessionStorage.getItem("vcc-e2e-initialized")) return;
     window.localStorage.clear();
     window.sessionStorage.clear();
+    window.sessionStorage.setItem("vcc-e2e-initialized", "true");
   });
 });
 
@@ -140,4 +142,130 @@ test("has no measurable accessibility failures on the dashboard", async ({ page 
     return issues;
   });
   expect(failures).toEqual([]);
+});
+
+test("loads every application page without runtime or heading-structure failures", async ({ page }) => {
+  test.setTimeout(90_000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(String(error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+
+  for (const path of [
+    "/money", "/bills", "/income", "/transactions", "/debt", "/debts", "/car-payment",
+    "/savings", "/inventory", "/goals", "/reports", "/missions", "/settings", "/vitascan",
+  ]) {
+    await page.goto(path, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("main")).toHaveCount(1);
+    await expect(page.locator("h1")).toHaveCount(1);
+  }
+
+  expect(errors).toEqual([]);
+});
+
+test("keeps rejected duplicate inventory edits and blank currency cells consistent", async ({ page }) => {
+  await page.goto("/inventory");
+  await page.getByRole("button", { name: "Add Item" }).click();
+  const newItem = page.locator('input[aria-label^="Item, Inventory row"]').last();
+  await newItem.fill("Milk");
+  await page.locator("h1").click();
+  await expect(page.getByRole("alert")).toContainText("already in Inventory");
+  await expect(newItem).toHaveValue("");
+
+  const blankCost = page.locator('input[aria-label^="Cost, Inventory row"]').last();
+  await blankCost.focus();
+  await page.locator("h1").click();
+  await expect(blankCost).toHaveValue("");
+  const savedCost = await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return saved.sections.inventory.at(-1).cells.cost;
+  });
+  expect(savedCost).toBe("");
+});
+
+test("traps focus in the background picker and restores it on close", async ({ page }) => {
+  await page.goto("/settings#settings-appearance");
+  await page.getByRole("link", { name: "Appearance" }).click();
+  const manage = page.getByRole("button", { name: "Manage backgrounds" });
+  await manage.click();
+  const dialog = page.getByRole("dialog", { name: "Choose VCC background" });
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole("button", { name: "Close background picker" })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByRole("button", { name: "Save background" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Close background picker" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(manage).toBeFocused();
+});
+
+test("VitaScan saves to this VCC workspace and keeps light-theme actions readable", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.includes("mobile"), "The OCR handoff only needs one browser execution.");
+  test.setTimeout(120_000);
+  await page.addInitScript(() => localStorage.setItem("vcc-os:theme-preference", "light"));
+  await page.goto("/vitascan");
+  const transactionsLink = page.getByRole("link", { name: "Open VCC Transactions" });
+  await expect(transactionsLink).toHaveAttribute("href", "/transactions");
+  expect(await transactionsLink.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(7, 89, 133)");
+
+  await page.getByLabel("Use screenshot").setInputFiles("tests/fixtures/retail-receipt.svg");
+  await expect(page.getByRole("heading", { name: "Details captured" })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByPlaceholder("Store or payee")).toHaveValue("NORTH MARKET");
+  await expect(page.getByPlaceholder("0.00")).toHaveValue("10.56");
+  await page.getByRole("button", { name: "Add to VCC" }).click();
+  const viewTransactions = page.getByRole("link", { name: "View in Transactions" });
+  await expect(viewTransactions).toHaveAttribute("href", "/transactions");
+  await viewTransactions.click();
+  await expect(page).toHaveURL(/127\.0\.0\.1:4173\/transactions$/);
+  await expect(page.locator('input[aria-label^="Description, Transactions row"]').last()).toHaveValue("NORTH MARKET");
+});
+
+test("exercises major navigation, filter, report, and car-loan controls", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.includes("mobile"), "Desktop control matrix; mobile navigation has dedicated coverage.");
+  await page.setViewportSize({ width: 1600, height: 900 });
+
+  await page.goto("/bills");
+  await expect(page.getByRole("link", { name: "Notification settings" })).toHaveAttribute("href", "/settings#settings-notifications");
+  await page.getByRole("button", { name: "Overdue" }).click();
+  await expect(page.locator("table tbody tr")).toHaveCount(3);
+  await page.getByRole("button", { name: "Unpaid" }).click();
+  await expect(page.locator("table tbody tr")).toHaveCount(1);
+  await page.getByRole("textbox", { name: "Search VCC OS" }).fill("Goals");
+  await expect(page.locator(".search-results").getByRole("link", { name: /Goals/ }).first()).toBeVisible();
+
+  await page.goto("/reports");
+  await page.getByRole("button", { name: "Monthly" }).click();
+  await expect(page.getByRole("button", { name: "Monthly" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("tab", { name: "Trend lines" }).click();
+  await expect(page.getByRole("tab", { name: "Trend lines" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("button", { name: "Next chart" }).last().click();
+  await expect(page.getByRole("tab", { name: "Milestones" })).toHaveAttribute("aria-selected", "true");
+
+  await page.goto("/car-payment");
+  for (const [tab, heading] of [
+    ["Payment Receipts", "Confirmed receipt evidence"],
+    ["Amortization", "Amortization schedule"],
+    ["Dealer Communications", "Communications"],
+    ["Original Contract", "Contract reference"],
+    ["Overview", "Where the money went"],
+  ] as const) {
+    await page.getByRole("button", { name: tab }).click();
+    await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+  }
+});
+
+test("keeps the closed mobile drawer inert and restores focus after use", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile"), "Mobile keyboard containment check.");
+  await page.goto("/settings");
+  const drawer = page.getByRole("navigation", { name: "Primary mobile navigation", includeHidden: true });
+  await expect(drawer).toHaveAttribute("inert", "");
+  const trigger = page.getByRole("button", { name: "Open navigation menu" }).last();
+  await trigger.click();
+  await expect(drawer).not.toHaveAttribute("inert", "");
+  await expect(drawer.getByRole("link", { name: "VCC OS" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveAttribute("inert", "");
+  await expect(trigger).toBeFocused();
 });

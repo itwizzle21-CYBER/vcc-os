@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadThemePreference, resetAllData, saveThemePreference, THEME_PREFERENCE_KEY } from "./localStore";
+import { loadThemePreference, normalizeAppData, resetAllData, saveThemePreference, THEME_PREFERENCE_KEY } from "./localStore";
 
 function installLocalStorage() {
   const values = new Map<string, string>();
@@ -55,5 +55,16 @@ describe("theme preference", () => {
     const values = installLocalStorage();
     values.set(THEME_PREFERENCE_KEY, "midnight");
     expect(loadThemePreference("light")).toBe("light");
+  });
+});
+
+describe("import normalization", () => {
+  it("repairs partial exports before they reach the application state", () => {
+    const imported = normalizeAppData({ sections: {}, settings: { accountName: "Imported" } });
+
+    expect(imported.settings.accountName).toBe("Imported");
+    expect(imported.sections.inventory).toEqual([]);
+    expect(imported.sections.transactions).toEqual(expect.any(Array));
+    expect(imported.carLoan.receipts).toEqual(expect.any(Array));
   });
 });

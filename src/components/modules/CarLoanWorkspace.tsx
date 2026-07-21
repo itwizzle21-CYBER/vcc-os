@@ -33,7 +33,7 @@ export default function CarLoanWorkspace({ data, financialState, onChange }: Pro
   const contract = data.carLoan.contract;
 
   if (!contract) {
-    return <section className="car-loan-empty panel"><Landmark size={30} /><h1>No verified auto-loan contract</h1><p>Add a contract record before recording evidence.</p></section>;
+    return <section className="car-loan-empty panel"><Landmark size={30} /><h2>No verified auto-loan contract</h2><p>Add a contract record before recording evidence.</p></section>;
   }
 
   function saveReceipt(receipt: CarLoanReceipt) {
@@ -56,7 +56,7 @@ export default function CarLoanWorkspace({ data, financialState, onChange }: Pro
       <section className="car-loan-command panel">
         <div className="car-loan-title">
           <span className="car-loan-icon"><Landmark size={24} /></span>
-          <div><p className="eyebrow">Verified Auto Loan</p><h1>{contract.vehicle}</h1><p>{contract.lender} · Contracted {formatDateMDY(contract.contractDate)} · VIN {contract.maskedVin}</p></div>
+          <div><p className="eyebrow">Verified Auto Loan</p><h2>{contract.vehicle}</h2><p>{contract.lender} · Contracted {formatDateMDY(contract.contractDate)} · VIN {contract.maskedVin}</p></div>
         </div>
         <div className="car-loan-truth"><ShieldCheck size={18} /><span>Confirmed evidence only</span></div>
       </section>

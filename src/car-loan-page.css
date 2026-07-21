@@ -1,7 +1,7 @@
 .car-loan-workspace { display: grid; gap: 1rem; }
 .car-loan-command { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem; background: radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 38%), color-mix(in srgb, var(--surface) 96%, transparent); }
 .car-loan-title { display: flex; align-items: center; gap: .9rem; min-width: 0; }
-.car-loan-title h1 { margin: 0; font-size: clamp(1.45rem, 3vw, 2.1rem); }
+.car-loan-title h2 { margin: 0; font-size: clamp(1.45rem, 3vw, 2.1rem); }
 .car-loan-title p:last-child { margin: .3rem 0 0; color: var(--muted); }
 .car-loan-icon { display: grid; flex: 0 0 auto; place-items: center; width: 3.2rem; height: 3.2rem; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border)); border-radius: 1rem; background: color-mix(in srgb, var(--accent) 16%, var(--surface-2)); color: var(--accent); }
 .car-loan-truth { display: flex; align-items: center; gap: .45rem; flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--good) 40%, var(--border)); border-radius: 999px; background: color-mix(in srgb, var(--good) 10%, transparent); color: var(--good); padding: .55rem .75rem; font-size: .78rem; font-weight: 900; }

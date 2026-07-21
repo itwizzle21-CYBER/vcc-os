@@ -10,5 +10,31 @@
 .open-vcc-wide { display: none; }
 .vitascan-footer { display: flex; justify-content: space-between; width: min(100%, 42rem); margin: 12px auto 0; padding: 10px 4px; color: #64748b; font-size: .72rem; }
 .vitascan-footer a { color: #7dd3fc; text-decoration: none; }
+.vitascan-footer a { display: inline-flex; align-items: center; min-height: 28px; padding-inline: 6px; border-radius: 7px; }
+.vitascan-loading { display: grid; min-height: 100dvh; place-items: center; background: #070b14; color: #f8fafc; font-weight: 800; }
+
+:root[data-theme="light"] .vitascan-brand small { color: #075985; }
+:root[data-theme="light"] .open-vcc { border-color: #7dd3fc; background: #e0f2fe; color: #075985; font-weight: 800; }
+:root[data-theme="light"] .vitascan-hero p,
+:root[data-theme="light"] .privacy-note,
+:root[data-theme="light"] .scan-message,
+:root[data-theme="light"] .vitascan-recent > p,
+:root[data-theme="light"] .vitascan-recent li span,
+:root[data-theme="light"] .vitascan-desktop-companion p { color: #475569; }
+:root[data-theme="light"] .vitascan-sync { color: #475569; }
+:root[data-theme="light"] .vitascan-sync.online { color: #047857; }
+:root[data-theme="light"] .scanner-heading > span { background: #e0f2fe; color: #075985; }
+:root[data-theme="light"] .scan-frame { color: #334155; }
+:root[data-theme="light"] .receipt-review legend { color: #0f172a; }
+:root[data-theme="light"] .receipt-review label > span { color: #475569; }
+:root[data-theme="light"] .receipt-review input,
+:root[data-theme="light"] .receipt-review select,
+:root[data-theme="light"] .money-input { border-color: #cbd5e1; background: #f8fafc; color: #0f172a; }
+:root[data-theme="light"] .money-input b,
+:root[data-theme="light"] .receipt-review label small { color: #0369a1; }
+:root[data-theme="light"] .full-scan summary,
+:root[data-theme="light"] .vitascan-desktop-companion > a { color: #075985; }
+:root[data-theme="light"] .vitascan-footer { color: #475569; }
+:root[data-theme="light"] .vitascan-footer a { color: #075985; }
 @media (min-width: 23em) { .open-vcc-short { display: none; } .open-vcc-wide { display: inline; } }
 @media (min-width: 48em) { .vitascan-app-shell { padding: 18px; } .vitascan-app-header,.vitascan-footer { width: min(100%, 64rem); } }

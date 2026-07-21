@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   BellRing,
@@ -34,7 +34,6 @@ import Dashboard from "./components/dashboard/Dashboard";
 import VccAgent from "./components/agent/VccAgent";
 import PaycheckPlanner from "./components/modules/PaycheckPlanner";
 import CarLoanWorkspace from "./components/modules/CarLoanWorkspace";
-import VitaScan from "./components/modules/VitaScan";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import CloudSyncControl from "./components/shared/CloudSyncControl";
@@ -46,7 +45,7 @@ import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
-import { loadAppData, resetAllData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
+import { loadAppData, normalizeAppData, resetAllData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
 import { applyVisualSettings, getSystemTheme } from "./lib/theme/themePreference";
 import type { AppData, SectionKey, SpreadsheetRow, ThemeMode, UserSettings } from "./lib/types/app";
 import { useVccCloudSync } from "./lib/cloud/useVccCloudSync";
@@ -82,6 +81,7 @@ const worldwideTransactionCategories = [
 ];
 
 type WallpaperPreviewSettings = Pick<UserSettings, "wallpaper" | "customWallpaper" | "backgroundOpacity" | "cardOpacity">;
+const VitaScan = lazy(() => import("./components/modules/VitaScan"));
 
 export default function App() {
   const [data, setData] = useState<AppData>(() => loadAppData());
@@ -153,7 +153,7 @@ export default function App() {
     updateData(resetSection(data, section));
   }
 
-  if (path === "/vitascan") return <><VitaScan data={data} onChange={updateData} /><CloudSyncControl sync={cloudSync}/></>;
+  if (path === "/vitascan") return <Suspense fallback={<main className="vitascan-loading" role="status">Opening VitaScan…</main>}><VitaScan data={data} onChange={updateData} /><CloudSyncControl sync={cloudSync}/></Suspense>;
 
   return (
     <>
@@ -1651,11 +1651,7 @@ function SettingsPage({
         const parsed = JSON.parse(String(reader.result || "{}"));
         const imported = parsed.data || parsed;
         if (!imported.sections || !imported.settings) throw new Error("Invalid VCC export");
-        onChange({
-          ...data,
-          ...imported,
-          settings: { ...data.settings, ...imported.settings },
-        });
+        onChange(normalizeAppData(imported));
         if (parsed.smartFeatures) {
           setFeaturePrefs(parsed.smartFeatures);
           localStorage.setItem("vcc-os-smart-features", JSON.stringify(parsed.smartFeatures));
@@ -2158,6 +2154,8 @@ function WallpaperPicker({
   const [draftBackgroundOpacity, setDraftBackgroundOpacity] = useState(backgroundOpacity);
   const [draftCardOpacity, setDraftCardOpacity] = useState(cardOpacity);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const manageButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
   const selectedOption = wallpaperOptions.find((option) => option.value === value) || wallpaperOptions[0];
   const draftOption = wallpaperOptions.find((option) => option.value === draftWallpaper) || wallpaperOptions[0];
   const draftPreview = wallpaperPreviewSource(draftWallpaper, draftCustomWallpaper);
@@ -2188,15 +2186,33 @@ function WallpaperPicker({
 
   useEffect(() => {
     if (!open) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : manageButtonRef.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") closePicker();
+    const dialog = dialogRef.current;
+    const focusable = dialog ? [...dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')] : [];
+    window.requestAnimationFrame(() => focusable[0]?.focus());
+    function handleDialogKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closePicker();
+        return;
+      }
+      if (event.key !== "Tab" || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
-    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("keydown", handleDialogKey);
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("keydown", handleDialogKey);
+      previousFocus?.focus();
     };
   }, [open, closePicker]);
 
@@ -2240,14 +2256,14 @@ function WallpaperPicker({
           <strong>{selectedOption.label}</strong>
           <small>{value === "default" ? "Original VCC background" : "Wallpaper background"}</small>
         </div>
-        <button type="button" onClick={() => setOpen(true)}>Manage backgrounds</button>
+        <button ref={manageButtonRef} type="button" onClick={() => setOpen(true)}>Manage backgrounds</button>
       </div>
 
       {open && createPortal(
         <div className="settings-wallpaper-modal" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget) closePicker();
         }}>
-          <section className="settings-wallpaper-dialog" role="dialog" aria-modal="true" aria-labelledby="wallpaper-dialog-title">
+          <section ref={dialogRef} className="settings-wallpaper-dialog" role="dialog" aria-modal="true" aria-labelledby="wallpaper-dialog-title">
             <header className="settings-wallpaper-dialog-header">
               <div>
                 <p className="settings-kicker">Backgrounds</p>

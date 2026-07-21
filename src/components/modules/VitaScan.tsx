@@ -20,7 +20,7 @@ import type { AppData } from "../../lib/types/app";
 import { formatReceiptNotes, parseReceiptText, type ReceiptDraft } from "../../lib/vitascan/receiptParser";
 import { readReceiptImage, warmReceiptReader, type ReceiptImageQuality, type ReceiptReadProgress } from "../../lib/vitascan/receiptOcr";
 import { syncReceipt, vitaCloudEnabled } from "../../lib/vitascan/cloud";
-import { VCC_OFFICIAL_URL, VCC_TRANSACTIONS_URL } from "../../config/urls";
+import { VCC_OFFICIAL_URL, VCC_TRANSACTIONS_PATH } from "../../config/urls";
 import "./vitascan.css";
 import "./vitascan-app.css";
 
@@ -171,7 +171,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
         <img src="/vitascan-logo.png" alt="" />
         <span><strong>VitaScan</strong><small>by VCC</small></span>
       </a>
-      <a className="open-vcc" href={VCC_TRANSACTIONS_URL} aria-label="Open VCC Transactions">
+      <a className="open-vcc" href={VCC_TRANSACTIONS_PATH} aria-label="Open VCC Transactions">
         <span className="open-vcc-short">VCC</span><span className="open-vcc-wide">Transactions</span><ArrowUpRight size={16} />
       </a>
     </header>
@@ -217,10 +217,10 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
 
           <div className="scan-actions">
             <label className="scan-button"><Camera size={19} aria-hidden="true" /> Open camera
-              <input ref={scanInputRef} type="file" accept="image/*" capture="environment" onChange={(event) => scan(event.target.files?.[0])} />
+              <input ref={scanInputRef} aria-label="Open camera" type="file" accept="image/*" capture="environment" onChange={(event) => scan(event.target.files?.[0])} />
             </label>
             <label className="scan-secondary"><FileImage size={18} aria-hidden="true" /> Use screenshot
-              <input ref={screenshotInputRef} type="file" accept="image/*" onChange={(event) => scan(event.target.files?.[0])} />
+              <input ref={screenshotInputRef} aria-label="Use screenshot" type="file" accept="image/*" onChange={(event) => scan(event.target.files?.[0])} />
             </label>
           </div>
           <p className="privacy-note"><ShieldCheck size={15} aria-hidden="true" /> Multi-pass image reading happens privately on this device.</p>
@@ -228,7 +228,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
 
         {status !== "idle" && <section className="vitascan-result panel" aria-live="polite" aria-labelledby="result-title">
           <div className="result-heading">
-            <div><p className="eyebrow">Scan result</p><h2 id="result-title">{status === "saved" ? "Added to VCC" : "Details captured"}</h2></div>
+            <div><p className="eyebrow">Scan result</p><h2 id="result-title">{status === "scanning" ? "Reading receipt" : status === "saved" ? "Added to VCC" : "Details captured"}</h2></div>
             {ocrConfidence > 0 && <span className="read-score"><Sparkles size={13} aria-hidden="true" /> {ocrConfidence}% OCR</span>}
           </div>
 
@@ -278,7 +278,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
           {message && <p className={`scan-message ${canAdd(draft) ? "is-ready" : ""}`}><ShieldCheck size={16} aria-hidden="true" />{message}</p>}
 
           {status === "saved"
-            ? <a className="save-scan is-saved" href={VCC_TRANSACTIONS_URL}><Check aria-hidden="true" /> View in Transactions</a>
+            ? <a className="save-scan is-saved" href={VCC_TRANSACTIONS_PATH}><Check aria-hidden="true" /> View in Transactions</a>
             : <button className="save-scan" type="button" onClick={save} disabled={!canAdd(draft) || status === "scanning" || status === "saving"} aria-busy={status === "saving"}>
               {status === "saving" ? <LoaderCircle className="spin" aria-hidden="true" /> : <ArrowUpRight aria-hidden="true" />}
               {status === "saving" ? "Adding to VCC…" : "Add to VCC"}
@@ -290,7 +290,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
       <section className="vitascan-desktop-companion panel">
         <Smartphone size={30} aria-hidden="true" />
         <div><p className="eyebrow">Works everywhere</p><h2>Phone camera or desktop screenshots</h2><p>Use the same high-quality scanner on any screen. Confirmed scans sync into VCC Transactions.</p></div>
-        <a href={VCC_TRANSACTIONS_URL}>Open Transactions <ArrowUpRight size={16} /></a>
+        <a href={VCC_TRANSACTIONS_PATH}>Open Transactions <ArrowUpRight size={16} /></a>
       </section>
 
       <RecentScans recent={recent} />

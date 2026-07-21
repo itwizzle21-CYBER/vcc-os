@@ -72,6 +72,7 @@ export default function AppShell({
   const [query, setQuery] = useState("");
   const brandRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const launcherRef = useRef<HTMLDivElement>(null);
   const suppressLauncherClickRef = useRef(false);
   const launcherHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -140,14 +141,34 @@ export default function AppShell({
   }, []);
 
   useEffect(() => {
+    mobileMenuRef.current?.toggleAttribute("inert", !mobileMenuOpen);
     if (!mobileMenuOpen) return;
     setLauncherOpen(false);
     setLauncherDragging(false);
     setLauncherTarget(null);
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : mobileMenuTriggerRef.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const drawer = mobileMenuRef.current;
+    const focusable = drawer ? [...drawer.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled])')] : [];
+    window.requestAnimationFrame(() => focusable[0]?.focus());
+    function trapFocus(event: KeyboardEvent) {
+      if (event.key !== "Tab" || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", trapFocus);
     return () => {
       document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", trapFocus);
+      previousFocus?.focus();
     };
   }, [mobileMenuOpen]);
 
@@ -261,6 +282,7 @@ export default function AppShell({
           })}
         </nav>
         <button
+          ref={mobileMenuTriggerRef}
           className="dashboard-mobile-menu-trigger"
           type="button"
           aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
@@ -323,6 +345,7 @@ export default function AppShell({
       <main className="workspace">
         {!isDashboard && <header className="topbar">
           <button
+            ref={mobileMenuTriggerRef}
             className="mobile-menu-trigger"
             type="button"
             aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
@@ -356,10 +379,10 @@ export default function AppShell({
                 </div>
               )}
             </div>
-            <button className="icon-pill" aria-label="Notifications">
+            <a className="icon-pill" aria-label="Notification settings" href="/settings#settings-notifications">
               <Bell size={17} />
               {settings.notificationsEnabled && <span>3</span>}
-            </button>
+            </a>
             <a className="profile-pill top-profile" href="/settings">
               <UserCircle size={18} />
               <span>{settings.accountName || "Account Profile"}</span>

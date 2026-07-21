@@ -14,7 +14,7 @@ export function loadAppData(): AppData {
   if (typeof window === "undefined") return createZeroData();
   const existing = readJson(window.localStorage.getItem(STORAGE_KEY));
   if (existing) {
-    const migrated = migrateAppData(existing);
+    const migrated = normalizeAppData(existing);
     if (isEmptyAppData(migrated) && !hasBlankResetMarker(migrated)) {
       const starter = createStarterData();
       saveAppData(starter);
@@ -26,7 +26,7 @@ export function loadAppData(): AppData {
   for (const key of LEGACY_KEYS) {
     const legacy = readJson(window.localStorage.getItem(key));
     if (legacy) {
-      const migrated = migrateAppData(legacy);
+      const migrated = normalizeAppData(legacy);
       saveAppData(migrated);
       return withLocalThemePreference(migrated);
     }
@@ -87,7 +87,7 @@ export function resetAllData(): AppData {
   };
 }
 
-function migrateAppData(raw: unknown): AppData {
+export function normalizeAppData(raw: unknown): AppData {
   const starter = createZeroData();
   const source = raw as Partial<AppData> & Record<string, unknown>;
   const sections = { ...starter.sections };
