@@ -26,6 +26,77 @@ test("uses the current time of day in the dashboard greeting", async ({ page }) 
   await expect(page.locator(".dashboard-brand-copy small")).toHaveText(expected);
 });
 
+test("dashboard exposes trustworthy decisions, metrics, and module routes", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
+
+  await expect(page.getByRole("heading", { name: "VCC-OS Dashboard" })).toBeAttached();
+  await expect(page.getByText("Recommended next move", { exact: true })).toBeVisible();
+  await expect(page.getByRole("progressbar")).toHaveCount(3);
+  for (const href of ["/money", "/bills", "/inventory", "/transactions", "/savings", "/goals", "/car-payment"]) {
+    await expect(page.locator(`.dashboard-module-card[href="${href}"]`)).toHaveCount(1);
+  }
+
+  const viewport = await page.locator('meta[name="viewport"]').getAttribute("content");
+  expect(viewport).not.toContain("user-scalable=no");
+  expect(viewport).not.toContain("maximum-scale=1");
+
+  const mission = page.locator(".mission-banner");
+  const missionHref = await mission.getAttribute("href");
+  expect(["/money", "/bills", "/inventory", "/savings", "/debt", "/goals", "/transactions"]).toContain(missionHref);
+  await mission.click();
+  await expect(page).toHaveURL(new RegExp(`${missionHref}$`));
+});
+
+test("dashboard keeps system status readable in light mode", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("vcc-os:theme-preference", "light"));
+  await page.goto("/");
+  await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
+  const color = await page.locator(".dashboard-status-line").evaluate((element) => getComputedStyle(element).color);
+  const channels = color.match(/\d+/g)?.slice(0, 3).map(Number) || [];
+  expect(channels).toHaveLength(3);
+  const luminance = (channel: number) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  const foreground = 0.2126 * luminance(channels[0]) + 0.7152 * luminance(channels[1]) + 0.0722 * luminance(channels[2]);
+  const contrastAgainstWhite = 1.05 / (foreground + 0.05);
+  expect(contrastAgainstWhite).toBeGreaterThanOrEqual(4.5);
+});
+
+test("mobile dashboard launchers stay distinct and keyboard-operable", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile"), "Mobile launcher behavior.");
+  await page.goto("/");
+  await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
+
+  const quick = page.getByRole("button", { name: "Open quick page launcher" });
+  const agent = page.getByRole("button", { name: "Open VCC Agent" });
+  const sync = page.locator(".cloud-sync-trigger");
+  const boxes = await Promise.all([quick.boundingBox(), agent.boundingBox(), sync.boundingBox()]);
+  expect(boxes.every(Boolean)).toBe(true);
+  const overlaps = (a: NonNullable<(typeof boxes)[number]>, b: NonNullable<(typeof boxes)[number]>) =>
+    a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  expect(overlaps(boxes[0]!, boxes[1]!)).toBe(false);
+  expect(overlaps(boxes[0]!, boxes[2]!)).toBe(false);
+  expect(overlaps(boxes[1]!, boxes[2]!)).toBe(false);
+
+  await quick.click();
+  const dashboardItem = page.getByRole("menuitem", { name: "Dashboard" });
+  await expect(dashboardItem).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("menuitem", { name: "Money Snapshot" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(quick).toBeFocused();
+
+  const navigationTrigger = page.getByRole("button", { name: "Open navigation menu" });
+  await navigationTrigger.click();
+  const drawer = page.getByRole("navigation", { name: "Primary mobile navigation" });
+  const closeNavigation = drawer.getByRole("button", { name: "Close navigation menu" });
+  await expect(closeNavigation).toBeVisible();
+  await closeNavigation.click();
+  await expect(navigationTrigger).toBeVisible();
+});
+
 test("renders an actionable not-found page for unknown routes", async ({ page }) => {
   await page.goto("/not-a-real-page");
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();

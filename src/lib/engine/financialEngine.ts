@@ -22,8 +22,8 @@ export function computeFinancialState(data: AppData): FinancialState {
     amount: toNumber(row.cells.amount),
     section: moneySection(row),
   }));
-  const cashMoney = moneyRows
-    .filter((item) => item.section === "cash")
+  const cashRows = moneyRows.filter((item) => item.section === "cash");
+  const cashMoney = cashRows
     .reduce((sum, item) => sum + positive(item.amount), 0);
   const protectedMoney = moneyRows
     .filter((item) => item.section === "protectedSavings")
@@ -38,17 +38,24 @@ export function computeFinancialState(data: AppData): FinancialState {
   const plannerRemainingCash = data.paycheckPlanner.locked
     ? Math.max(0, toNumber(data.paycheckPlanner.paycheckAmount) - repaymentImpact)
     : 0;
-  const latestHistoryRemainingCash = data.paycheckHistory.reduce(
-    (max, row) => Math.max(max, positive(toNumber(row.remaining))),
-    0
+  const latestHistoryRow = data.paycheckHistory.reduce<(typeof data.paycheckHistory)[number] | undefined>(
+    (latest, row) => !latest || row.payDate > latest.payDate ? row : latest,
+    undefined,
   );
-  const operatingCash = cashMoney || Math.max(plannerRemainingCash, latestHistoryRemainingCash);
-  const protectedSavings = savings
-    .filter((row) => (row.cells.protected || "").toLowerCase().startsWith("y") || row.cells.name.toLowerCase().includes("protected"))
-    .reduce((sum, row) => sum + toNumber(row.cells.balance), protectedMoney);
-  const availableSavings = savings
-    .filter((row) => !(row.cells.protected || "").toLowerCase().startsWith("y"))
-    .reduce((sum, row) => sum + toNumber(row.cells.balance), availableSavingsMoney);
+  const latestHistoryRemainingCash = positive(toNumber(latestHistoryRow?.remaining));
+  const operatingCash = cashRows.length > 0 ? cashMoney : Math.max(plannerRemainingCash, latestHistoryRemainingCash);
+  const protectedSavingsRows = savings.filter(
+    (row) => (row.cells.protected || "").toLowerCase().startsWith("y") || row.cells.name.toLowerCase().includes("protected"),
+  );
+  const availableSavingsRows = savings.filter(
+    (row) => !(row.cells.protected || "").toLowerCase().startsWith("y") && !row.cells.name.toLowerCase().includes("protected"),
+  );
+  const protectedSavings = protectedSavingsRows.length > 0
+    ? protectedSavingsRows.reduce((sum, row) => sum + toNumber(row.cells.balance), 0)
+    : protectedMoney;
+  const availableSavings = availableSavingsRows.length > 0
+    ? availableSavingsRows.reduce((sum, row) => sum + toNumber(row.cells.balance), 0)
+    : availableSavingsMoney;
   const totalCash = operatingCash + protectedSavings + availableSavings;
   const lockedIncome = data.paycheckPlanner.locked ? toNumber(data.paycheckPlanner.paycheckAmount) : 0;
   const extraIncome = income.reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
@@ -65,14 +72,14 @@ export function computeFinancialState(data: AppData): FinancialState {
   const weeklyIncome = lockedIncome || extraIncome || currentWeekTransactionIncome;
   const monthlyIncome = weeklyIncome * 4.33;
   const receivedIncome = data.paycheckHistory.reduce((sum, row) => sum + toNumber(row.income), 0) + transactionIncome;
-  const spendableCash = Math.max(0, cashMoney > 0 ? operatingCash + plannedIncome + transactionNet - repaymentImpact : operatingCash + transactionNet);
+  const spendableCash = Math.max(0, cashRows.length > 0 ? operatingCash + plannedIncome + transactionNet - repaymentImpact : operatingCash + transactionNet);
 
   const today = new Date();
   const billsDueToday = bills.filter((row) => isSameDay(row.cells.dueDate, today) && !isPaid(row)).length;
   const billsDueThisWeek = bills.filter((row) => isWithinDays(row.cells.dueDate, today, 7) && !isPaid(row)).length;
   const overdueBills = bills.filter((row) => isPast(row.cells.dueDate, today) && !isPaid(row)).length;
   const billsPressure = bills
-    .filter((row) => isWithinDays(row.cells.dueDate, today, 7) && !isPaid(row))
+    .filter((row) => isDueBy(row.cells.dueDate, today, 7) && !isPaid(row))
     .reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
   const safeToSpend = Math.max(0, spendableCash - billsPressure - borrowedMoney);
 
@@ -214,7 +221,7 @@ function includesAny(value: string, needles: string[]): boolean {
 }
 
 function isPaid(row: SpreadsheetRow): boolean {
-  return (row.cells.status || "").toLowerCase().includes("paid");
+  return (row.cells.status || "").trim().toLowerCase() === "paid";
 }
 
 function parseDate(value: string): Date | null {
@@ -264,6 +271,15 @@ function isWithinDays(value: string, today: Date, days: number): boolean {
   const end = new Date(start);
   end.setDate(start.getDate() + days);
   return date >= start && date <= end;
+}
+
+function isDueBy(value: string, today: Date, days: number): boolean {
+  const date = parseDate(value);
+  if (!date) return false;
+  const end = new Date(today);
+  end.setHours(0, 0, 0, 0);
+  end.setDate(end.getDate() + days);
+  return date <= end;
 }
 
 function goalGap(row: SpreadsheetRow): number {

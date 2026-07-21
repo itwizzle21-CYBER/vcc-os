@@ -16,14 +16,11 @@ import {
   Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import type { AppData, DecisionState, FinancialState, UserSettings } from "../../lib/types/app";
+import type { DecisionState, FinancialState } from "../../lib/types/app";
 
 interface DashboardProps {
   financialState: FinancialState;
   decisionState: DecisionState;
-  data: AppData;
-  settings: UserSettings;
-  onSettingsChange: (settings: UserSettings) => void;
 }
 
 interface DashboardModuleCardProps {
@@ -157,10 +154,10 @@ export default function Dashboard({
   return (
     <div className="base44-dashboard">
       <h1 className="sr-only">VCC-OS Dashboard</h1>
-      <div className="dashboard-status-line">
-        <i />
+      <p className="dashboard-status-line">
+        <i aria-hidden="true" />
         <span>System Active</span>
-      </div>
+      </p>
 
       <a href={decisionState.todayMission.href} className="mission-banner">
         <div>
@@ -177,7 +174,7 @@ export default function Dashboard({
         <span className={`mission-priority priority-${decisionState.todayMission.priority.toLowerCase()}`}>
           {decisionState.todayMission.priority}
         </span>
-        <ArrowRight size={25} />
+        <ArrowRight size={25} aria-hidden="true" />
       </a>
 
       <section className="dashboard-intelligence-grid" aria-label="Decision Engine priority output">
@@ -194,12 +191,21 @@ export default function Dashboard({
                 </span>
                 <div>
                   <strong>{mission.title}</strong>
+                  <span className="sr-only">Status: {mission.completed ? "Completed" : "In progress"}.</span>
                   <span>{mission.detail}</span>
                   <small>{mission.target}</small>
-                  <i aria-hidden="true"><b style={{ width: `${Math.max(0, Math.min(100, mission.progress))}%` }} /></i>
+                  <i
+                    role="progressbar"
+                    aria-label={`${mission.title} progress`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(Math.max(0, Math.min(100, mission.progress)))}
+                  >
+                    <b aria-hidden="true" style={{ width: `${Math.max(0, Math.min(100, mission.progress))}%` }} />
+                  </i>
                 </div>
                 <em className={`stack-priority priority-${mission.priority.toLowerCase()}`}>{mission.priority}</em>
-                <ArrowRight size={16} />
+                <ArrowRight size={16} aria-hidden="true" />
               </a>
             ))}
           </div>
@@ -217,6 +223,10 @@ export default function Dashboard({
                 <span>{alert.detail}</span>
               </div>
             ))}
+            <div className="dashboard-alert-row info recommendation">
+              <strong>Recommended next move</strong>
+              <span>{decisionState.recommendedMove}</span>
+            </div>
           </div>
         </article>
       </section>
@@ -244,7 +254,7 @@ function DashboardModuleCard({
     <a href={href} className="base-panel dashboard-module-card">
       <div className="dashboard-module-head">
         <span className={tone}>{icon}</span>
-        <ArrowRight size={17} />
+        <ArrowRight size={17} aria-hidden="true" />
       </div>
       <div className="dashboard-module-title">
         <small>{title}</small>

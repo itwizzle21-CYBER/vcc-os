@@ -23,7 +23,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import type { AppData, UserSettings } from "../../lib/types/app";
 import BufferedTextInput from "../shared/BufferedTextInput";
 
@@ -74,6 +74,7 @@ export default function AppShell({
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const launcherRef = useRef<HTMLDivElement>(null);
+  const launcherButtonRef = useRef<HTMLButtonElement>(null);
   const suppressLauncherClickRef = useRef(false);
   const launcherHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const launcherPointerRef = useRef<{
@@ -108,9 +109,11 @@ export default function AppShell({
   const selectedLauncherIndex = launcherTargetIndex >= 0 ? launcherTargetIndex : currentLauncherIndex;
 
   useEffect(() => {
-    function closeOnAway(event: MouseEvent) {
+    function closeOnAway(event: PointerEvent) {
       if (!brandRef.current?.contains(event.target as Node)) setBrandOpen(false);
-      if (!mobileMenuRef.current?.contains(event.target as Node)) setMobileMenuOpen(false);
+      if (!mobileMenuRef.current?.contains(event.target as Node) && !mobileMenuTriggerRef.current?.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+      }
       if (!launcherRef.current?.contains(event.target as Node)) {
         setLauncherOpen(false);
         setLauncherDragging(false);
@@ -128,10 +131,10 @@ export default function AppShell({
       }
     }
 
-    document.addEventListener("mousedown", closeOnAway);
+    document.addEventListener("pointerdown", closeOnAway);
     document.addEventListener("keydown", closeOnEscape);
     return () => {
-      document.removeEventListener("mousedown", closeOnAway);
+      document.removeEventListener("pointerdown", closeOnAway);
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, []);
@@ -139,6 +142,16 @@ export default function AppShell({
   useEffect(() => () => {
     if (launcherHoldTimerRef.current) clearTimeout(launcherHoldTimerRef.current);
   }, []);
+
+  useEffect(() => {
+    if (!launcherOpen) return;
+    const launcher = launcherRef.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : launcherButtonRef.current;
+    window.requestAnimationFrame(() => focusLauncherItem(currentLauncherIndex));
+    return () => {
+      if (launcher?.contains(document.activeElement)) previousFocus?.focus();
+    };
+  }, [currentLauncherIndex, launcherOpen]);
 
   useEffect(() => {
     mobileMenuRef.current?.toggleAttribute("inert", !mobileMenuOpen);
@@ -247,6 +260,23 @@ export default function AppShell({
     setLauncherDragging(false);
     setLauncherOpen(false);
     setLauncherTarget(null);
+  }
+
+  function focusLauncherItem(index: number) {
+    const items = launcherRef.current?.querySelectorAll<HTMLAnchorElement>("[data-launcher-path]");
+    items?.[index]?.focus();
+  }
+
+  function handleLauncherKeyDown(event: ReactKeyboardEvent<HTMLAnchorElement>, index: number) {
+    let nextIndex = index;
+    if (event.key === "ArrowRight") nextIndex = (index + 1) % visibleNav.length;
+    else if (event.key === "ArrowLeft") nextIndex = (index - 1 + visibleNav.length) % visibleNav.length;
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = visibleNav.length - 1;
+    else return;
+    event.preventDefault();
+    setLauncherTarget(visibleNav[nextIndex].path);
+    window.requestAnimationFrame(() => focusLauncherItem(nextIndex));
   }
 
   return (
@@ -393,7 +423,7 @@ export default function AppShell({
       </main>
 
       <div className={`mobile-menu-layer ${mobileMenuOpen ? "open" : ""}`} aria-hidden={!mobileMenuOpen}>
-        <div className="mobile-menu-scrim" />
+        <div className="mobile-menu-scrim" aria-hidden="true" onClick={() => setMobileMenuOpen(false)} />
         <nav className="mobile-drawer" id="mobile-navigation" aria-label="Primary mobile navigation" ref={mobileMenuRef}>
           <div className="mobile-drawer-head">
             <a href="/" className="mobile-brand" onClick={() => setMobileMenuOpen(false)}>
@@ -463,13 +493,16 @@ export default function AppShell({
                 href={item.path}
                 className={`${active ? "active" : ""}${highlighted ? " is-target" : ""}`}
                 data-launcher-path={item.path}
+                data-launcher-visible={launcherOpen && distance <= 2 ? "true" : undefined}
                 role="menuitem"
-                tabIndex={launcherOpen ? 0 : -1}
+                tabIndex={launcherOpen && highlighted ? 0 : -1}
+                aria-hidden={launcherOpen && distance <= 2 ? undefined : true}
                 aria-current={active ? "page" : undefined}
                 style={style}
                 title={item.label}
                 onClick={() => setLauncherOpen(false)}
                 onFocus={() => setLauncherTarget(item.path)}
+                onKeyDown={(event) => handleLauncherKeyDown(event, index)}
               >
                 <Icon size={18} aria-hidden="true" />
                 <span className="mobile-quick-launcher-item-label">{item.label}</span>
@@ -481,6 +514,7 @@ export default function AppShell({
           {visibleNav[selectedLauncherIndex].label}
         </div>
         <button
+          ref={launcherButtonRef}
           className="mobile-quick-launcher-button"
           type="button"
           aria-label={launcherOpen ? "Close quick page launcher" : "Open quick page launcher"}

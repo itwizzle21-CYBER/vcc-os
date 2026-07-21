@@ -58,7 +58,7 @@
 @keyframes vcc-pet-spark { 0%, 100% { transform: rotate(-8deg) scale(.9); opacity: .72; } 50% { transform: rotate(8deg) scale(1.15); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .vcc-agent-popover { animation: none; } .vcc-agent-launcher, .vcc-agent-popover button { transition: none; } }
 @media (max-width: 640px) {
-  .vcc-agent-widget { right: 12px; bottom: 76px; }
+  .vcc-agent-widget { right: 12px; bottom: 12px; }
   .vcc-agent-launcher { width: 46px; min-width: 46px; height: 46px; justify-content: center; padding: 0; border-radius: 15px; }
   .vcc-agent-launcher span { display: none; }
   .vcc-agent-popover { max-height: min(600px, calc(100vh - 148px)); }

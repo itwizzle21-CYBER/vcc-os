@@ -7419,8 +7419,9 @@ body {
 
 .dashboard-intelligence-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
+  grid-template-columns: minmax(0, 1.35fr) minmax(20rem, 0.65fr);
   gap: 1rem;
+  align-items: start;
 }
 
 .base-panel,
@@ -7496,6 +7497,10 @@ body {
 
 .dashboard-module-card dd {
   color: rgba(255, 255, 255, 0.86);
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .reference-shell .summary-grid {
@@ -8369,7 +8374,7 @@ body {
       box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .mobile-quick-launcher.is-open .mobile-quick-launcher-menu a {
+  .mobile-quick-launcher.is-open .mobile-quick-launcher-menu a[data-launcher-visible="true"] {
     pointer-events: auto;
   }
 
@@ -8583,6 +8588,17 @@ body {
   border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
   background: var(--surface);
   color: color-mix(in srgb, var(--accent) 82%, #15345f);
+}
+
+:root[data-theme="light"] .dashboard-status-line {
+  border-color: rgba(6, 107, 81, 0.24);
+  background: rgba(6, 107, 81, 0.08);
+  color: #066b51;
+}
+
+:root[data-theme="light"] .dashboard-status-line i {
+  background: #07835f;
+  box-shadow: 0 0 14px rgba(7, 131, 95, 0.28);
 }
 
 :root[data-theme="light"] .welcome-transition {
