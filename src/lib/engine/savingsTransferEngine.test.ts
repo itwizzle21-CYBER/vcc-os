@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeFinancialState } from "./financialEngine";
 import { createZeroData } from "../storage/defaultData";
-import { applySavingsTransfer } from "./savingsTransferEngine";
+import { applySavingsTransfer, syncTransactionTransfers, transactionEndpointOptions } from "./savingsTransferEngine";
 
 describe("savings transfer engine", () => {
   it("updates the source, savings vault, and transactions as one transfer without changing total cash", () => {
@@ -72,5 +72,47 @@ describe("savings transfer engine", () => {
     expect(() => applySavingsTransfer(data, { sourceId: "spotme", destinationId: "vault", amount: 25, date: "2026-07-21" })).toThrow("cash, checking, or debit");
     data.sections.money[0] = { id: "checking", cells: { label: "Checking", section: "cash", amount: "100" } };
     expect(() => applySavingsTransfer(data, { sourceId: "checking", destinationId: "vault", amount: 25, date: "2026-02-30" })).toThrow("valid transfer date");
+  });
+
+  it("offers the named accounts and savings vaults as transaction dropdown endpoints", () => {
+    const data = createZeroData();
+    data.sections.savings = [{ id: "vault", cells: { name: "Emergency Vault", balance: "25" } }];
+
+    const values = transactionEndpointOptions(data).map((option) => option.value);
+    expect(values).toEqual(expect.arrayContaining(["Chime", "Apple Cash", "Wise", "Cash App", "Cash", "Emergency Vault"]));
+  });
+
+  it("applies, reverses, and removes a transaction-page transfer without double-counting balances", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "checking", cells: { label: "Chime", section: "cash", amount: "100" } }];
+    data.sections.savings = [{ id: "vault", cells: { name: "Emergency Vault", balance: "25" } }];
+    const transfer = { id: "manual-transfer", cells: { type: "transfer", amount: "40", date: "2026-07-22", account: "Chime", transferDestination: "Emergency Vault" } };
+
+    const applied = syncTransactionTransfers(data, [transfer]);
+    expect(applied.sections.money[0].cells.amount).toBe("60.00");
+    expect(applied.sections.savings[0].cells.balance).toBe("65.00");
+    expect(applied.sections.transactions[0].cells).toMatchObject({ transferSourceId: "checking", transferDestinationId: "vault", balanceApplied: "yes" });
+
+    const swapping = syncTransactionTransfers(applied, [{ ...applied.sections.transactions[0], cells: { ...applied.sections.transactions[0].cells, amount: "10", account: "Emergency Vault" } }]);
+    expect(swapping.sections.money[0].cells.amount).toBe("100.00");
+    expect(swapping.sections.savings[0].cells.balance).toBe("25.00");
+    expect(swapping.sections.transactions[0].cells.transferValidation).toContain("different places");
+
+    const reversed = syncTransactionTransfers(swapping, [{ ...swapping.sections.transactions[0], cells: { ...swapping.sections.transactions[0].cells, transferDestination: "Chime" } }]);
+    expect(reversed.sections.money[0].cells.amount).toBe("110.00");
+    expect(reversed.sections.savings[0].cells.balance).toBe("15.00");
+
+    const removed = syncTransactionTransfers(reversed, []);
+    expect(removed.sections.money[0].cells.amount).toBe("100.00");
+    expect(removed.sections.savings[0].cells.balance).toBe("25.00");
+  });
+
+  it("can move money from a vault into a newly selected account", () => {
+    const data = createZeroData();
+    data.sections.savings = [{ id: "vault", cells: { name: "Emergency Vault", balance: "50" } }];
+
+    const next = syncTransactionTransfers(data, [{ id: "vault-withdrawal", cells: { type: "transfer", amount: "20", date: "2026-07-22", account: "Emergency Vault", transferDestination: "Apple Cash" } }]);
+    expect(next.sections.savings[0].cells.balance).toBe("30.00");
+    expect(next.sections.money.find((row) => row.cells.label === "Apple Cash")?.cells.amount).toBe("20.00");
   });
 });

@@ -44,7 +44,7 @@ import { isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engi
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
-import { applySavingsTransfer } from "./lib/engine/savingsTransferEngine";
+import { applySavingsTransfer, syncTransactionTransfers, transactionEndpointOptions } from "./lib/engine/savingsTransferEngine";
 import { eligibleDepositAccounts } from "./lib/engine/paycheckPlannerEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, normalizeAppData, resetAllData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
@@ -196,7 +196,8 @@ export default function App() {
   }
 
   function handleResetSection(section: SectionKey) {
-    updateData(resetSection(data, section));
+    const resetData = resetSection(data, section);
+    updateData(section === "transactions" ? syncTransactionTransfers(data, resetData.sections.transactions) : resetData);
   }
 
   if (path === "/vitascan") return <Suspense fallback={<main className="vitascan-loading" role="status">Opening VitaScan…</main>}><VitaScan data={data} onChange={updateData} /><CloudSyncControl sync={cloudSync}/></Suspense>;
@@ -211,7 +212,7 @@ export default function App() {
       )}
       {path === "/bills" && <BillsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
-      {path === "/transactions" && <TransactionsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/transactions" && <TransactionsPage data={data} financialState={financialState} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/car-payment" && <CarLoanWorkspace data={data} financialState={financialState} onChange={updateData} />}
       {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
@@ -577,20 +578,25 @@ function BillsPage({
 function TransactionsPage({
   data,
   financialState,
-  updateRows,
   updateSort,
   resetSection,
+  onChange,
 }: {
   data: AppData;
   financialState: ReturnType<typeof computeFinancialState>;
-  updateRows: (section: SectionKey, rows: SpreadsheetRow[]) => void;
   updateSort: (section: SectionKey, sortBy: string) => void;
   resetSection: (section: SectionKey) => void;
+  onChange: (next: AppData) => void;
 }) {
   const [transactionSearch, setTransactionSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
+  const [transferMessage, setTransferMessage] = useState("");
+  const transactionSelectOptions = useMemo(() => {
+    const options = transactionEndpointOptions(data).map(({ value, label }) => ({ value, label }));
+    return { account: options, transferDestination: options };
+  }, [data]);
   const transactionRows = data.sections.transactions.map(normalizeTransactionRow);
   const visibleTransactionRows = transactionRows.filter((row) => {
     if (isBlankRow(row.cells)) return !transactionSearch.trim() && categoryFilter === "all" && typeFilter === "all" && dateFilter === "all";
@@ -599,7 +605,7 @@ function TransactionsPage({
     const query = transactionSearch.trim().toLowerCase();
     const matchesCategory = categoryFilter === "all" || category.toLowerCase() === categoryFilter.toLowerCase();
     const matchesType = typeFilter === "all" || type === typeFilter;
-    const matchesSearch = !query || [row.cells.description, row.cells.category, row.cells.account, row.cells.notes]
+    const matchesSearch = !query || [row.cells.description, row.cells.category, row.cells.account, row.cells.transferDestination, row.cells.notes]
       .join(" ")
       .toLowerCase()
       .includes(query);
@@ -628,12 +634,19 @@ function TransactionsPage({
   const lastMonthSpending = spendingByPeriod("lastmonth");
 
   function updateVisibleTransactionRows(section: SectionKey, nextVisibleRows: SpreadsheetRow[]) {
+    if (section !== "transactions") return;
     const normalizedNextRows = nextVisibleRows.map(normalizeTransactionRow);
     const nextVisibleIds = new Set(normalizedNextRows.map((row) => row.id));
     const preservedRows = transactionRows.filter((row) => !visibleTransactionIds.has(row.id) || nextVisibleIds.has(row.id));
     const mergedRows = preservedRows.map((row) => normalizedNextRows.find((next) => next.id === row.id) || row);
     const addedRows = normalizedNextRows.filter((row) => !transactionRows.some((existing) => existing.id === row.id));
-    updateRows(section, [...mergedRows, ...addedRows]);
+    try {
+      const next = syncTransactionTransfers(data, [...mergedRows, ...addedRows]);
+      onChange(next);
+      setTransferMessage(next.sections.transactions.find((row) => row.cells.transferValidation)?.cells.transferValidation || "");
+    } catch (error) {
+      setTransferMessage(error instanceof Error ? error.message : "The transfer could not be applied.");
+    }
   }
 
   return (
@@ -733,8 +746,10 @@ function TransactionsPage({
         onRowsChange={updateVisibleTransactionRows}
         onResetSection={resetSection}
         getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
+        selectOptions={transactionSelectOptions}
         addLabel="Add Transaction"
       />
+      {transferMessage && <p className="table-validation" role="alert">{transferMessage}</p>}
     </div>
   );
 }
@@ -2740,6 +2755,7 @@ function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
       amount: row.cells.amount || "",
       date: row.cells.date || "",
       account: row.cells.account || "",
+      transferDestination: row.cells.transferDestination || "",
       recurring: row.cells.recurring || row.cells.is_recurring || "",
       notes: row.cells.notes || "",
     },
@@ -2795,7 +2811,7 @@ function transactionCategory(row: SpreadsheetRow): string {
 }
 
 function hasTransactionIdentifier(row: SpreadsheetRow): boolean {
-  return [row.cells.description, row.cells.account, row.cells.notes, row.cells.type, row.cells.amount, row.cells.category]
+  return [row.cells.description, row.cells.account, row.cells.transferDestination, row.cells.notes, row.cells.type, row.cells.amount, row.cells.category]
     .some((value) => String(value || "").trim());
 }
 

@@ -13,6 +13,7 @@ interface SpreadsheetProps {
   onResetSection: (section: SectionKey) => void;
   getComputedCell?: (row: SpreadsheetRow, columnKey: string) => string | undefined;
   inputLists?: Partial<Record<string, string>>;
+  selectOptions?: Partial<Record<string, Array<{ value: string; label: string }>>>;
   preventDuplicateKey?: string;
   addLabel?: string;
 }
@@ -26,6 +27,7 @@ export default function Spreadsheet({
   onResetSection,
   getComputedCell,
   inputLists,
+  selectOptions,
   preventDuplicateKey,
   addLabel = "Add Row",
 }: SpreadsheetProps) {
@@ -249,6 +251,7 @@ export default function Spreadsheet({
                   const readOnly = column.readOnly || typeof computed === "string";
                   const value = computed ?? row.cells[column.key] ?? "";
                   const inputType = column.type === "date" ? "date" : column.type === "number" ? "number" : "text";
+                  const columnSelectOptions = selectOptions?.[column.key];
                   if (config.key === "inventory" && column.key === "alert") {
                     const tone = value.toLowerCase();
                     return (
@@ -289,6 +292,27 @@ export default function Spreadsheet({
                           <option value="income">Income</option>
                           <option value="expense">Expense</option>
                           <option value="transfer">Transfer</option>
+                        </select>
+                      </td>
+                    );
+                  }
+                  if (!readOnly && columnSelectOptions) {
+                    const hasLegacyValue = Boolean(value) && !columnSelectOptions.some((option) => option.value === value);
+                    return (
+                      <td key={column.key} data-label={column.label}>
+                        <select
+                          data-row-index={rowIndex}
+                          data-column-index={columnIndex}
+                          data-row-id={row.id}
+                          data-column-key={column.key}
+                          value={value}
+                          aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
+                          onChange={(event) => updateCell(row.id, column.key, event.target.value)}
+                          onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
+                        >
+                          <option value="">Select {column.label.toLowerCase()}</option>
+                          {hasLegacyValue && <option value={value}>{value}</option>}
+                          {columnSelectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                         </select>
                       </td>
                     );

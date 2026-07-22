@@ -332,6 +332,31 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   }
 });
 
+test("moves transaction transfers between linked accounts and savings vaults in either direction", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.getByRole("button", { name: "Add Transaction" }).click();
+  const row = page.locator("table tbody tr").last();
+
+  await row.locator('select[data-column-key="type"]').selectOption("transfer");
+  await row.locator('input[data-column-key="amount"]').fill("50");
+  await row.locator('input[data-column-key="amount"]').press("Tab");
+  await row.locator('input[data-column-key="date"]').fill("2026-07-22");
+  await row.locator('select[data-column-key="account"]').selectOption("Chime Checking");
+  await row.locator('select[data-column-key="transferDestination"]').selectOption("Emergency Fund");
+
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return [data.sections.money.find((item: { id: string }) => item.id === "money-cash-1").cells.amount, data.sections.savings.find((item: { id: string }) => item.id === "sav-emergency").cells.balance];
+  })).toEqual(["2790.32", "12850.00"]);
+
+  await row.locator('select[data-column-key="account"]').selectOption("Emergency Fund");
+  await row.locator('select[data-column-key="transferDestination"]').selectOption("Chime Checking");
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return [data.sections.money.find((item: { id: string }) => item.id === "money-cash-1").cells.amount, data.sections.savings.find((item: { id: string }) => item.id === "sav-emergency").cells.balance];
+  })).toEqual(["2890.32", "12750.00"]);
+});
+
 test("keeps the closed mobile drawer inert and restores focus after use", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes("mobile"), "Mobile keyboard containment check.");
   await page.goto("/settings");
