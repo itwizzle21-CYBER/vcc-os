@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createZeroData } from "../storage/defaultData";
 import { computeFinancialState } from "./financialEngine";
-import { eligibleDepositAccounts, lockPaycheckWeek } from "./paycheckPlannerEngine";
+import { depositAccountOptions, eligibleDepositAccounts, lockPaycheckWeek } from "./paycheckPlannerEngine";
 import { applySavingsTransfer } from "./savingsTransferEngine";
 
 describe("connected paycheck planner", () => {
@@ -13,6 +13,30 @@ describe("connected paycheck planner", () => {
     ];
 
     expect(eligibleDepositAccounts(data).map((row) => row.id)).toEqual(["credit-union"]);
+  });
+
+  it("offers common deposit accounts and creates the selected Money Snapshot account on lock", () => {
+    const data = createZeroData();
+    expect(depositAccountOptions(data).map((option) => option.label)).toEqual(["Chime", "Apple Cash", "Wise", "Cash App", "Cash"]);
+    data.paycheckPlanner = {
+      incomeSource: "Client work",
+      depositAccountId: "money-account-wise",
+      paycheckAmount: "400",
+      payDate: "2026-07-22",
+      weekStart: "2026-07-19",
+      weekEnd: "2026-07-25",
+      spotMeRepayment: "0",
+      myPayRepayment: "0",
+      depositApplied: false,
+      locked: false,
+    };
+
+    const next = lockPaycheckWeek(data);
+    expect(next.sections.money).toContainEqual(expect.objectContaining({
+      id: "money-account-wise",
+      cells: expect.objectContaining({ label: "Wise", amount: "400.00", section: "cash" }),
+    }));
+    expect(next.sections.transactions[0].cells.account).toBe("Wise");
   });
 
   it("applies a sourced paycheck to one account and carries it into a savings transfer without double-counting", () => {

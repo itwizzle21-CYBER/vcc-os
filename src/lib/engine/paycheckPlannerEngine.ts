@@ -1,6 +1,21 @@
 import { toNumber } from "../calculations/currency";
 import type { AppData, PaycheckHistoryRow, SpreadsheetRow } from "../types/app";
 
+export interface DepositAccountOption {
+  id: string;
+  label: string;
+  balance: number;
+  isNew: boolean;
+}
+
+const suggestedAccounts = [
+  { id: "money-account-chime", label: "Chime" },
+  { id: "money-account-apple-cash", label: "Apple Cash" },
+  { id: "money-account-wise", label: "Wise" },
+  { id: "money-account-cash-app", label: "Cash App" },
+  { id: "money-account-cash", label: "Cash" },
+] as const;
+
 export function eligibleDepositAccounts(data: AppData): SpreadsheetRow[] {
   return data.sections.money.filter((row) => {
     const section = (row.cells.section || "").trim().toLowerCase();
@@ -13,10 +28,27 @@ export function eligibleDepositAccounts(data: AppData): SpreadsheetRow[] {
   });
 }
 
+export function depositAccountOptions(data: AppData): DepositAccountOption[] {
+  const existing = eligibleDepositAccounts(data);
+  const existingLabels = new Set(existing.map((row) => normalizeAccountLabel(row.cells.label)));
+  const currentOptions = existing.map((row) => ({
+    id: row.id,
+    label: row.cells.label,
+    balance: toNumber(row.cells.amount),
+    isNew: false,
+  }));
+  const suggestedOptions = suggestedAccounts
+    .filter((account) => !existingLabels.has(normalizeAccountLabel(account.label)))
+    .map((account) => ({ ...account, balance: 0, isNew: true }));
+  return [...currentOptions, ...suggestedOptions];
+}
+
 export function lockPaycheckWeek(data: AppData): AppData {
   const planner = data.paycheckPlanner;
   const incomeSource = planner.incomeSource.trim();
-  const depositAccount = eligibleDepositAccounts(data).find((row) => row.id === planner.depositAccountId);
+  const existingDepositAccount = eligibleDepositAccounts(data).find((row) => row.id === planner.depositAccountId);
+  const suggestedDepositAccount = suggestedAccounts.find((account) => account.id === planner.depositAccountId);
+  const depositAccount = existingDepositAccount || (suggestedDepositAccount ? createMoneyAccount(suggestedDepositAccount.id, suggestedDepositAccount.label) : undefined);
   const income = toNumber(planner.paycheckAmount);
   const repayments = toNumber(planner.spotMeRepayment) + toNumber(planner.myPayRepayment);
   const remaining = Math.round((income - repayments) * 100) / 100;
@@ -50,7 +82,10 @@ export function lockPaycheckWeek(data: AppData): AppData {
   }
   accountAdjustments.set(depositAccount.id, (accountAdjustments.get(depositAccount.id) || 0) + remaining);
 
-  const money = data.sections.money.map((row) => {
+  const moneyRows = existingDepositAccount || !depositAccount
+    ? data.sections.money
+    : [...data.sections.money, depositAccount];
+  const money = moneyRows.map((row) => {
     const adjustment = accountAdjustments.get(row.id);
     const cells = {
       ...row.cells,
@@ -98,4 +133,22 @@ function paycheckTransaction(history: PaycheckHistoryRow, depositAccount: Spread
 
 function currencyValue(value: number): string {
   return value.toFixed(2);
+}
+
+function createMoneyAccount(id: string, label: string): SpreadsheetRow {
+  return {
+    id,
+    cells: {
+      label,
+      amount: "0.00",
+      section: "cash",
+      weekStart: "",
+      weekEnd: "",
+      notes: "Created from Current Week Planner",
+    },
+  };
+}
+
+function normalizeAccountLabel(value: string | undefined): string {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }

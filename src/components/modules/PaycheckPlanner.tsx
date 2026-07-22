@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatCurrency, formatDateMDY, toNumber, weekBounds } from "../../lib/calculations/currency";
-import { eligibleDepositAccounts, lockPaycheckWeek } from "../../lib/engine/paycheckPlannerEngine";
+import { depositAccountOptions, lockPaycheckWeek } from "../../lib/engine/paycheckPlannerEngine";
 import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner } from "../../lib/types/app";
 import BufferedTextInput from "../shared/BufferedTextInput";
 
@@ -16,7 +16,8 @@ export default function PaycheckPlanner({
   const [selected, setSelected] = useState<PaycheckHistoryRow | null>(null);
   const [plannerMessage, setPlannerMessage] = useState("");
   const planner = data.paycheckPlanner;
-  const depositAccounts = eligibleDepositAccounts(data);
+  const depositAccounts = depositAccountOptions(data);
+  const linkageMissing = !planner.incomeSource.trim() || !planner.depositAccountId;
   const remaining = toNumber(planner.paycheckAmount) - toNumber(planner.spotMeRepayment) - toNumber(planner.myPayRepayment);
 
   function updatePlanner(updates: Partial<Planner>) {
@@ -46,8 +47,8 @@ export default function PaycheckPlanner({
           <p className="eyebrow">Current Week Planner</p>
           <h2>Weekly Paycheck</h2>
         </div>
-        <PlannerInput label="Income Source" value={planner.incomeSource} disabled={planner.locked} onChange={(value) => updatePlanner({ incomeSource: value })} />
-        <PlannerSelect label="Deposit To" value={planner.depositAccountId} disabled={planner.locked} onChange={(value) => updatePlanner({ depositAccountId: value })} options={depositAccounts.map((row) => ({ value: row.id, label: `${row.cells.label} · ${formatCurrency(toNumber(row.cells.amount))}` }))} />
+        <PlannerInput label="Income Source" value={planner.incomeSource} disabled={planner.locked && !linkageMissing} onChange={(value) => updatePlanner({ incomeSource: value, locked: false })} />
+        <PlannerSelect label="Deposit To" value={planner.depositAccountId} disabled={planner.locked && !linkageMissing} onChange={(value) => updatePlanner({ depositAccountId: value, locked: false })} options={depositAccounts.map((account) => ({ value: account.id, label: account.isNew ? `${account.label} · add account` : `${account.label} · ${formatCurrency(account.balance)}` }))} />
         <PlannerInput label="Paycheck Amount" value={planner.paycheckAmount} disabled={planner.locked} onChange={(value) => updatePlanner({ paycheckAmount: value })} />
         <PlannerInput label="Pay Date" type="date" value={planner.payDate} disabled={planner.locked} onChange={(value) => updatePlanner({ payDate: value })} />
         <PlannerInput label="Week Start" type="date" value={planner.weekStart} disabled={planner.locked} onChange={(value) => updatePlanner({ weekStart: value })} />
