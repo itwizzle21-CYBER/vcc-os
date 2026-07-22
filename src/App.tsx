@@ -287,42 +287,27 @@ function MoneyPage({
         />
       </section>
 
-      <MoneyPaymentHistory data={data} />
+      <MoneyPaycheckHistory data={data} />
     </div>
   );
 }
 
-function MoneyPaymentHistory({
+function MoneyPaycheckHistory({
   data,
 }: {
   data: AppData;
 }) {
-  const carPayments = data.sections.transactions.filter(isCarPaymentTransaction);
   return (
-    <section className="money-history-panel" aria-label="Money Snapshot payment history">
+    <section className="money-history-panel" aria-label="Money Snapshot paycheck history">
       <div className="money-history-heading">
         <div>
-          <p className="eyebrow">Payment History</p>
-          <h2>Money Snapshot Records</h2>
+          <p className="eyebrow">Paycheck History</p>
+          <h2>Locked Paycheck Records</h2>
         </div>
         <span>{data.paycheckHistory.length ? `${data.paycheckHistory.length} locked` : "No records yet"}</span>
       </div>
 
       <div className="money-history-list">
-        {carPayments.map((row) => (
-          <article className="money-history-record car-payment-history-record" key={row.id}>
-            <div>
-              <span>Car Payment</span>
-              <strong>{formatCurrency(Math.abs(toNumber(row.cells.amount)))}</strong>
-              <small>{row.cells.date ? formatDateMDY(row.cells.date) : "No payment date"}</small>
-            </div>
-            <dl>
-              <div><dt>Payment</dt><dd>{row.cells.description || "Car payment"}</dd></div>
-              <div><dt>Category</dt><dd>{row.cells.category || "Debt Payments"}</dd></div>
-              <div><dt>Source</dt><dd>Bills</dd></div>
-            </dl>
-          </article>
-        ))}
         {data.paycheckHistory.map((row) => (
           <article className="money-history-record" key={row.id}>
             <div>
@@ -355,7 +340,7 @@ function MoneyPaymentHistory({
           </article>
         ))}
 
-        {data.paycheckHistory.length === 0 && carPayments.length === 0 && (
+        {data.paycheckHistory.length === 0 && (
           <p className="empty-copy">Lock a paycheck week to create read-only payment history records.</p>
         )}
       </div>
