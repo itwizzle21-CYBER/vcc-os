@@ -3482,6 +3482,52 @@ td input[readonly] {
   background: linear-gradient(90deg, #25d39b, #24d099);
 }
 
+.savings-linked-accounts {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-raised);
+  padding: 1rem;
+}
+
+.savings-linked-accounts h2,
+.savings-linked-accounts p {
+  margin: 0;
+}
+
+.savings-linked-accounts > div:first-child > p:last-child {
+  margin-top: 0.35rem;
+  color: var(--muted);
+}
+
+.savings-linked-account-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  gap: 0.7rem;
+}
+
+.savings-linked-account-list article {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--surface-2);
+  padding: 0.8rem;
+}
+
+.savings-linked-account-list span,
+.savings-linked-account-list small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.savings-linked-account-list strong {
+  font-size: 1.15rem;
+}
+
 .savings-transfer-panel {
   display: grid;
   gap: 1rem;

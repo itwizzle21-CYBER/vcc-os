@@ -731,7 +731,8 @@ function SavingsPage({
   const [transferMessage, setTransferMessage] = useState("");
   const savingsRows = data.sections.savings.map(normalizeSavingsRow);
   const filledSavingsRows = savingsRows.filter((row) => !isBlankRow(row.cells));
-  const transferSources = eligibleDepositAccounts(data).filter((row) => toNumber(row.cells.amount) > 0);
+  const linkedMoneyAccounts = eligibleDepositAccounts(data);
+  const transferSources = linkedMoneyAccounts;
   const monthlySavingsRate = data.sections.transactions
     .map(normalizeTransactionRow)
     .filter((row) => transactionType(row) === "transfer" && row.cells.category.toLowerCase().includes("saving") && transactionDateMatches(row.cells.date, "month"))
@@ -783,6 +784,23 @@ function SavingsPage({
   return (
     <div className="savings-page module-page">
       <SummaryGrid items={summaryForSection("savings", financialState)} />
+      <section className="savings-linked-accounts" aria-labelledby="linked-savings-accounts-title">
+        <div>
+          <p className="eyebrow">Money Snapshot Accounts</p>
+          <h2 id="linked-savings-accounts-title">Linked funding accounts</h2>
+          <p>These are the same cards and cash accounts available in Money Snapshot and the Current Week Planner.</p>
+        </div>
+        <div className="savings-linked-account-list">
+          {linkedMoneyAccounts.map((row) => (
+            <article key={row.id}>
+              <span>{row.cells.label || "Cash account"}</span>
+              <strong>{formatCurrency(toNumber(row.cells.amount))}</strong>
+              <small>Available for savings transfers</small>
+            </article>
+          ))}
+          {!linkedMoneyAccounts.length && <p className="empty-copy">Add or select an account in Money Snapshot’s Current Week Planner to link it here.</p>}
+        </div>
+      </section>
       <section className="savings-transfer-panel" aria-labelledby="savings-transfer-title">
         <div>
           <p className="eyebrow">Connected Transfer</p>
@@ -814,7 +832,7 @@ function SavingsPage({
           </label>
           <button type="submit" disabled={!transferSources.length || !filledSavingsRows.length}>Transfer to Savings</button>
         </form>
-        {!transferSources.length && <p className="savings-transfer-help">Add a cash or checking card balance in Money Snapshot before transferring.</p>}
+        {!transferSources.length && <p className="savings-transfer-help">Add or select a card or cash account in Money Snapshot before transferring.</p>}
         {!filledSavingsRows.length && <p className="savings-transfer-help">Add a savings vault below before transferring.</p>}
         {transferMessage && <p className="savings-transfer-message" role="status">{transferMessage}</p>}
       </section>
