@@ -16,11 +16,12 @@ import {
   Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import type { DecisionState, FinancialState } from "../../lib/types/app";
+import type { ActivityEvent, DecisionState, FinancialState } from "../../lib/types/app";
 
 interface DashboardProps {
   financialState: FinancialState;
   decisionState: DecisionState;
+  activity: ActivityEvent[];
 }
 
 interface DashboardModuleCardProps {
@@ -41,6 +42,7 @@ interface DashboardModuleCardProps {
 export default function Dashboard({
   financialState,
   decisionState,
+  activity,
 }: DashboardProps) {
   const missionIcon = iconForMission(decisionState.todayMission.href);
   const moduleCards: DashboardModuleCardProps[] = [
@@ -185,7 +187,7 @@ export default function Dashboard({
           </div>
           <div className="dashboard-mission-stack">
             {decisionState.missionStack.map((mission) => (
-              <a key={mission.title} href={mission.href} className={`dashboard-mission-row ${mission.completed ? "complete" : "active"}`}>
+              <a key={mission.id} href={mission.href} className={`dashboard-mission-row ${mission.completed ? "complete" : "active"}`}>
                 <span className="mission-check-indicator" aria-hidden="true">
                   {mission.completed ? <Check size={14} /> : <Circle size={14} />}
                 </span>
@@ -227,6 +229,22 @@ export default function Dashboard({
               <strong>Recommended next move</strong>
               <span>{decisionState.recommendedMove}</span>
             </div>
+          </div>
+        </article>
+
+        <article className="base-panel dashboard-intelligence-panel dashboard-activity-panel">
+          <div className="dashboard-intelligence-heading">
+            <span><CheckCircle2 size={18} /></span>
+            <h2>Recent Activity</h2>
+          </div>
+          <div className="dashboard-activity-stack">
+            {activity.slice(0, 3).map((event) => (
+              <div key={event.id} className="dashboard-activity-row">
+                <Check size={15} aria-hidden="true" />
+                <div><strong>{event.title}</strong><span>{event.detail}</span></div>
+              </div>
+            ))}
+            {!activity.length && <p className="dashboard-activity-empty">Completed missions will appear here.</p>}
           </div>
         </article>
       </section>

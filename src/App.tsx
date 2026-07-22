@@ -93,7 +93,13 @@ export default function App() {
   const path = normalizePath(window.location.pathname);
   const isKnownPath = knownPaths.has(path);
   const financialState = useMemo(() => computeFinancialState(data), [data]);
-  const decisionState = useMemo(() => computeDecisionEngine(financialState, data), [financialState, data]);
+  const [recentlyCompletedMissionIds, setRecentlyCompletedMissionIds] = useState<string[]>([]);
+  const previousBorrowedMoneyRef = useRef(financialState.borrowedMoney);
+  const missionRemovalTimerRef = useRef<number | undefined>(undefined);
+  const decisionState = useMemo(
+    () => computeDecisionEngine(financialState, data, recentlyCompletedMissionIds),
+    [financialState, data, recentlyCompletedMissionIds],
+  );
   const activeTheme = data.settings.theme === "system" ? systemTheme : data.settings.theme;
   const normalizeAndSetData = useCallback((next: AppData) => {
     const normalized = {
@@ -105,6 +111,44 @@ export default function App() {
     setData(normalized);
   }, []);
   const cloudSync = useVccCloudSync(data, normalizeAndSetData);
+
+  useEffect(() => {
+    const previousBorrowedMoney = previousBorrowedMoneyRef.current;
+    const currentBorrowedMoney = financialState.borrowedMoney;
+    previousBorrowedMoneyRef.current = currentBorrowedMoney;
+
+    if (currentBorrowedMoney > 0) {
+      if (missionRemovalTimerRef.current) window.clearTimeout(missionRemovalTimerRef.current);
+      setRecentlyCompletedMissionIds((ids) => ids.filter((id) => id !== "clear-borrowed-money"));
+      return;
+    }
+    if (previousBorrowedMoney <= 0) return;
+
+    const completedAt = new Date().toISOString();
+    setRecentlyCompletedMissionIds((ids) => [...new Set([...ids, "clear-borrowed-money"])]);
+    setData((currentData) => {
+      const next = {
+        ...currentData,
+        activity: [{
+          id: `activity-borrowed-repaid-${Date.now()}`,
+          type: "mission_completed" as const,
+          title: "Borrowed money mission completed",
+          detail: `${formatCurrency(previousBorrowedMoney)} in recorded SpotMe/MyPay or advances was repaid.`,
+          createdAt: completedAt,
+        }, ...currentData.activity].slice(0, 50),
+      };
+      saveAppData(next);
+      return next;
+    });
+    if (missionRemovalTimerRef.current) window.clearTimeout(missionRemovalTimerRef.current);
+    missionRemovalTimerRef.current = window.setTimeout(() => {
+      setRecentlyCompletedMissionIds((ids) => ids.filter((id) => id !== "clear-borrowed-money"));
+    }, 3500);
+  }, [financialState.borrowedMoney]);
+
+  useEffect(() => () => {
+    if (missionRemovalTimerRef.current) window.clearTimeout(missionRemovalTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -161,7 +205,7 @@ export default function App() {
     <>
     {path === "/" && <WelcomeTransition settings={data.settings} />}
     <AppShell currentPath={path} settings={data.settings} activeTheme={activeTheme} wallpaperPreview={wallpaperPreview} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
-      {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} />}
+      {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} activity={data.activity} />}
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
       )}
@@ -174,11 +218,17 @@ export default function App() {
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/reports" && <ReportsPage data={data} financialState={financialState} decisionState={decisionState} />}
-      {path === "/missions" && <MissionsPage decisionState={decisionState} />}
+      {path === "/missions" && <MissionsPage decisionState={decisionState} activity={data.activity} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} onWallpaperPreviewChange={setWallpaperPreview} />}
       {!isKnownPath && <NotFound />}
       {isKnownPath && <VccAgent data={data} financialState={financialState} decisionState={decisionState} petEnabled={data.settings.vccPetEnabled} />}
     </AppShell>
+    {recentlyCompletedMissionIds.includes("clear-borrowed-money") && (
+      <div className="mission-completion-notice" role="status" aria-live="polite">
+        <Check size={18} aria-hidden="true" />
+        <div><strong>Borrowed money repaid</strong><span>Mission completed and added to Activity.</span></div>
+      </div>
+    )}
     <CloudSyncControl sync={cloudSync}/>
     </>
   );
@@ -397,7 +447,7 @@ function BillsPage({
     unpaid: filledBillRows.filter((row) => billStatus(row) === "unpaid").length,
     paid: filledBillRows.filter((row) => billStatus(row) === "paid").length,
     autopay: filledBillRows.filter((row) => isAffirmative(row.cells.autopay)).length,
-    critical: filledBillRows.filter((row) => (row.cells.priority || "").toLowerCase() === "critical").length,
+    priority: rankedBills.filter((bill) => ["overdue", "late"].includes(bill.status) || bill.score >= 75).length,
   };
 
   function updateVisibleBillRows(section: SectionKey, nextVisibleRows: SpreadsheetRow[]) {
@@ -503,7 +553,7 @@ function BillsPage({
         </article>
         <article className="panel bill-insight-card">
           <p className="eyebrow">Priority Alert</p>
-          <h2>{billStats.critical ? `${billStats.critical} critical bills` : "No critical bills"}</h2>
+          <h2>{billStats.priority ? `${billStats.priority} priority bill${billStats.priority === 1 ? "" : "s"}` : "No priority bills"}</h2>
           <p className="empty-copy">
             {billStats.overdue > 0 ? `${billStats.overdue} bill${billStats.overdue > 1 ? "s need" : " needs"} attention now.` : "Bill pressure is being tracked from your rows."}
           </p>
@@ -1548,7 +1598,7 @@ function ReportsPage({
   );
 }
 
-function MissionsPage({ decisionState }: { decisionState: ReturnType<typeof computeDecisionEngine> }) {
+function MissionsPage({ decisionState, activity }: { decisionState: ReturnType<typeof computeDecisionEngine>; activity: AppData["activity"] }) {
   return (
     <div className="missions-page">
       <section className="panel">
@@ -1569,7 +1619,7 @@ function MissionsPage({ decisionState }: { decisionState: ReturnType<typeof comp
         <div className="panel">
           <p className="eyebrow">Mission Stack</p>
           {decisionState.missionStack.map((mission) => (
-            <a key={mission.title} href={mission.href} className={`mission-row ${mission.completed ? "complete" : "active"}`}>
+            <a key={mission.id} href={mission.href} className={`mission-row ${mission.completed ? "complete" : "active"}`}>
               <strong>{mission.title}</strong>
               <span>{mission.detail}</span>
               <small>{mission.completed ? "Checked" : mission.target}</small>
@@ -1577,6 +1627,20 @@ function MissionsPage({ decisionState }: { decisionState: ReturnType<typeof comp
               <em>{mission.priority}</em>
             </a>
           ))}
+        </div>
+      </section>
+      <section className="panel mission-activity-panel">
+        <p className="eyebrow">Activity</p>
+        <h2>Mission updates</h2>
+        <div className="mission-activity-list">
+          {activity.slice(0, 8).map((event) => (
+            <article key={event.id}>
+              <strong>{event.title}</strong>
+              <span>{event.detail}</span>
+              <small>{formatDateMDY(event.createdAt.slice(0, 10))}</small>
+            </article>
+          ))}
+          {!activity.length && <p className="empty-copy">Completed missions will be recorded here.</p>}
         </div>
       </section>
     </div>

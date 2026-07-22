@@ -17,7 +17,7 @@ export interface RankedBillRow {
   reason: string;
 }
 
-export function computeDecisionEngine(financialState: FinancialState, data: AppData): DecisionState {
+export function computeDecisionEngine(financialState: FinancialState, data: AppData, recentlyCompletedMissionIds: string[] = []): DecisionState {
   const spendableSafe = mergedSpendable(financialState);
   const spendableTarget = Math.max(1, financialState.billsPressure);
   const spendableProgress = financialState.billsPressure > 0
@@ -56,6 +56,42 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
   }
 
   const recommendedMove = chooseRecommendedMove(financialState);
+  const borrowedMissionId = "clear-borrowed-money";
+  const showBorrowedMission = financialState.borrowedMoney > 0 || recentlyCompletedMissionIds.includes(borrowedMissionId);
+  const missionStack: DecisionState["missionStack"] = [
+    {
+      id: "protect-spendable-safe",
+      title: "Protect Spendable / Safe",
+      detail: `Keep spendable cash above ${formatCurrency(financialState.billsPressure)} until bills clear.`,
+      href: "/money",
+      target: financialState.billsPressure > 0 ? `${formatCurrency(spendableSafe)} / ${formatCurrency(spendableTarget)}` : "No bill pressure",
+      progress: spendableProgress,
+      completed: spendableProgress >= 100,
+      priority: financialState.billsPressure > 0 ? "High" : "Medium",
+    },
+    ...(showBorrowedMission ? [{
+      id: borrowedMissionId,
+      title: "Clear borrowed money",
+      detail: financialState.borrowedMoney > 0
+        ? `SpotMe/MyPay/advances currently reduce the cash plan by ${formatCurrency(financialState.borrowedMoney)}.`
+        : "SpotMe/MyPay and recorded advances have been repaid.",
+      href: "/money" as const,
+      target: financialState.borrowedMoney > 0 ? `${formatCurrency(financialState.borrowedMoney)} left` : "Cleared",
+      progress: borrowedProgress,
+      completed: financialState.borrowedMoney <= 0,
+      priority: financialState.borrowedMoney > 0 ? "High" as const : "Low" as const,
+    }] : []),
+    {
+      id: "restock-buy-next",
+      title: "Restock Buy Next",
+      detail: `${financialState.buyNextCount} inventory row${financialState.buyNextCount === 1 ? "" : "s"} are below minimum.`,
+      href: "/inventory",
+      target: financialState.buyNextCount > 0 ? `${financialState.buyNextCount} remaining` : "All stocked",
+      progress: inventoryProgress,
+      completed: financialState.buyNextCount <= 0,
+      priority: financialState.buyNextCount > 0 ? "Medium" : "Low",
+    },
+  ];
 
   return {
     todayBriefing: data.paycheckPlanner.locked
@@ -64,35 +100,7 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
     recommendedMove,
     todayMission: chooseTodayMission(financialState),
     priorityAlerts: alerts.slice(0, 4),
-    missionStack: [
-      {
-        title: "Protect Spendable / Safe",
-        detail: `Keep spendable cash above ${formatCurrency(financialState.billsPressure)} until bills clear.`,
-        href: "/money",
-        target: financialState.billsPressure > 0 ? `${formatCurrency(spendableSafe)} / ${formatCurrency(spendableTarget)}` : "No bill pressure",
-        progress: spendableProgress,
-        completed: spendableProgress >= 100,
-        priority: financialState.billsPressure > 0 ? "High" : "Medium",
-      },
-      {
-        title: "Clear borrowed money",
-        detail: `SpotMe/MyPay/advances currently reduce the cash plan by ${formatCurrency(financialState.borrowedMoney)}.`,
-        href: "/money",
-        target: financialState.borrowedMoney > 0 ? `${formatCurrency(financialState.borrowedMoney)} left` : "Cleared",
-        progress: borrowedProgress,
-        completed: financialState.borrowedMoney <= 0,
-        priority: financialState.borrowedMoney > 0 ? "High" : "Low",
-      },
-      {
-        title: "Restock Buy Next",
-        detail: `${financialState.buyNextCount} inventory row${financialState.buyNextCount === 1 ? "" : "s"} are below minimum.`,
-        href: "/inventory",
-        target: financialState.buyNextCount > 0 ? `${financialState.buyNextCount} remaining` : "All stocked",
-        progress: inventoryProgress,
-        completed: financialState.buyNextCount <= 0,
-        priority: financialState.buyNextCount > 0 ? "Medium" : "Low",
-      },
-    ],
+    missionStack,
   };
 }
 

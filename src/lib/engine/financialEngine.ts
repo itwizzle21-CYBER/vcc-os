@@ -80,11 +80,11 @@ export function computeFinancialState(data: AppData): FinancialState {
   const spendableCash = Math.max(0, cashRows.length > 0 ? operatingCash + plannedIncome + transactionNet - repaymentImpact : operatingCash + transactionNet);
 
   const today = new Date();
-  const billsDueToday = bills.filter((row) => isSameDay(row.cells.dueDate, today) && !isPaid(row)).length;
-  const billsDueThisWeek = bills.filter((row) => isWithinDays(row.cells.dueDate, today, 7) && !isPaid(row)).length;
-  const overdueBills = bills.filter((row) => isPast(row.cells.dueDate, today) && !isPaid(row)).length;
+  const billsDueToday = bills.filter((row) => isSameDay(row.cells.dueDate, today) && isOpenBill(row)).length;
+  const billsDueThisWeek = bills.filter((row) => isWithinDays(row.cells.dueDate, today, 7) && isOpenBill(row)).length;
+  const overdueBills = bills.filter((row) => isPast(row.cells.dueDate, today) && isOpenBill(row)).length;
   const billsPressure = bills
-    .filter((row) => isDueBy(row.cells.dueDate, today, 7) && !isPaid(row))
+    .filter((row) => isDueBy(row.cells.dueDate, today, 7) && isOpenBill(row))
     .reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
   const safeToSpend = Math.max(0, spendableCash - billsPressure - borrowedMoney);
 
@@ -227,6 +227,10 @@ function includesAny(value: string, needles: string[]): boolean {
 
 function isPaid(row: SpreadsheetRow): boolean {
   return (row.cells.status || "").trim().toLowerCase() === "paid";
+}
+
+function isOpenBill(row: SpreadsheetRow): boolean {
+  return !["paid", "cancelled", "canceled", "inactive"].includes((row.cells.status || "").trim().toLowerCase());
 }
 
 function parseDate(value: string): Date | null {

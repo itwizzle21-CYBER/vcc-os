@@ -61,11 +61,21 @@ export function lockPaycheckWeek(data: AppData): AppData {
 
   const existing = data.paycheckHistory.find((row) => row.payDate === planner.payDate);
   const historyId = existing?.id || `paycheck-${planner.payDate}-${Date.now()}`;
+  const restoredMoney = data.sections.money.map((row) => {
+    const previousRepayment = existing?.borrowedRepayments
+      ?.filter((item) => item.rowId === row.id)
+      .reduce((sum, item) => sum + item.amount, 0) || 0;
+    return previousRepayment > 0
+      ? { ...row, cells: { ...row.cells, amount: currencyValue(toNumber(row.cells.amount) + previousRepayment) } }
+      : row;
+  });
+  const borrowedRepayments = allocateBorrowedRepayments(restoredMoney, toNumber(planner.spotMeRepayment), toNumber(planner.myPayRepayment));
   const historyRow: PaycheckHistoryRow = {
     id: historyId,
     incomeSource,
     depositAccountId: depositAccount.id,
     depositAccountLabel: depositAccount.cells.label,
+    borrowedRepayments,
     payDate: planner.payDate,
     income: planner.paycheckAmount,
     spotMe: planner.spotMeRepayment,
@@ -81,10 +91,13 @@ export function lockPaycheckWeek(data: AppData): AppData {
     accountAdjustments.set(existing.depositAccountId, -toNumber(existing.remaining));
   }
   accountAdjustments.set(depositAccount.id, (accountAdjustments.get(depositAccount.id) || 0) + remaining);
+  borrowedRepayments.forEach((repayment) => {
+    accountAdjustments.set(repayment.rowId, (accountAdjustments.get(repayment.rowId) || 0) - repayment.amount);
+  });
 
   const moneyRows = existingDepositAccount || !depositAccount
-    ? data.sections.money
-    : [...data.sections.money, depositAccount];
+    ? restoredMoney
+    : [...restoredMoney, depositAccount];
   const money = moneyRows.map((row) => {
     const adjustment = accountAdjustments.get(row.id);
     const cells = {
@@ -151,4 +164,39 @@ function createMoneyAccount(id: string, label: string): SpreadsheetRow {
 
 function normalizeAccountLabel(value: string | undefined): string {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function allocateBorrowedRepayments(
+  rows: SpreadsheetRow[],
+  spotMeAmount: number,
+  myPayAmount: number,
+): Array<{ rowId: string; label: string; amount: number }> {
+  const borrowedRows = rows.filter((row) => {
+    const value = `${row.cells.section || ""} ${row.cells.label || ""} ${row.cells.notes || ""}`.toLowerCase();
+    return ["borrow", "spotme", "spot me", "mypay", "my pay", "advance", "owed"].some((term) => value.includes(term));
+  });
+  const balances = new Map(borrowedRows.map((row) => [row.id, Math.max(0, toNumber(row.cells.amount))]));
+  const allocated = new Map<string, number>();
+
+  const apply = (amount: number, matches: (row: SpreadsheetRow) => boolean) => {
+    let remaining = Math.max(0, amount);
+    borrowedRows.filter(matches).forEach((row) => {
+      if (remaining <= 0) return;
+      const available = balances.get(row.id) || 0;
+      const payment = Math.min(available, remaining);
+      if (payment <= 0) return;
+      balances.set(row.id, available - payment);
+      allocated.set(row.id, (allocated.get(row.id) || 0) + payment);
+      remaining -= payment;
+    });
+    return remaining;
+  };
+
+  const spotRemaining = apply(spotMeAmount, (row) => /spot\s?me/i.test(`${row.cells.label} ${row.cells.notes}`));
+  const myPayRemaining = apply(myPayAmount, (row) => /my\s?pay/i.test(`${row.cells.label} ${row.cells.notes}`));
+  apply(spotRemaining + myPayRemaining, () => true);
+
+  return borrowedRows
+    .filter((row) => (allocated.get(row.id) || 0) > 0)
+    .map((row) => ({ rowId: row.id, label: row.cells.label || "Borrowed money", amount: allocated.get(row.id) || 0 }));
 }

@@ -406,6 +406,7 @@ export function createZeroData(): AppData {
       locked: false,
     },
     paycheckHistory: [],
+    activity: [],
     carLoan: {
       contract: null,
       receipts: [],

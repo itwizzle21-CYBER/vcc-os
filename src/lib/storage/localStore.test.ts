@@ -32,6 +32,7 @@ describe("full VCC reset", () => {
       locked: false,
     });
     expect(reset.paycheckHistory).toEqual([]);
+    expect(reset.activity).toEqual([]);
     expect(reset.sortBy).toEqual({});
     expect(reset.settings.accountName).toBe("");
     expect(reset.settings.profileLabel).toBe("");

@@ -70,4 +70,18 @@ describe("financial dashboard totals", () => {
     expect(state.overdueBills).toBe(1);
     expect(state.billsPressure).toBe(125.5);
   });
+
+  it("removes cancelled bills from priority pressure", () => {
+    const data = createZeroData();
+    data.sections.bills = [row("cancelled", {
+      name: "Old subscription",
+      amount: "75",
+      dueDate: "2020-01-01",
+      status: "cancelled",
+    })];
+
+    const state = computeFinancialState(data);
+    expect(state.overdueBills).toBe(0);
+    expect(state.billsPressure).toBe(0);
+  });
 });

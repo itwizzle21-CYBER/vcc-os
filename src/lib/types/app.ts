@@ -46,6 +46,7 @@ export interface PaycheckHistoryRow {
   incomeSource?: string;
   depositAccountId?: string;
   depositAccountLabel?: string;
+  borrowedRepayments?: Array<{ rowId: string; label: string; amount: number }>;
   payDate: string;
   income: string;
   spotMe: string;
@@ -80,6 +81,14 @@ export interface UserSettings {
   welcomeTransition: "rise" | "fade" | "focus" | "sweep";
   vitaScanEnabled: boolean;
   vccPetEnabled: boolean;
+}
+
+export interface ActivityEvent {
+  id: string;
+  type: "mission_completed" | "info";
+  title: string;
+  detail: string;
+  createdAt: string;
 }
 
 export type EvidenceStatus = "draft" | "confirmed" | "needs_review" | "superseded" | "rejected";
@@ -181,6 +190,7 @@ export interface AppData {
   sortBy: Partial<Record<SectionKey, string>>;
   paycheckPlanner: PaycheckPlanner;
   paycheckHistory: PaycheckHistoryRow[];
+  activity: ActivityEvent[];
   carLoan: CarLoanData;
   settings: UserSettings;
 }
@@ -252,6 +262,7 @@ export interface DecisionState {
   };
   priorityAlerts: Array<{ title: string; detail: string; tone: "warning" | "info" | "success" }>;
   missionStack: Array<{
+    id: string;
     title: string;
     detail: string;
     href: DecisionState["todayMission"]["href"];

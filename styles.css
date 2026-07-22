@@ -4044,6 +4044,73 @@ td input[readonly] {
   color: inherit;
 }
 
+.mission-activity-panel {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.mission-activity-panel h2 {
+  margin: 0;
+}
+
+.mission-activity-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.mission-activity-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.2rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-2);
+  padding: 0.75rem;
+}
+
+.mission-activity-list article span {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+.mission-activity-list article small {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.mission-completion-notice {
+  position: fixed;
+  right: 1rem;
+  bottom: 5.4rem;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  width: min(22rem, calc(100vw - 2rem));
+  border: 1px solid color-mix(in srgb, var(--good) 50%, var(--border));
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--surface) 96%, var(--good) 4%);
+  box-shadow: var(--shadow-raised);
+  color: var(--text);
+  padding: 0.85rem;
+}
+
+.mission-completion-notice > svg {
+  flex: 0 0 auto;
+  color: var(--good);
+}
+
+.mission-completion-notice div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.mission-completion-notice span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .mission-row:hover {
   border-color: color-mix(in srgb, var(--accent) 44%, var(--border));
   transform: translateY(-1px);
@@ -5206,9 +5273,45 @@ td input[readonly] {
 }
 
 .dashboard-mission-stack,
-.dashboard-alert-stack {
+.dashboard-alert-stack,
+.dashboard-activity-stack {
   display: grid;
   gap: 0.65rem;
+}
+
+.dashboard-activity-panel {
+  grid-column: 1 / -1;
+}
+
+.dashboard-activity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  border-top: 1px solid var(--vcc-line);
+  padding-top: 0.65rem;
+}
+
+.dashboard-activity-row > svg {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+  color: var(--dashboard-stack-success);
+}
+
+.dashboard-activity-row div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.dashboard-activity-row strong {
+  color: var(--dashboard-stack-success);
+}
+
+.dashboard-activity-row span,
+.dashboard-activity-empty {
+  margin: 0;
+  color: var(--dashboard-stack-muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .dashboard-intelligence-panel .dashboard-mission-row {
