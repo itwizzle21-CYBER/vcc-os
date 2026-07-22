@@ -51,11 +51,16 @@ describe("financial dashboard totals", () => {
     const data = createZeroData();
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayLocal = [
+      yesterday.getFullYear(),
+      String(yesterday.getMonth() + 1).padStart(2, "0"),
+      String(yesterday.getDate()).padStart(2, "0"),
+    ].join("-");
     data.sections.bills = [
       row("overdue", {
         name: "Electric",
         amount: "$125.50",
-        dueDate: yesterday.toISOString().slice(0, 10),
+        dueDate: yesterdayLocal,
         status: "unpaid",
       }),
     ];

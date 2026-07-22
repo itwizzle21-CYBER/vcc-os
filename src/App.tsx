@@ -38,12 +38,13 @@ import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import CloudSyncControl from "./components/shared/CloudSyncControl";
 import BufferedTextInput from "./components/shared/BufferedTextInput";
-import { formatCurrency, formatDateMDY, isBlankRow, toNumber } from "./lib/calculations/currency";
+import { formatCurrency, formatDateMDY, isBlankRow, todayIso, toNumber } from "./lib/calculations/currency";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { isCarPaymentBill, isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
+import { applySavingsTransfer } from "./lib/engine/savingsTransferEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, normalizeAppData, resetAllData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
 import { applyVisualSettings, getSystemTheme } from "./lib/theme/themePreference";
@@ -168,7 +169,7 @@ export default function App() {
       {path === "/transactions" && <TransactionsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/car-payment" && <CarLoanWorkspace data={data} financialState={financialState} onChange={updateData} />}
-      {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/reports" && <ReportsPage data={data} financialState={financialState} decisionState={decisionState} />}
@@ -715,17 +716,25 @@ function SavingsPage({
   updateRows,
   updateSort,
   resetSection,
+  onChange,
 }: {
   data: AppData;
   financialState: ReturnType<typeof computeFinancialState>;
   updateRows: (section: SectionKey, rows: SpreadsheetRow[]) => void;
   updateSort: (section: SectionKey, sortBy: string) => void;
   resetSection: (section: SectionKey) => void;
+  onChange: (data: AppData) => void;
 }) {
   const [savingsSearch, setSavingsSearch] = useState("");
   const [vaultType, setVaultType] = useState("all");
+  const [transferSourceId, setTransferSourceId] = useState("");
+  const [transferDestinationId, setTransferDestinationId] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [transferDate, setTransferDate] = useState(todayIso);
+  const [transferMessage, setTransferMessage] = useState("");
   const savingsRows = data.sections.savings.map(normalizeSavingsRow);
   const filledSavingsRows = savingsRows.filter((row) => !isBlankRow(row.cells));
+  const transferSources = data.sections.money.filter((row) => !isBlankRow(row.cells) && moneySection(row) === "cash" && toNumber(row.cells.amount) > 0);
   const monthlySavingsRate = data.sections.transactions
     .map(normalizeTransactionRow)
     .filter((row) => transactionType(row) === "transfer" && row.cells.category.toLowerCase().includes("saving") && transactionDateMatches(row.cells.date, "month"))
@@ -756,9 +765,62 @@ function SavingsPage({
     updateRows(section, [...mergedRows, ...addedRows]);
   }
 
+  function submitSavingsTransfer() {
+    try {
+      const next = applySavingsTransfer(data, {
+        sourceId: transferSourceId,
+        destinationId: transferDestinationId,
+        amount: toNumber(transferAmount),
+        date: transferDate,
+      });
+      const destination = filledSavingsRows.find((row) => row.id === transferDestinationId);
+      onChange(next);
+      setTransferAmount("");
+      setTransferSourceId("");
+      setTransferMessage(`${formatCurrency(toNumber(transferAmount))} moved to ${destination?.cells.name || "Savings"}. Money Snapshot and Transactions are updated.`);
+    } catch (error) {
+      setTransferMessage(error instanceof Error ? error.message : "The savings transfer could not be completed.");
+    }
+  }
+
   return (
     <div className="savings-page module-page">
       <SummaryGrid items={summaryForSection("savings", financialState)} />
+      <section className="savings-transfer-panel" aria-labelledby="savings-transfer-title">
+        <div>
+          <p className="eyebrow">Connected Transfer</p>
+          <h2 id="savings-transfer-title">Move money into savings</h2>
+          <p>Choose the exact card or cash account. One transfer updates Money Snapshot, Transactions, and the destination savings vault.</p>
+        </div>
+        <form onSubmit={(event) => { event.preventDefault(); submitSavingsTransfer(); }}>
+          <label>
+            <span>From card or account</span>
+            <select aria-label="Savings transfer source" value={transferSourceId} onChange={(event) => { setTransferSourceId(event.target.value); setTransferMessage(""); }} required>
+              <option value="">Select source</option>
+              {transferSources.map((row) => <option key={row.id} value={row.id}>{row.cells.label || "Cash account"} · {formatCurrency(toNumber(row.cells.amount))}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>To savings vault</span>
+            <select aria-label="Savings transfer destination" value={transferDestinationId} onChange={(event) => { setTransferDestinationId(event.target.value); setTransferMessage(""); }} required>
+              <option value="">Select vault</option>
+              {filledSavingsRows.map((row) => <option key={row.id} value={row.id}>{row.cells.name || "Savings"} · {formatCurrency(toNumber(row.cells.balance))}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Amount</span>
+            <input aria-label="Savings transfer amount" inputMode="decimal" value={transferAmount} onChange={(event) => { setTransferAmount(event.target.value); setTransferMessage(""); }} placeholder="$0.00" required />
+          </label>
+          <label>
+            <span>Date</span>
+            <input aria-label="Savings transfer date" type="date" value={transferDate} onChange={(event) => { setTransferDate(event.target.value); setTransferMessage(""); }} required />
+          </label>
+          <button type="submit" disabled={!transferSources.length || !filledSavingsRows.length}>Transfer to Savings</button>
+        </form>
+        {!transferSources.length && <p className="savings-transfer-help">Add a cash or checking card balance in Money Snapshot before transferring.</p>}
+        {!filledSavingsRows.length && <p className="savings-transfer-help">Add a savings vault below before transferring.</p>}
+        {transferMessage && <p className="savings-transfer-message" role="status">{transferMessage}</p>}
+      </section>
       <section className="savings-command-panel">
         <div>
           <p className="eyebrow">Savings Vaults</p>

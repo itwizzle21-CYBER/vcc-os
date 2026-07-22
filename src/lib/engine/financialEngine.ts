@@ -1,6 +1,7 @@
 import { getInventoryAlert } from "./inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./transactionEngine";
 import { summarizeCarLoan } from "./carLoanEngine";
+import { isBalanceAppliedTransfer } from "./savingsTransferEngine";
 import { isBlankRow, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
@@ -67,7 +68,9 @@ export function computeFinancialState(data: AppData): FinancialState {
   const currentWeekTransactionIncome = currentWeekTransactions
     .filter((row) => transactionType(row) === "income")
     .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
-  const transactionNet = currentWeekTransactions.reduce((sum, row) => sum + signedTransactionAmount(row), 0);
+  const transactionNet = currentWeekTransactions
+    .filter((row) => !isBalanceAppliedTransfer(row))
+    .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const plannedIncome = lockedIncome || extraIncome;
   const weeklyIncome = lockedIncome || extraIncome || currentWeekTransactionIncome;
   const monthlyIncome = weeklyIncome * 4.33;

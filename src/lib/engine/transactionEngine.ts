@@ -138,6 +138,9 @@ const categoryRules: Array<{ category: string; keywords: string[] }> = [
 ];
 
 export function identifyTransactionCategory(row: SpreadsheetRow): string {
+  const explicitCategory = String(row.cells.category || "").trim();
+  if (explicitCategory && explicitCategory !== "Uncategorized") return explicitCategory;
+
   const haystack = [
     row.cells.description,
     row.cells.account,
@@ -149,8 +152,6 @@ export function identifyTransactionCategory(row: SpreadsheetRow): string {
 
   const rule = categoryRules.find((item) => item.keywords.some((keyword) => haystack.includes(keyword)));
   if (rule) return rule.category;
-  const explicitCategory = String(row.cells.category || "").trim();
-  if (explicitCategory && explicitCategory !== "Uncategorized") return explicitCategory;
   if (transactionType(row) === "income") return "Income";
   if (transactionType(row) === "transfer") return "Transfers";
   return "Uncategorized";
