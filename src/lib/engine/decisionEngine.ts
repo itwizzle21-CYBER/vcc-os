@@ -33,6 +33,13 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
       tone: "warning",
     });
   }
+  if (financialState.billsDueToday > 0) {
+    alerts.push({
+      title: "Bill due today",
+      detail: `${financialState.billsDueToday} bill${financialState.billsDueToday === 1 ? " is" : "s are"} due today with ${formatCurrency(financialState.billsPressure)} in current bill pressure.`,
+      tone: "warning",
+    });
+  }
   if (financialState.borrowedMoney > 0) {
     alerts.push({
       title: "Borrowed money is reducing spendable cash",
@@ -144,6 +151,7 @@ export function rankBillRows(rows: SpreadsheetRow[], today = new Date()): Ranked
 function chooseRecommendedMove(financialState: FinancialState): string {
   const spendableSafe = mergedSpendable(financialState);
   if (financialState.overdueBills > 0) return "Pay overdue bills before new spending.";
+  if (financialState.billsDueToday > 0) return "Pay or schedule today’s bills before new spending.";
   if (financialState.borrowedMoney > 0) return "Repay SpotMe/MyPay first, then recalculate Spendable / Safe.";
   if (financialState.billsPressure > spendableSafe * 0.5) return "Hold cash for bills due this week.";
   if (financialState.criticalItems > 0) return "Refill critical Buy Next items with the lowest-cost run.";

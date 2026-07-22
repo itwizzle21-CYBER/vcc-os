@@ -299,10 +299,15 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
 
   await page.goto("/bills");
   await expect(page.getByRole("link", { name: "Notification settings" })).toHaveAttribute("href", "/settings#settings-notifications");
-  await page.getByRole("button", { name: "Overdue" }).click();
-  await expect(page.locator("table tbody tr")).toHaveCount(3);
-  await page.getByRole("button", { name: "Unpaid" }).click();
-  await expect(page.locator("table tbody tr")).toHaveCount(1);
+  for (const filter of ["Overdue", "Unpaid"]) {
+    const button = page.getByRole("button", { name: filter });
+    await button.click();
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+    const shownStat = page.locator(".bills-inline-stats span").first();
+    await expect(shownStat).toHaveText(/^\d+ shown$/);
+    const shownCount = Number((await shownStat.textContent())?.split(" ")[0]);
+    await expect(page.locator("table tbody tr")).toHaveCount(shownCount);
+  }
   await page.getByRole("textbox", { name: "Search VCC OS" }).fill("Goals");
   await expect(page.locator(".search-results").getByRole("link", { name: /Goals/ }).first()).toBeVisible();
 

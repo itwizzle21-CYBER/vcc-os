@@ -2,7 +2,7 @@ import { getInventoryAlert } from "./inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./transactionEngine";
 import { summarizeCarLoan } from "./carLoanEngine";
 import { isBalanceAppliedTransaction } from "./savingsTransferEngine";
-import { isBlankRow, toNumber, weekBounds } from "../calculations/currency";
+import { isBlankRow, isValidIsoDate, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
 export function computeFinancialState(data: AppData): FinancialState {
@@ -34,7 +34,7 @@ export function computeFinancialState(data: AppData): FinancialState {
     .reduce((sum, item) => sum + positive(item.amount), 0);
   const borrowedMoney = moneyRows
     .filter((item) => item.section === "borrowed")
-    .reduce((sum, item) => sum + Math.abs(item.amount), 0);
+    .reduce((sum, item) => sum + positive(item.amount), 0);
   const repaymentImpact = data.paycheckPlanner.depositApplied
     ? 0
     : toNumber(data.paycheckPlanner.spotMeRepayment) + toNumber(data.paycheckPlanner.myPayRepayment);
@@ -234,7 +234,7 @@ function isOpenBill(row: SpreadsheetRow): boolean {
 }
 
 function parseDate(value: string): Date | null {
-  if (!value) return null;
+  if (!isValidIsoDate(value)) return null;
   const parsed = new Date(`${value}T12:00:00`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }

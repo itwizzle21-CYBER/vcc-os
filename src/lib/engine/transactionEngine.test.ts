@@ -119,4 +119,8 @@ describe("transaction engine", () => {
     expect(transactionMatchesPeriod("2025-12-31", "lastmonth", referenceDate)).toBe(true);
     expect(transactionMatchesPeriod("2025-11-30", "lastmonth", referenceDate)).toBe(false);
   });
+
+  it("rejects impossible calendar dates instead of normalizing them into another month", () => {
+    expect(transactionMatchesPeriod("2026-02-30", "month", new Date(2026, 1, 15))).toBe(false);
+  });
 });

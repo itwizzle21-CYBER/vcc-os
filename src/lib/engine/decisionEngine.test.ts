@@ -20,4 +20,16 @@ describe("decision engine mission lifecycle", () => {
     const removed = computeDecisionEngine(computeFinancialState(data), data);
     expect(removed.missionStack.some((mission) => mission.id === "clear-borrowed-money")).toBe(false);
   });
+
+  it("keeps due-today bills aligned across the mission, alert, and recommendation", () => {
+    const data = createZeroData();
+    const today = new Date();
+    const todayLocal = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-");
+    data.sections.bills = [{ id: "today", cells: { name: "Phone", amount: "20", dueDate: todayLocal, status: "unpaid" } }];
+
+    const decision = computeDecisionEngine(computeFinancialState(data), data);
+    expect(decision.todayMission.title).toBe("Clear today's bills");
+    expect(decision.priorityAlerts.some((alert) => alert.title === "Bill due today")).toBe(true);
+    expect(decision.recommendedMove).toContain("today’s bills");
+  });
 });

@@ -1,4 +1,5 @@
-import { toNumber } from "../calculations/currency";
+import { isValidIsoDate, toNumber } from "../calculations/currency";
+import { eligibleDepositAccounts } from "./paycheckPlannerEngine";
 import type { AppData, SpreadsheetRow } from "../types/app";
 
 export interface SavingsTransferInput {
@@ -10,14 +11,16 @@ export interface SavingsTransferInput {
 }
 
 export function applySavingsTransfer(data: AppData, input: SavingsTransferInput): AppData {
+  if (input.transferId && data.sections.transactions.some((row) => row.id === input.transferId)) return data;
   const source = data.sections.money.find((row) => row.id === input.sourceId);
   const destination = data.sections.savings.find((row) => row.id === input.destinationId);
   const amount = Math.round(input.amount * 100) / 100;
 
   if (!source) throw new Error("Choose a valid source card or account.");
+  if (!eligibleDepositAccounts(data).some((row) => row.id === source.id)) throw new Error("Savings transfers must come from a cash, checking, or debit account.");
   if (!destination) throw new Error("Choose a valid savings vault.");
   if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter a transfer amount greater than $0.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new Error("Choose a valid transfer date.");
+  if (!isValidIsoDate(input.date)) throw new Error("Choose a valid transfer date.");
 
   const sourceBalance = toNumber(source.cells.amount);
   if (amount > sourceBalance) {

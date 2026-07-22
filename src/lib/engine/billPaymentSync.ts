@@ -20,8 +20,11 @@ export function syncBillPaymentTransactions(
     const paymentId = paymentTransactionId(bill.id);
     const paymentIndex = nextTransactions.findIndex((row) => row.id === paymentId);
 
-    if (paid && !wasPaid && paymentIndex === -1) {
+    if (paid && paymentIndex === -1) {
       nextTransactions.push(createBillPaymentTransaction(bill, paymentDate));
+    } else if (paid && paymentIndex !== -1) {
+      const existingPayment = nextTransactions[paymentIndex];
+      nextTransactions[paymentIndex] = createBillPaymentTransaction(bill, existingPayment.cells.date || paymentDate);
     }
 
     if (!paid && wasPaid && paymentIndex !== -1) {

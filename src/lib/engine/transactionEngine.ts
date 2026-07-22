@@ -1,11 +1,11 @@
-import { toNumber } from "../calculations/currency";
+import { isValidIsoDate, toNumber } from "../calculations/currency";
 import type { SpreadsheetRow } from "../types/app";
 
 export type TransactionType = "income" | "expense" | "transfer";
 export type TransactionPeriod = "week" | "lastweek" | "month" | "lastmonth";
 
 export function transactionMatchesPeriod(dateText: string, period: TransactionPeriod, referenceDate = new Date()): boolean {
-  if (!dateText) return false;
+  if (!isValidIsoDate(dateText)) return false;
   const date = new Date(`${dateText}T12:00:00`);
   if (Number.isNaN(date.getTime())) return false;
 

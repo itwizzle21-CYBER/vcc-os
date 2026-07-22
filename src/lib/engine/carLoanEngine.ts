@@ -19,6 +19,9 @@ export function summarizeCarLoan(carLoan: CarLoanData, transactions: Spreadsheet
     .filter((receipt) => receipt.status === "confirmed")
     .sort((a, b) => `${a.paidDate}-${a.createdAt}`.localeCompare(`${b.paidDate}-${b.createdAt}`));
   const currentReceipt = confirmedReceipts[confirmedReceipts.length - 1];
+  const payoffReceipt = latestWithValue(confirmedReceipts, (receipt) => receipt.officialPayoff);
+  const balanceReceipt = latestWithValue(confirmedReceipts, (receipt) => receipt.accountBalance);
+  const paymentsRemainingReceipt = latestWithValue(confirmedReceipts, (receipt) => receipt.paymentsRemaining);
   const fees = (receipt: CarLoanReceipt) =>
     value(receipt.lateFeesPaid) + value(receipt.otherFeesPaid) + value(receipt.sideNoteFeesPaid);
 
@@ -30,9 +33,9 @@ export function summarizeCarLoan(carLoan: CarLoanData, transactions: Spreadsheet
     interestPaid: sum(confirmedReceipts, (receipt) => value(receipt.interestPaid)),
     feesPaid: sum(confirmedReceipts, fees),
     downPaymentPaid: sum(confirmedReceipts, (receipt) => value(receipt.downPaymentPaid)),
-    officialPayoff: value(currentReceipt?.officialPayoff),
-    dealerBalance: value(currentReceipt?.accountBalance),
-    paymentsRemaining: value(currentReceipt?.paymentsRemaining),
+    officialPayoff: value(payoffReceipt?.officialPayoff),
+    dealerBalance: value(balanceReceipt?.accountBalance),
+    paymentsRemaining: value(paymentsRemainingReceipt?.paymentsRemaining),
     issues: reconciliationIssues(carLoan, transactions),
   };
 }
@@ -154,4 +157,8 @@ function value(input: number | undefined) {
 
 function differs(a: number | undefined, b: number | undefined) {
   return a !== undefined && b !== undefined && Math.abs(a - b) > 0.009;
+}
+
+function latestWithValue(receipts: CarLoanReceipt[], selector: (receipt: CarLoanReceipt) => number | undefined) {
+  return [...receipts].reverse().find((receipt) => selector(receipt) !== undefined);
 }

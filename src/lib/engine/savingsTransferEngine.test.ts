@@ -51,4 +51,26 @@ describe("savings transfer engine", () => {
       date: "2026-07-21",
     })).toThrow("exceeds the Debit Card balance");
   });
+
+  it("treats a repeated transfer id as an idempotent retry", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "100" } }];
+    data.sections.savings = [{ id: "vault", cells: { name: "Savings", balance: "0" } }];
+    const first = applySavingsTransfer(data, { sourceId: "checking", destinationId: "vault", amount: 25, date: "2026-07-21", transferId: "retry-key" });
+    const retried = applySavingsTransfer(first, { sourceId: "checking", destinationId: "vault", amount: 25, date: "2026-07-21", transferId: "retry-key" });
+
+    expect(retried).toBe(first);
+    expect(retried.sections.money[0].cells.amount).toBe("75.00");
+    expect(retried.sections.savings[0].cells.balance).toBe("25.00");
+  });
+
+  it("rejects borrowed sources and impossible calendar dates", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "spotme", cells: { label: "SpotMe", section: "borrowed", amount: "100" } }];
+    data.sections.savings = [{ id: "vault", cells: { name: "Savings", balance: "0" } }];
+
+    expect(() => applySavingsTransfer(data, { sourceId: "spotme", destinationId: "vault", amount: 25, date: "2026-07-21" })).toThrow("cash, checking, or debit");
+    data.sections.money[0] = { id: "checking", cells: { label: "Checking", section: "cash", amount: "100" } };
+    expect(() => applySavingsTransfer(data, { sourceId: "checking", destinationId: "vault", amount: 25, date: "2026-02-30" })).toThrow("valid transfer date");
+  });
 });

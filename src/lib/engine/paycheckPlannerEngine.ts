@@ -1,4 +1,4 @@
-import { toNumber } from "../calculations/currency";
+import { isValidIsoDate, toNumber } from "../calculations/currency";
 import type { AppData, PaycheckHistoryRow, SpreadsheetRow } from "../types/app";
 
 export interface DepositAccountOption {
@@ -50,13 +50,16 @@ export function lockPaycheckWeek(data: AppData): AppData {
   const suggestedDepositAccount = suggestedAccounts.find((account) => account.id === planner.depositAccountId);
   const depositAccount = existingDepositAccount || (suggestedDepositAccount ? createMoneyAccount(suggestedDepositAccount.id, suggestedDepositAccount.label) : undefined);
   const income = toNumber(planner.paycheckAmount);
-  const repayments = toNumber(planner.spotMeRepayment) + toNumber(planner.myPayRepayment);
+  const spotMeRepayment = toNumber(planner.spotMeRepayment);
+  const myPayRepayment = toNumber(planner.myPayRepayment);
+  const repayments = spotMeRepayment + myPayRepayment;
   const remaining = Math.round((income - repayments) * 100) / 100;
 
   if (!incomeSource) throw new Error("Add the source of this income before locking the week.");
   if (!depositAccount) throw new Error("Choose the card or account receiving this paycheck.");
-  if (!planner.payDate) throw new Error("Choose the paycheck date before locking the week.");
+  if (!isValidIsoDate(planner.payDate)) throw new Error("Choose a valid paycheck date before locking the week.");
   if (income <= 0) throw new Error("Enter a paycheck amount greater than $0.");
+  if (spotMeRepayment < 0 || myPayRepayment < 0) throw new Error("Repayment amounts cannot be negative.");
   if (remaining < 0) throw new Error("Repayments cannot exceed the paycheck amount.");
 
   const existing = data.paycheckHistory.find((row) => row.payDate === planner.payDate);
@@ -69,7 +72,7 @@ export function lockPaycheckWeek(data: AppData): AppData {
       ? { ...row, cells: { ...row.cells, amount: currencyValue(toNumber(row.cells.amount) + previousRepayment) } }
       : row;
   });
-  const borrowedRepayments = allocateBorrowedRepayments(restoredMoney, toNumber(planner.spotMeRepayment), toNumber(planner.myPayRepayment));
+  const borrowedRepayments = allocateBorrowedRepayments(restoredMoney, spotMeRepayment, myPayRepayment);
   const historyRow: PaycheckHistoryRow = {
     id: historyId,
     incomeSource,

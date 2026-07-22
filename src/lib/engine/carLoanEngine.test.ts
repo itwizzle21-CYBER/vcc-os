@@ -11,6 +11,27 @@ describe("car loan evidence engine", () => {
     expect(summary.dealerBalance).toBeCloseTo(10378.42);
   });
 
+  it("keeps the latest documented payoff when a newer receipt omits payoff fields", () => {
+    const data = createVerifiedCarLoanData();
+    const latest = data.receipts[data.receipts.length - 1];
+    data.receipts.push({
+      ...latest,
+      id: "receipt-without-payoff",
+      receiptNumber: "later-payment",
+      paidDate: "2026-03-25",
+      createdAt: "2026-03-25T12:00:00.000Z",
+      officialPayoff: undefined,
+      accountBalance: undefined,
+      paymentsRemaining: undefined,
+    });
+
+    const summary = summarizeCarLoan(data);
+    expect(summary.currentReceipt?.id).toBe("receipt-without-payoff");
+    expect(summary.officialPayoff).toBeCloseTo(8740.04);
+    expect(summary.dealerBalance).toBeCloseTo(10378.42);
+    expect(summary.paymentsRemaining).toBe(106);
+  });
+
   it("detects the duplicate dealer receipt number and schedule mismatch", () => {
     const summary = summarizeCarLoan(createVerifiedCarLoanData());
     expect(summary.issues.some((issue) => issue.includes("4-1 appears 2 times"))).toBe(true);

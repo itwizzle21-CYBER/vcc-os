@@ -47,6 +47,13 @@ describe("financial dashboard totals", () => {
     expect(computeFinancialState(data).totalCash).toBe(0);
   });
 
+  it("does not turn a negative borrowed balance into positive debt", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "advance", cells: { label: "Advance", section: "borrowed", amount: "-25" } }];
+
+    expect(computeFinancialState(data).borrowedMoney).toBe(0);
+  });
+
   it("keeps unpaid and overdue bill amounts in dashboard pressure", () => {
     const data = createZeroData();
     const yesterday = new Date();

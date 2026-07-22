@@ -33,9 +33,13 @@ describe("paid bill transaction sync", () => {
 
   it("does not duplicate the expense when a paid bill is edited", () => {
     const existing = syncBillPaymentTransactions([bill("overdue")], [bill("paid")], [], "2026-07-16");
-    const transactions = syncBillPaymentTransactions([bill("paid")], [bill("paid")], existing, "2026-07-16");
+    const edited = bill("paid");
+    edited.cells.amount = "$105.00";
+    edited.cells.name = "Mobile phone";
+    const transactions = syncBillPaymentTransactions([bill("paid")], [edited], existing, "2026-07-20");
 
     expect(transactions).toHaveLength(1);
+    expect(transactions[0].cells).toMatchObject({ description: "Mobile phone bill payment", amount: "$105.00", date: "2026-07-16" });
   });
 
   it("removes its generated expense when paid status is corrected back", () => {

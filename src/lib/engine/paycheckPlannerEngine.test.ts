@@ -136,4 +136,26 @@ describe("connected paycheck planner", () => {
     expect(second.sections.money.find((row) => row.id === "spotme")?.cells.amount).toBe("0.00");
     expect(second.paycheckHistory[0].borrowedRepayments).toEqual([{ rowId: "spotme", label: "SpotMe", amount: 100 }]);
   });
+
+  it("rejects negative repayments and impossible paycheck dates", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "0" } }];
+    data.paycheckPlanner = {
+      incomeSource: "Work",
+      depositAccountId: "checking",
+      paycheckAmount: "500",
+      payDate: "2026-07-22",
+      weekStart: "2026-07-19",
+      weekEnd: "2026-07-25",
+      spotMeRepayment: "-10",
+      myPayRepayment: "0",
+      depositApplied: false,
+      locked: false,
+    };
+
+    expect(() => lockPaycheckWeek(data)).toThrow("cannot be negative");
+    data.paycheckPlanner.spotMeRepayment = "0";
+    data.paycheckPlanner.payDate = "2026-02-30";
+    expect(() => lockPaycheckWeek(data)).toThrow("valid paycheck date");
+  });
 });
