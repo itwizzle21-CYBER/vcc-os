@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { AlertTriangle, CheckCircle2, FileCheck2, FileText, Landmark, MessageSquareText, Paperclip, Plus, ReceiptText, ShieldCheck } from "lucide-react";
 import { formatCurrency, formatDateMDY, toNumber } from "../../lib/calculations/currency";
 import { communicationConflicts, receiptComponentTotal, summarizeCarLoan, syncConfirmedReceiptTransactions } from "../../lib/engine/carLoanEngine";
+import { isCarPaymentBill } from "../../lib/engine/billPaymentSync";
 import { openEvidenceAttachment, saveEvidenceAttachment } from "../../lib/storage/evidenceAttachmentStore";
 import type { AppData, CarLoanCommunication, CarLoanReceipt, CommunicationStatus, EvidenceStatus, FinancialState } from "../../lib/types/app";
 import "../../car-loan-page.css";
@@ -31,6 +32,7 @@ export default function CarLoanWorkspace({ data, financialState, onChange }: Pro
   const [revisionSource, setRevisionSource] = useState<CarLoanReceipt | null>(null);
   const summary = useMemo(() => summarizeCarLoan(data.carLoan, data.sections.transactions), [data.carLoan, data.sections.transactions]);
   const contract = data.carLoan.contract;
+  const linkedAutoLoanBills = data.sections.bills.filter(isCarPaymentBill);
 
   if (!contract) {
     return <section className="car-loan-empty panel"><Landmark size={30} /><h2>No verified auto-loan contract</h2><p>Add a contract record before recording evidence.</p></section>;
@@ -60,6 +62,17 @@ export default function CarLoanWorkspace({ data, financialState, onChange }: Pro
         </div>
         <div className="car-loan-truth"><ShieldCheck size={18} /><span>Confirmed evidence only</span></div>
       </section>
+
+      {linkedAutoLoanBills.length > 0 && (
+        <a className="car-payment-bill-link panel" href="/bills">
+          <div>
+            <p className="eyebrow">Linked Auto Loan</p>
+            <h2>{linkedAutoLoanBills.length === 1 ? linkedAutoLoanBills[0].cells.name : `${linkedAutoLoanBills.length} car-payment bills`}</h2>
+            <p className="empty-copy">Manage the linked bill in Bills. Marking it paid continues to sync Transactions and the confirmed Car Payment record.</p>
+          </div>
+          <strong>Manage Linked Bill →</strong>
+        </a>
+      )}
 
       <section className="car-loan-primary-metrics" aria-label="Current confirmed loan status">
         <article className="car-loan-metric is-payoff"><span>Official payoff</span><strong>{formatCurrency(summary.officialPayoff)}</strong><small>Dealer receipt · {summary.currentReceipt ? formatDateMDY(summary.currentReceipt.paidDate) : "Not confirmed"}</small></article>

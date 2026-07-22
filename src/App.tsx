@@ -40,7 +40,7 @@ import CloudSyncControl from "./components/shared/CloudSyncControl";
 import BufferedTextInput from "./components/shared/BufferedTextInput";
 import { formatCurrency, formatDateMDY, isBlankRow, todayIso, toNumber } from "./lib/calculations/currency";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
-import { isCarPaymentBill, isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
+import { isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
@@ -388,7 +388,6 @@ function BillsPage({
   });
   const visibleBillIds = new Set(visibleBillRows.map((row) => row.id));
   const rankedBills = rankBillRows(filledBillRows);
-  const carPaymentBills = filledBillRows.filter(isCarPaymentBill);
   const dueBill = rankedBills[0];
   const billStats = {
     shown: visibleBillRows.filter((row) => !isBlankRow(row.cells)).length,
@@ -510,17 +509,6 @@ function BillsPage({
           </p>
         </article>
       </section>
-
-      {carPaymentBills.length > 0 && (
-        <a className="car-payment-bill-link panel" href="/car-payment">
-          <div>
-            <p className="eyebrow">Linked Auto Loan</p>
-            <h2>{carPaymentBills.length === 1 ? carPaymentBills[0].cells.name : `${carPaymentBills.length} car-payment bills`}</h2>
-            <p className="empty-copy">Mark the bill paid to add one payment to Transactions, Money Snapshot, and Car Payment history.</p>
-          </div>
-          <strong>Open Car Payment →</strong>
-        </a>
-      )}
 
       <Spreadsheet
         config={sectionConfigs.bills}
