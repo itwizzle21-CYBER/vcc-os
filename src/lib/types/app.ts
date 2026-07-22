@@ -29,17 +29,23 @@ export interface SpreadsheetRow {
 }
 
 export interface PaycheckPlanner {
+  incomeSource: string;
+  depositAccountId: string;
   paycheckAmount: string;
   payDate: string;
   weekStart: string;
   weekEnd: string;
   spotMeRepayment: string;
   myPayRepayment: string;
+  depositApplied: boolean;
   locked: boolean;
 }
 
 export interface PaycheckHistoryRow {
   id: string;
+  incomeSource?: string;
+  depositAccountId?: string;
+  depositAccountLabel?: string;
   payDate: string;
   income: string;
   spotMe: string;

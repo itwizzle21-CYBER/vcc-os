@@ -1,7 +1,7 @@
 import { getInventoryAlert } from "./inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./transactionEngine";
 import { summarizeCarLoan } from "./carLoanEngine";
-import { isBalanceAppliedTransfer } from "./savingsTransferEngine";
+import { isBalanceAppliedTransaction } from "./savingsTransferEngine";
 import { isBlankRow, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
@@ -35,8 +35,10 @@ export function computeFinancialState(data: AppData): FinancialState {
   const borrowedMoney = moneyRows
     .filter((item) => item.section === "borrowed")
     .reduce((sum, item) => sum + Math.abs(item.amount), 0);
-  const repaymentImpact = toNumber(data.paycheckPlanner.spotMeRepayment) + toNumber(data.paycheckPlanner.myPayRepayment);
-  const plannerRemainingCash = data.paycheckPlanner.locked
+  const repaymentImpact = data.paycheckPlanner.depositApplied
+    ? 0
+    : toNumber(data.paycheckPlanner.spotMeRepayment) + toNumber(data.paycheckPlanner.myPayRepayment);
+  const plannerRemainingCash = data.paycheckPlanner.locked && !data.paycheckPlanner.depositApplied
     ? Math.max(0, toNumber(data.paycheckPlanner.paycheckAmount) - repaymentImpact)
     : 0;
   const latestHistoryRow = data.paycheckHistory.reduce<(typeof data.paycheckHistory)[number] | undefined>(
@@ -58,10 +60,10 @@ export function computeFinancialState(data: AppData): FinancialState {
     ? availableSavingsRows.reduce((sum, row) => sum + toNumber(row.cells.balance), 0)
     : availableSavingsMoney;
   const totalCash = operatingCash + protectedSavings + availableSavings;
-  const lockedIncome = data.paycheckPlanner.locked ? toNumber(data.paycheckPlanner.paycheckAmount) : 0;
+  const lockedIncome = data.paycheckPlanner.locked && !data.paycheckPlanner.depositApplied ? toNumber(data.paycheckPlanner.paycheckAmount) : 0;
   const extraIncome = income.reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
   const transactionIncome = transactions
-    .filter((row) => transactionType(row) === "income")
+    .filter((row) => transactionType(row) === "income" && !row.cells.paycheckHistoryId)
     .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const payWeek = activePayWeek(data);
   const currentWeekTransactions = transactions.filter((row) => isWithinDateRange(row.cells.date, payWeek.start, payWeek.end));
@@ -69,7 +71,7 @@ export function computeFinancialState(data: AppData): FinancialState {
     .filter((row) => transactionType(row) === "income")
     .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const transactionNet = currentWeekTransactions
-    .filter((row) => !isBalanceAppliedTransfer(row))
+    .filter((row) => !isBalanceAppliedTransaction(row))
     .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const plannedIncome = lockedIncome || extraIncome;
   const weeklyIncome = lockedIncome || extraIncome || currentWeekTransactionIncome;

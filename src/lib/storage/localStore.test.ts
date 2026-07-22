@@ -20,12 +20,15 @@ describe("full VCC reset", () => {
 
     expect(Object.values(reset.sections).every((rows) => rows.length === 0)).toBe(true);
     expect(reset.paycheckPlanner).toEqual({
+      incomeSource: "",
+      depositAccountId: "",
       paycheckAmount: "",
       payDate: "",
       weekStart: "",
       weekEnd: "",
       spotMeRepayment: "",
       myPayRepayment: "",
+      depositApplied: false,
       locked: false,
     });
     expect(reset.paycheckHistory).toEqual([]);

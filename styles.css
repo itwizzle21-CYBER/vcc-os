@@ -2261,6 +2261,7 @@ textarea {
 .toolbar-controls input,
 .toolbar-controls select,
 .planner-form input,
+.planner-form select,
 .settings-grid select,
 .settings-grid input {
   border: 1px solid var(--border);
@@ -2268,6 +2269,17 @@ textarea {
   background: var(--surface-2);
   color: var(--text);
   padding: 0 0.75rem;
+}
+
+.planner-message {
+  grid-column: 1 / -1;
+  margin: 0;
+  border-radius: 0.65rem;
+  background: var(--accent-soft);
+  color: var(--text);
+  padding: 0.7rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 750;
 }
 
 .toolbar-controls button,

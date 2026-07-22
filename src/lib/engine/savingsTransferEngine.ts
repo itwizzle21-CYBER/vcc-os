@@ -50,8 +50,8 @@ export function applySavingsTransfer(data: AppData, input: SavingsTransferInput)
   };
 }
 
-export function isBalanceAppliedTransfer(row: SpreadsheetRow): boolean {
-  return row.cells.type?.trim().toLowerCase() === "transfer" && row.cells.balanceApplied === "yes";
+export function isBalanceAppliedTransaction(row: SpreadsheetRow): boolean {
+  return row.cells.balanceApplied === "yes";
 }
 
 function createSavingsTransferTransaction(

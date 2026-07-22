@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { formatCurrency, formatDateMDY, toNumber, weekBounds } from "../../lib/calculations/currency";
+import { eligibleDepositAccounts, lockPaycheckWeek } from "../../lib/engine/paycheckPlannerEngine";
 import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner } from "../../lib/types/app";
 import BufferedTextInput from "../shared/BufferedTextInput";
 
@@ -13,10 +14,13 @@ export default function PaycheckPlanner({
   showHistory?: boolean;
 }) {
   const [selected, setSelected] = useState<PaycheckHistoryRow | null>(null);
+  const [plannerMessage, setPlannerMessage] = useState("");
   const planner = data.paycheckPlanner;
+  const depositAccounts = eligibleDepositAccounts(data);
   const remaining = toNumber(planner.paycheckAmount) - toNumber(planner.spotMeRepayment) - toNumber(planner.myPayRepayment);
 
   function updatePlanner(updates: Partial<Planner>) {
+    setPlannerMessage("");
     const next = { ...planner, ...updates };
     if (updates.payDate && !planner.locked) {
       const bounds = weekBounds(updates.payDate);
@@ -27,27 +31,12 @@ export default function PaycheckPlanner({
   }
 
   function lockWeek() {
-    const historyRow: PaycheckHistoryRow = {
-      id: `paycheck-${planner.payDate}-${Date.now()}`,
-      payDate: planner.payDate,
-      income: planner.paycheckAmount,
-      spotMe: planner.spotMeRepayment,
-      myPay: planner.myPayRepayment,
-      remaining: String(remaining),
-      weekStart: planner.weekStart,
-      weekEnd: planner.weekEnd,
-      locked: true,
-    };
-    const moneyRows = data.sections.money.map((row) => {
-      if (row.cells.weekStart || row.cells.weekEnd) return row;
-      return { ...row, cells: { ...row.cells, weekStart: planner.weekStart, weekEnd: planner.weekEnd } };
-    });
-    onChange({
-      ...data,
-      paycheckPlanner: { ...planner, locked: true },
-      paycheckHistory: [historyRow, ...data.paycheckHistory.filter((row) => row.payDate !== planner.payDate)],
-      sections: { ...data.sections, money: moneyRows },
-    });
+    try {
+      onChange(lockPaycheckWeek(data));
+      setPlannerMessage("Paycheck locked. Money Snapshot and Transactions are updated, and the deposit account is ready for savings transfers.");
+    } catch (error) {
+      setPlannerMessage(error instanceof Error ? error.message : "The paycheck could not be locked.");
+    }
   }
 
   return (
@@ -57,6 +46,8 @@ export default function PaycheckPlanner({
           <p className="eyebrow">Current Week Planner</p>
           <h2>Weekly Paycheck</h2>
         </div>
+        <PlannerInput label="Income Source" value={planner.incomeSource} disabled={planner.locked} onChange={(value) => updatePlanner({ incomeSource: value })} />
+        <PlannerSelect label="Deposit To" value={planner.depositAccountId} disabled={planner.locked} onChange={(value) => updatePlanner({ depositAccountId: value })} options={depositAccounts.map((row) => ({ value: row.id, label: `${row.cells.label} · ${formatCurrency(toNumber(row.cells.amount))}` }))} />
         <PlannerInput label="Paycheck Amount" value={planner.paycheckAmount} disabled={planner.locked} onChange={(value) => updatePlanner({ paycheckAmount: value })} />
         <PlannerInput label="Pay Date" type="date" value={planner.payDate} disabled={planner.locked} onChange={(value) => updatePlanner({ payDate: value })} />
         <PlannerInput label="Week Start" type="date" value={planner.weekStart} disabled={planner.locked} onChange={(value) => updatePlanner({ weekStart: value })} />
@@ -76,6 +67,7 @@ export default function PaycheckPlanner({
             Enable / Lock Week
           </button>
         )}
+        {plannerMessage && <p className="planner-message" role="status">{plannerMessage}</p>}
       </div>
 
       {showHistory && (
@@ -86,7 +78,7 @@ export default function PaycheckPlanner({
               <button type="button" key={row.id} onClick={() => setSelected(row)}>
                 <span>{formatDateMDY(row.payDate)}</span>
                 <strong>{formatCurrency(toNumber(row.income))}</strong>
-                <small>{formatCurrency(toNumber(row.remaining))} remaining</small>
+                <small>{row.incomeSource || "Income source not recorded"} · {formatCurrency(toNumber(row.remaining))} remaining</small>
               </button>
             ))}
             {data.paycheckHistory.length === 0 && <p className="empty-copy">No locked weeks yet.</p>}
@@ -94,6 +86,8 @@ export default function PaycheckPlanner({
           {selected && (
             <div className="week-detail">
               <h3>Week Detail</h3>
+              <p>Income Source: {selected.incomeSource || "Not recorded"}</p>
+              <p>Deposited To: {selected.depositAccountLabel || "Not recorded"}</p>
               <p>Paycheck: {formatCurrency(toNumber(selected.income))}</p>
               <p>SpotMe: {formatCurrency(toNumber(selected.spotMe))}</p>
               <p>MyPay: {formatCurrency(toNumber(selected.myPay))}</p>
@@ -106,6 +100,30 @@ export default function PaycheckPlanner({
         </div>
       )}
     </section>
+  );
+}
+
+function PlannerSelect({
+  label,
+  value,
+  onChange,
+  options,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  disabled?: boolean;
+}) {
+  return (
+    <label>
+      <span>{label}</span>
+      <select aria-label={label} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} required>
+        <option value="">Select card or account</option>
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
   );
 }
 

@@ -45,6 +45,7 @@ import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
 import { applySavingsTransfer } from "./lib/engine/savingsTransferEngine";
+import { eligibleDepositAccounts } from "./lib/engine/paycheckPlannerEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, normalizeAppData, resetAllData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
 import { applyVisualSettings, getSystemTheme } from "./lib/theme/themePreference";
@@ -317,6 +318,14 @@ function MoneyPaycheckHistory({
               <small>{row.payDate ? formatDateMDY(row.payDate) : "No pay date"}</small>
             </div>
             <dl>
+              <div>
+                <dt>Income Source</dt>
+                <dd>{row.incomeSource || "Not recorded"}</dd>
+              </div>
+              <div>
+                <dt>Deposited To</dt>
+                <dd>{row.depositAccountLabel || "Not recorded"}</dd>
+              </div>
               <div>
                 <dt>Paycheck</dt>
                 <dd>{formatCurrency(toNumber(row.income))}</dd>
@@ -734,7 +743,7 @@ function SavingsPage({
   const [transferMessage, setTransferMessage] = useState("");
   const savingsRows = data.sections.savings.map(normalizeSavingsRow);
   const filledSavingsRows = savingsRows.filter((row) => !isBlankRow(row.cells));
-  const transferSources = data.sections.money.filter((row) => !isBlankRow(row.cells) && moneySection(row) === "cash" && toNumber(row.cells.amount) > 0);
+  const transferSources = eligibleDepositAccounts(data).filter((row) => toNumber(row.cells.amount) > 0);
   const monthlySavingsRate = data.sections.transactions
     .map(normalizeTransactionRow)
     .filter((row) => transactionType(row) === "transfer" && row.cells.category.toLowerCase().includes("saving") && transactionDateMatches(row.cells.date, "month"))
