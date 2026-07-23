@@ -436,6 +436,28 @@ test("keeps spreadsheet cells ready for immediate desktop typing and keyboard na
   await expect(newDescription).toHaveValue("Coffee");
 });
 
+test("keeps the native calendar picker visible in dark mode", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("vcc-os:theme-preference", "dark"));
+  await page.goto("/transactions");
+  const dateInput = page.locator('input[type="date"]').first();
+
+  const styles = await dateInput.evaluate((input) => {
+    const inputStyle = getComputedStyle(input);
+    const indicatorStyle = getComputedStyle(input, "::-webkit-calendar-picker-indicator");
+    return {
+      colorScheme: inputStyle.colorScheme,
+      filter: indicatorStyle.filter,
+      opacity: indicatorStyle.opacity,
+    };
+  });
+
+  expect(styles).toMatchObject({
+    colorScheme: "dark",
+    filter: "none",
+    opacity: "1",
+  });
+});
+
 test("keeps the closed mobile drawer inert and restores focus after use", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes("mobile"), "Mobile keyboard containment check.");
   await page.goto("/settings");

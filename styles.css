@@ -2411,7 +2411,11 @@ input[type="date"] {
 input.calendar-input::-webkit-calendar-picker-indicator,
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  filter: invert(1) opacity(0.74);
+  border-radius: 0.35rem;
+  background-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
+  filter: none;
+  opacity: 1;
 }
 
 :root[data-theme="light"] input.calendar-input,
@@ -2425,7 +2429,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 :root[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
 .theme-light input.calendar-input::-webkit-calendar-picker-indicator,
 .theme-light input[type="date"]::-webkit-calendar-picker-indicator {
+  background-color: transparent;
+  box-shadow: none;
   filter: none;
+  opacity: 0.82;
 }
 
 td input[readonly] {
