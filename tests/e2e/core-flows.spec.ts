@@ -458,6 +458,21 @@ test("keeps the native calendar picker visible in dark mode", async ({ page }) =
   });
 });
 
+test("updates the transaction category from completed U.S. retail descriptions", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.getByRole("button", { name: "Add Transaction" }).click();
+  const row = page.locator("table tbody tr").last();
+  const description = row.locator('input[data-column-key="description"]');
+  const category = row.locator('input[data-column-key="category"]');
+
+  await description.fill("KROGER #0456");
+  await expect(category).toHaveValue("Groceries");
+
+  await row.locator('select[data-column-key="account"]').selectOption("Cash App");
+  await description.fill("WALMART PHARMACY PRESCRIPTION");
+  await expect(category).toHaveValue("Healthcare");
+});
+
 test("keeps the closed mobile drawer inert and restores focus after use", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes("mobile"), "Mobile keyboard containment check.");
   await page.goto("/settings");

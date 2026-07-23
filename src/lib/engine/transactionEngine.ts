@@ -53,15 +53,15 @@ const categoryRules: Array<{ category: string; keywords: string[] }> = [
   },
   {
     category: "Healthcare",
-    keywords: ["doctor", "medical", "pharmacy", "chemist", "cvs", "walgreens", "rite aid", "boots", "hospital", "clinic", "urgent care", "dental", "dentist", "orthodont", "vision", "optical", "therapy", "prescription", "medicine", "health", "walmart pharmacy", "target pharmacy"],
+    keywords: ["doctor", "medical", "pharmacy", "chemist", "cvs", "cvs/pharmacy", "walgreens", "rite aid", "boots", "hospital", "clinic", "urgent care", "dental", "dentist", "orthodont", "vision", "optical", "therapy", "prescription", "medicine", "health", "walmart pharmacy", "target pharmacy"],
   },
   {
     category: "Groceries",
-    keywords: ["grocery", "groceries", "supermarket", "hypermarket", "market", "food market", "fresh market", "milk", "bread", "eggs", "meat", "produce", "vegetables", "fruit", "dairy", "aldi", "lidl", "kroger", "whole foods", "trader joe", "food lion", "publix", "safeway", "albertsons", "meijer", "heb", "h-e-b", "tesco", "sainsbury", "asda", "morrisons", "waitrose", "carrefour", "auchan", "metro market", "rewe", "edeka", "mercadona", "dia supermarket", "coles", "woolworths", "loblaws", "sobeys", "no frills", "superstore", "costco grocery", "sam's club grocery", "walmart grocery", "target grocery"],
+    keywords: ["grocery", "groceries", "supermarket", "hypermarket", "food market", "fresh market", "milk", "bread", "eggs", "meat", "produce", "vegetables", "fruit", "dairy", "aldi", "lidl", "kroger", "whole foods", "trader joe", "food lion", "publix", "safeway", "albertsons", "meijer", "heb", "h-e-b", "instacart", "wegmans", "sprouts farmers market", "winco", "shoprite", "stop & shop", "giant food", "harris teeter", "hy-vee", "save a lot", "piggly wiggly", "tesco", "sainsbury", "asda", "morrisons", "waitrose", "carrefour", "auchan", "metro market", "rewe", "edeka", "mercadona", "dia supermarket", "coles", "woolworths", "loblaws", "sobeys", "no frills", "superstore", "costco grocery", "sam's club grocery", "walmart grocery", "target grocery"],
   },
   {
     category: "Restaurants",
-    keywords: ["restaurant", "coffee", "cafe", "cafeteria", "bakery", "diner", "bar and grill", "doordash", "uber eats", "ubereats", "grubhub", "deliveroo", "just eat", "mcdonald", "burger king", "wendy", "kfc", "popeyes", "chipotle", "taco bell", "pizza hut", "dominos", "domino's", "subway", "panera", "starbucks", "dunkin", "costa coffee", "tim hortons", "pret a manger", "nando"],
+    keywords: ["restaurant", "coffee", "cafe", "cafeteria", "bakery", "diner", "bar and grill", "doordash", "uber eats", "ubereats", "grubhub", "deliveroo", "just eat", "mcdonald", "burger king", "wendy", "kfc", "popeyes", "chick-fil-a", "chick fil a", "chipotle", "taco bell", "pizza hut", "dominos", "domino's", "subway", "panera", "starbucks", "dunkin", "sonic drive", "whataburger", "five guys", "little caesars", "panda express", "olive garden", "buffalo wild wings", "costa coffee", "tim hortons", "pret a manger", "nando"],
   },
   {
     category: "Transportation",
@@ -69,7 +69,7 @@ const categoryRules: Array<{ category: string; keywords: string[] }> = [
   },
   {
     category: "Fuel",
-    keywords: ["fuel", "gas station", "petrol", "diesel", "shell", "exxon", "mobil", "chevron", "bp", "circle k", "speedway", "wawa fuel", "quiktrip", "qt gas", "racetrac", "marathon petroleum", "texaco", "esso", "totalenergies", "arco", "sunoco", "valero"],
+    keywords: ["fuel", "gas station", "petrol", "diesel", "shell", "exxon", "mobil", "chevron", "bp", "circle k", "speedway", "wawa fuel", "quiktrip", "qt gas", "racetrac", "marathon petroleum", "murphy usa", "casey's general", "pilot travel", "love's travel", "loves travel", "7-eleven fuel", "texaco", "esso", "totalenergies", "arco", "sunoco", "valero"],
   },
   {
     category: "Travel",
@@ -117,7 +117,7 @@ const categoryRules: Array<{ category: string; keywords: string[] }> = [
   },
   {
     category: "Shopping",
-    keywords: ["amazon", "target", "walmart", "costco", "sam's club", "best buy", "ikea", "home depot", "lowes", "lowe's", "menards", "wayfair", "ebay", "etsy", "aliexpress", "temu", "shein", "department store", "discount store", "general merchandise", "clothing", "apparel", "shoes", "sneakers", "nike", "adidas", "zara", "h&m", "uniqlo", "gap", "old navy", "macys", "macy's", "nordstrom", "kohls", "kohl's", "tj maxx", "marshalls", "ross store", "primark", "marks and spencer", "john lewis", "fnac", "decathlon", "office depot", "staples"],
+    keywords: ["amazon", "amzn mktp", "amazon.com", "target", "walmart", "wal-mart", "wm supercenter", "costco", "sam's club", "best buy", "ikea", "home depot", "lowes", "lowe's", "menards", "ace hardware", "harbor freight", "tractor supply", "wayfair", "ebay", "etsy", "aliexpress", "temu", "shein", "dollar general", "dollar tree", "family dollar", "five below", "department store", "discount store", "general merchandise", "clothing", "apparel", "shoes", "sneakers", "nike", "adidas", "zara", "h&m", "uniqlo", "gap", "old navy", "macys", "macy's", "nordstrom", "kohls", "kohl's", "tj maxx", "tjx", "marshalls", "ross store", "homegoods", "burlington", "primark", "marks and spencer", "john lewis", "fnac", "decathlon", "office depot", "staples"],
   },
   {
     category: "Taxes",
@@ -139,19 +139,19 @@ const categoryRules: Array<{ category: string; keywords: string[] }> = [
 
 export function identifyTransactionCategory(row: SpreadsheetRow): string {
   const explicitCategory = String(row.cells.category || "").trim();
-  if (explicitCategory && explicitCategory !== "Uncategorized") return explicitCategory;
+  const explicitType = String(row.cells.type || "").trim().toLowerCase();
+  if (includesAny(explicitType, ["income", "credit", "deposit", "refund", "inflow"])) return "Income";
+  if (includesAny(explicitType, ["transfer", "move"])) {
+    return explicitCategory === "Savings" ? "Savings" : "Transfers";
+  }
 
-  const haystack = [
-    row.cells.description,
-    row.cells.account,
-    row.cells.notes,
-    row.cells.type,
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  const rule = categoryRules.find((item) => item.keywords.some((keyword) => haystack.includes(keyword)));
+  const haystack = normalizeRetailDescription([row.cells.description, row.cells.notes].join(" "));
+  const eligibleRules = includesAny(explicitType, ["expense", "debit", "purchase", "payment", "outflow"])
+    ? categoryRules.filter((item) => item.category !== "Income" && item.category !== "Transfers")
+    : categoryRules;
+  const rule = eligibleRules.find((item) => item.keywords.some((keyword) => haystack.includes(normalizeRetailDescription(keyword))));
   if (rule) return rule.category;
+  if (explicitCategory && explicitCategory !== "Uncategorized") return explicitCategory;
   if (transactionType(row) === "income") return "Income";
   if (transactionType(row) === "transfer") return "Transfers";
   return "Uncategorized";
@@ -182,4 +182,12 @@ export function signedTransactionAmount(row: SpreadsheetRow): number {
 
 function includesAny(value: string, values: string[]): boolean {
   return values.some((candidate) => value.includes(candidate));
+}
+
+function normalizeRetailDescription(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[*#_/\\-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }

@@ -91,6 +91,30 @@ describe("transaction engine", () => {
     expect(identifyTransactionCategory(transaction("apple.com/bill icloud", "", "$2.99", ""))).toBe("Subscriptions");
   });
 
+  it("maps common U.S. retail statement descriptions to the category column", () => {
+    expect(identifyTransactionCategory(transaction("WM SUPERCENTER #1234", "expense", "$84.21", ""))).toBe("Shopping");
+    expect(identifyTransactionCategory(transaction("KROGER #0456", "expense", "$62.40", ""))).toBe("Groceries");
+    expect(identifyTransactionCategory(transaction("AMZN Mktp US*AB12C", "expense", "$31.09", ""))).toBe("Shopping");
+    expect(identifyTransactionCategory(transaction("MCDONALD'S F123", "expense", "$12.18", ""))).toBe("Restaurants");
+    expect(identifyTransactionCategory(transaction("MURPHY USA #7788", "expense", "$46.72", ""))).toBe("Fuel");
+  });
+
+  it("uses the completed retail description instead of a stale automatic category", () => {
+    const row = transaction("KROGER #0456", "expense", "$62.40", "Shopping");
+    row.cells.account = "Cash App";
+
+    expect(identifyTransactionCategory(row)).toBe("Groceries");
+    row.cells.description = "WALMART PHARMACY PRESCRIPTION";
+    expect(identifyTransactionCategory(row)).toBe("Healthcare");
+  });
+
+  it("does not categorize a retail purchase as a transfer from its payment account", () => {
+    const row = transaction("TARGET STORE #1122", "expense", "$25.00", "");
+    row.cells.account = "Cash App";
+
+    expect(identifyTransactionCategory(row)).toBe("Shopping");
+  });
+
   it("uses identified categories in financial summaries", () => {
     const data = createZeroData();
     data.sections.transactions = [
