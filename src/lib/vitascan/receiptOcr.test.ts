@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeReceiptCandidates, receiptImageScale, receiptOcrCorePaths, receiptOcrRuntimeOptions, scoreReceiptCandidate } from "./receiptOcr";
+import { mergeReceiptCandidates, receiptImageScale, receiptOcrCorePaths, receiptOcrRuntimeOptions, scoreReceiptCandidate, shouldRunReceiptRecovery } from "./receiptOcr";
 import { parseReceiptText } from "./receiptParser";
 
 describe("VitaScan receipt OCR selection", () => {
@@ -7,8 +7,8 @@ describe("VitaScan receipt OCR selection", () => {
     expect(receiptOcrRuntimeOptions.workerPath).not.toContain("cdn.jsdelivr.net");
     expect(receiptOcrCorePaths.every((path) => !path.includes("cdn.jsdelivr.net"))).toBe(true);
     expect(receiptOcrRuntimeOptions.workerBlobURL).toBe(false);
-    expect(receiptOcrRuntimeOptions.langPath).toContain("4.0.0_best_int");
-    expect(receiptOcrRuntimeOptions.cachePath).toBe("vitascan-fast-v1");
+    expect(receiptOcrRuntimeOptions.langPath).toContain("4.0.0_fast");
+    expect(receiptOcrRuntimeOptions.cachePath).toBe("vitascan-fast-v2");
   });
 
   it("shrinks high-resolution phone images before OCR", () => {
@@ -34,6 +34,27 @@ describe("VitaScan receipt OCR selection", () => {
     const completeScore = scoreReceiptCandidate({ text: completeText, confidence: 78, draft: parseReceiptText(completeText) });
 
     expect(completeScore).toBeGreaterThan(shortScore);
+  });
+
+  it("skips a second OCR pass when required receipt details are already reliable", () => {
+    const completeText = [
+      "NORTH MARKET",
+      "WHOLE MILK 5.00",
+      "TOTAL $5.00",
+      "07/20/2026",
+    ].join("\n");
+    const incompleteText = "RECEIPT\nTHANK YOU";
+
+    expect(shouldRunReceiptRecovery({
+      text: completeText,
+      confidence: 82,
+      draft: parseReceiptText(completeText),
+    })).toBe(false);
+    expect(shouldRunReceiptRecovery({
+      text: incompleteText,
+      confidence: 82,
+      draft: parseReceiptText(incompleteText),
+    })).toBe(true);
   });
 
   it("fuses useful fields from complementary OCR passes", () => {

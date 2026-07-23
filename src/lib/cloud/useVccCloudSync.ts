@@ -37,7 +37,7 @@ function deviceId() {
   return next;
 }
 
-function isSharedAccount(session: Session | null): session is Session {
+function isSharedAccount(session: Session | null | undefined): session is Session {
   return Boolean(session && !session.user.is_anonymous);
 }
 
@@ -64,7 +64,7 @@ function writeSyncBase(userId: string, base: SyncBase): void {
 }
 
 export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) => void): VccCloudSync {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [status, setStatus] = useState<CloudSyncStatus>(cloudConfigured ? "connecting" : "offline");
   const [message, setMessage] = useState("");
   const dataRef = useRef(data);
@@ -190,7 +190,9 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
   useEffect(() => {
     if (!supabase) return;
     const client = supabase;
-    client.auth.getSession().then(({ data: result }) => setSession(result.session));
+    client.auth.getSession()
+      .then(({ data: result }) => setSession(result.session))
+      .catch(() => setSession(null));
     const { data: listener } = client.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -198,6 +200,7 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
   useEffect(() => {
     if (!supabase) return;
     const client = supabase;
+    if (session === undefined) return;
     if (!isSharedAccount(session)) {
       ready.current = false;
       baseRef.current = null;

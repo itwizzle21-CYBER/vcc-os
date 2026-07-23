@@ -20,8 +20,8 @@ let activePass = 1;
 
 export const receiptOcrRuntimeOptions = {
   workerPath: ocrWorkerPath,
-  langPath: "https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int",
-  cachePath: "vitascan-fast-v1",
+  langPath: "https://tessdata.projectnaptha.com/4.0.0_fast",
+  cachePath: "vitascan-fast-v2",
   workerBlobURL: false,
 } as const;
 
@@ -59,7 +59,7 @@ export async function readReceiptImage(
     const enhanced = await worker.recognize(prepared.enhanced, { rotateAuto: false });
     const candidates: OcrCandidate[] = [toCandidate(enhanced.data.text, enhanced.data.confidence, detectedBarcodes)];
 
-    if (needsFallbackPass(candidates[0])) {
+    if (shouldRunReceiptRecovery(candidates[0])) {
       activePass = 2;
       onProgress({ stage: "checking", progress: 0.55, label: "Checking faint print and item rows…" });
       await worker.setParameters({
@@ -67,7 +67,7 @@ export async function readReceiptImage(
         preserve_interword_spaces: "1",
         user_defined_dpi: "300",
       });
-      const fallbackImage = prepared.quality.contrast < 34 ? prepared.binary : prepared.cropped;
+      const fallbackImage = prepared.quality.contrast < 34 ? createBinaryReceiptImage(prepared.cropped) : prepared.cropped;
       const natural = await worker.recognize(fallbackImage, { rotateAuto: false });
       candidates.push(toCandidate(natural.data.text, natural.data.confidence, detectedBarcodes));
     }
@@ -190,7 +190,7 @@ function toCandidate(text: string, confidence: number, detectedBarcodes: string[
   return { text, confidence, draft: parseReceiptText(text, detectedBarcodes) };
 }
 
-function needsFallbackPass(candidate: OcrCandidate): boolean {
+export function shouldRunReceiptRecovery(candidate: OcrCandidate): boolean {
   const lineCount = candidate.text.split("\n").filter((line) => line.trim()).length;
   return candidate.confidence < 55
     || lineCount < 4
@@ -198,7 +198,7 @@ function needsFallbackPass(candidate: OcrCandidate): boolean {
     || candidate.draft.merchant === "Receipt";
 }
 
-async function prepareReceiptImage(file: File): Promise<{ cropped: HTMLCanvasElement; enhanced: HTMLCanvasElement; binary: HTMLCanvasElement; quality: ReceiptImageQuality }> {
+async function prepareReceiptImage(file: File): Promise<{ cropped: HTMLCanvasElement; enhanced: HTMLCanvasElement; quality: ReceiptImageQuality }> {
   const source = await decodeImage(file);
   const targetScale = receiptImageScale(source.width, source.height);
   const width = Math.max(1, Math.round(source.width * targetScale));
@@ -235,13 +235,7 @@ async function prepareReceiptImage(file: File): Promise<{ cropped: HTMLCanvasEle
   enhanceThermalPrint(enhancedData);
   enhancedContext.putImageData(enhancedData, 0, 0);
 
-  const binary = cloneCanvas(cropped);
-  const binaryContext = binary.getContext("2d", { willReadFrequently: true });
-  if (!binaryContext) throw new Error("Receipt image recovery is unavailable on this device.");
-  const binaryData = binaryContext.getImageData(0, 0, crop.width, crop.height);
-  applyAdaptiveThreshold(binaryData);
-  binaryContext.putImageData(binaryData, 0, 0);
-  return { cropped, enhanced, binary, quality };
+  return { cropped, enhanced, quality };
 }
 
 function cloneCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
@@ -250,6 +244,16 @@ function cloneCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
   canvas.height = source.height;
   canvas.getContext("2d")?.drawImage(source, 0, 0);
   return canvas;
+}
+
+function createBinaryReceiptImage(cropped: HTMLCanvasElement): HTMLCanvasElement {
+  const binary = cloneCanvas(cropped);
+  const binaryContext = binary.getContext("2d", { willReadFrequently: true });
+  if (!binaryContext) throw new Error("Receipt image recovery is unavailable on this device.");
+  const binaryData = binaryContext.getImageData(0, 0, cropped.width, cropped.height);
+  applyAdaptiveThreshold(binaryData);
+  binaryContext.putImageData(binaryData, 0, 0);
+  return binary;
 }
 
 async function decodeImage(file: File): Promise<{ image: CanvasImageSource; width: number; height: number; close: () => void }> {
