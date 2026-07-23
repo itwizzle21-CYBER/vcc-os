@@ -2626,6 +2626,7 @@ function summaryForSection(section: SectionKey, financialState: ReturnType<typeo
   return {
     money: [
       { label: "Total Cash", value: financialState.totalCash },
+      { label: "Cash on Hand", value: financialState.cashOnHand },
       { label: "Spendable / Safe", value: Math.min(financialState.spendableCash, financialState.safeToSpend) },
       { label: "Week Spending", value: -Math.abs(financialState.weeklySpending), tone: "bad" as const },
       { label: "Week Net Impact", value: financialState.transactionWeekNet, tone: financialState.transactionWeekNet < 0 ? "bad" as const : "good" as const },

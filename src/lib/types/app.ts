@@ -203,6 +203,7 @@ export interface SectionConfig {
 
 export interface FinancialState {
   totalCash: number;
+  cashOnHand: number;
   spendableCash: number;
   safeToSpend: number;
   protectedSavings: number;

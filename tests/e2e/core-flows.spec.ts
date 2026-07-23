@@ -357,18 +357,18 @@ test("moves transaction transfers between linked accounts and savings vaults in 
   })).toEqual(["2890.32", "12750.00"]);
 });
 
-test("applies cash income to Money Snapshot and keeps dropdown choices readable", async ({ page }) => {
+test("applies cash-on-hand income to Money Snapshot and keeps dropdown choices readable", async ({ page }) => {
   await page.goto("/transactions");
   await page.getByRole("button", { name: "Add Transaction" }).click();
   const row = page.locator("table tbody tr").last();
   const accountSelect = row.locator('select[data-column-key="account"]');
-  const cashOptionStyles = await accountSelect.locator('option[value="Cash"]').evaluate((option) => {
+  const cashOptionStyles = await accountSelect.locator('option[value="Cash on Hand"]').evaluate((option) => {
     const style = getComputedStyle(option);
     return { color: style.color, background: style.backgroundColor };
   });
   expect(cashOptionStyles).toEqual({ color: "rgb(20, 32, 51)", background: "rgb(255, 255, 255)" });
   await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
-  const darkCashOptionStyles = await accountSelect.locator('option[value="Cash"]').evaluate((option) => {
+  const darkCashOptionStyles = await accountSelect.locator('option[value="Cash on Hand"]').evaluate((option) => {
     const style = getComputedStyle(option);
     return { color: style.color, background: style.backgroundColor };
   });
@@ -382,18 +382,50 @@ test("applies cash income to Money Snapshot and keeps dropdown choices readable"
   await row.locator('input[data-column-key="amount"]').fill("125");
   await row.locator('input[data-column-key="amount"]').press("Tab");
   await row.locator('input[data-column-key="date"]').fill(date);
-  await accountSelect.selectOption("Cash");
+  await accountSelect.selectOption("Cash on Hand");
 
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
-    return data.sections.money.find((item: { cells: { label: string } }) => item.cells.label === "Cash")?.cells.amount;
+    return data.sections.money.find((item: { cells: { label: string } }) => item.cells.label === "Cash on Hand")?.cells.amount;
   })).toBe("125.00");
 
   await page.goto("/");
   await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
   const moneySnapshot = page.locator('a.dashboard-module-card[href="/money"]');
   await expect(moneySnapshot).toContainText("Total Cash$19,605.32");
+  await expect(moneySnapshot).toContainText("Cash on Hand$125.00");
   await expect(moneySnapshot).toContainText("Weekly Income$1,325.00");
+});
+
+test("selects whole spreadsheet cells for keyboard navigation and clearing before edit", async ({ page }) => {
+  await page.goto("/transactions");
+  const description = page.locator('input[data-column-key="description"]').first();
+  const descriptionCell = description.locator("..");
+
+  await description.focus();
+  await expect(descriptionCell).toHaveClass(/cell-selected/);
+  await expect(descriptionCell).not.toHaveClass(/cell-editing/);
+  await page.keyboard.type("x");
+  await expect(description).toHaveValue("Primary paycheck");
+
+  await page.keyboard.press("ArrowRight");
+  const type = page.locator('select[data-column-key="type"]').first();
+  await expect(type).toBeFocused();
+  await expect(type.locator("..")).toHaveClass(/cell-selected/);
+  await page.keyboard.press("ArrowLeft");
+  await expect(description).toBeFocused();
+
+  await page.keyboard.press("Delete");
+  await expect(description).toHaveValue("");
+  await expect(descriptionCell).toHaveClass(/cell-selected/);
+  await expect(page.locator(".spreadsheet-panel [role=status]")).toContainText("Description cleared");
+
+  await description.click();
+  await expect(descriptionCell).toHaveClass(/cell-editing/);
+  await description.fill("Edited paycheck");
+  await page.keyboard.press("Escape");
+  await expect(descriptionCell).not.toHaveClass(/cell-editing/);
+  await expect(description).toHaveValue("Edited paycheck");
 });
 
 test("keeps the closed mobile drawer inert and restores focus after use", async ({ page }, testInfo) => {

@@ -47,6 +47,16 @@ describe("financial dashboard totals", () => {
     expect(computeFinancialState(data).totalCash).toBe(0);
   });
 
+  it("separates physical cash from Cash App in the dashboard snapshot", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      row("wallet", { label: "Cash", section: "cash", amount: "80" }),
+      row("cash-app", { label: "Cash App", section: "cash", amount: "20" }),
+    ];
+
+    expect(computeFinancialState(data)).toMatchObject({ totalCash: 100, cashOnHand: 80 });
+  });
+
   it("does not turn a negative borrowed balance into positive debt", () => {
     const data = createZeroData();
     data.sections.money = [{ id: "advance", cells: { label: "Advance", section: "borrowed", amount: "-25" } }];

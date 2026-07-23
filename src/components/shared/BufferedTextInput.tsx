@@ -40,7 +40,7 @@ function BufferedTextInput({
   valueRef.current = value;
 
   useEffect(() => {
-    if (!focusedRef.current) {
+    if (!focusedRef.current || value !== lastSentRef.current) {
       lastSentRef.current = value;
       setDraft(value);
     }

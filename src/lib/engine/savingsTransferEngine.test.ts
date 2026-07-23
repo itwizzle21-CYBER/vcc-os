@@ -79,7 +79,7 @@ describe("savings transfer engine", () => {
     data.sections.savings = [{ id: "vault", cells: { name: "Emergency Vault", balance: "25" } }];
 
     const values = transactionEndpointOptions(data).map((option) => option.value);
-    expect(values).toEqual(expect.arrayContaining(["Chime", "Apple Cash", "Wise", "Cash App", "Cash", "Emergency Vault"]));
+    expect(values).toEqual(expect.arrayContaining(["Chime", "Apple Cash", "Wise", "Cash App", "Cash on Hand", "Emergency Vault"]));
   });
 
   it("applies, reverses, and removes a transaction-page transfer without double-counting balances", () => {
@@ -120,16 +120,16 @@ describe("savings transfer engine", () => {
     const data = createZeroData();
     const today = new Date();
     const date = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-");
-    const income = { id: "cash-income", cells: { description: "Cash work", type: "income", amount: "125", date, account: "Cash" } };
+    const income = { id: "cash-income", cells: { description: "Cash work", type: "income", amount: "125", date, account: "Cash on Hand" } };
 
     const paid = syncTransactionTransfers(data, [income]);
-    expect(paid.sections.money.find((row) => row.cells.label === "Cash")?.cells.amount).toBe("125.00");
+    expect(paid.sections.money.find((row) => row.cells.label === "Cash on Hand")?.cells.amount).toBe("125.00");
     expect(paid.sections.transactions[0].cells).toMatchObject({ balanceEffect: "income", balanceApplied: "yes" });
-    expect(computeFinancialState(paid)).toMatchObject({ totalCash: 125, weeklyIncome: 125, receivedIncome: 125 });
+    expect(computeFinancialState(paid)).toMatchObject({ totalCash: 125, cashOnHand: 125, weeklyIncome: 125, receivedIncome: 125 });
 
-    const expense = { id: "cash-expense", cells: { description: "Cash purchase", type: "expense", amount: "25", date, account: "Cash" } };
+    const expense = { id: "cash-expense", cells: { description: "Cash purchase", type: "expense", amount: "25", date, account: "Cash on Hand" } };
     const spent = syncTransactionTransfers(paid, [paid.sections.transactions[0], expense]);
-    expect(spent.sections.money.find((row) => row.cells.label === "Cash")?.cells.amount).toBe("100.00");
+    expect(spent.sections.money.find((row) => row.cells.label === "Cash on Hand")?.cells.amount).toBe("100.00");
     expect(computeFinancialState(spent).weeklySpending).toBe(25);
   });
 });

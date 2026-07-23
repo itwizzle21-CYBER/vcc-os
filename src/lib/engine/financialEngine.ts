@@ -26,6 +26,9 @@ export function computeFinancialState(data: AppData): FinancialState {
   const cashRows = moneyRows.filter((item) => item.section === "cash");
   const cashMoney = cashRows
     .reduce((sum, item) => sum + positive(item.amount), 0);
+  const cashOnHand = cashRows
+    .filter((item) => isCashOnHand(item.row))
+    .reduce((sum, item) => sum + positive(item.amount), 0);
   const protectedMoney = moneyRows
     .filter((item) => item.section === "protectedSavings")
     .reduce((sum, item) => sum + positive(item.amount), 0);
@@ -144,6 +147,7 @@ export function computeFinancialState(data: AppData): FinancialState {
 
   return {
     totalCash,
+    cashOnHand,
     spendableCash,
     safeToSpend,
     protectedSavings,
@@ -201,6 +205,11 @@ export function computeFinancialState(data: AppData): FinancialState {
 
 function positive(value: number): number {
   return value > 0 ? value : 0;
+}
+
+function isCashOnHand(row: SpreadsheetRow): boolean {
+  const label = String(row.cells.label || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return ["cash", "cashonhand", "physicalcash", "walletcash"].includes(label);
 }
 
 function formatTransactionLabel(row: SpreadsheetRow, fallback: string): string {

@@ -13,7 +13,7 @@ const suggestedAccounts = [
   { id: "money-account-apple-cash", label: "Apple Cash" },
   { id: "money-account-wise", label: "Wise" },
   { id: "money-account-cash-app", label: "Cash App" },
-  { id: "money-account-cash", label: "Cash" },
+  { id: "money-account-cash", label: "Cash on Hand" },
 ] as const;
 
 export function eligibleDepositAccounts(data: AppData): SpreadsheetRow[] {
@@ -33,7 +33,7 @@ export function depositAccountOptions(data: AppData): DepositAccountOption[] {
   const existingLabels = new Set(existing.map((row) => normalizeAccountLabel(row.cells.label)));
   const currentOptions = existing.map((row) => ({
     id: row.id,
-    label: row.cells.label,
+    label: normalizeAccountLabel(row.cells.label) === "cashonhand" ? "Cash on Hand" : row.cells.label,
     balance: toNumber(row.cells.amount),
     isNew: false,
   }));
@@ -166,7 +166,8 @@ function createMoneyAccount(id: string, label: string): SpreadsheetRow {
 }
 
 function normalizeAccountLabel(value: string | undefined): string {
-  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const normalized = String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return ["cash", "cashonhand", "physicalcash", "walletcash"].includes(normalized) ? "cashonhand" : normalized;
 }
 
 function allocateBorrowedRepayments(

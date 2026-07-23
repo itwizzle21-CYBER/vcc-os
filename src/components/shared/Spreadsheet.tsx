@@ -18,6 +18,11 @@ interface SpreadsheetProps {
   addLabel?: string;
 }
 
+interface CellAddress {
+  rowId: string;
+  columnKey: string;
+}
+
 export default function Spreadsheet({
   config,
   rows,
@@ -34,6 +39,10 @@ export default function Spreadsheet({
   const [search, setSearch] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
   const [newRowId, setNewRowId] = useState("");
+  const [selectedCell, setSelectedCell] = useState<CellAddress | null>(null);
+  const [editingCell, setEditingCell] = useState<CellAddress | null>(null);
+  const [cellStatus, setCellStatus] = useState("");
+  const keyboardHelpId = `${config.key}-spreadsheet-keyboard-help`;
   const tableRef = useRef<HTMLDivElement>(null);
   const activeCellRef = useRef<{ rowId: string; columnKey: string; value: string } | null>(null);
   const editableColumnKeys = useMemo(
@@ -125,10 +134,41 @@ export default function Spreadsheet({
     commitCell(rowId, columnKey, focused.value);
   }
 
-  function handleCellFocus(rowId: string, columnKey: string, value: string) {
+  function handleCellFocus(rowId: string, columnKey: string, value: string, rowIndex: number, columnIndex: number) {
     const activeCell = activeCellRef.current;
     if (activeCell && (activeCell.rowId !== rowId || activeCell.columnKey !== columnKey)) commitActiveCell();
     activeCellRef.current = { rowId, columnKey, value };
+    setSelectedCell({ rowId, columnKey });
+    setEditingCell((current) => cellMatches(current, rowId, columnKey) ? current : null);
+    announceCellSelection(rowIndex, columnIndex);
+  }
+
+  function beginPointerEdit(rowId: string, columnKey: string) {
+    setSelectedCell({ rowId, columnKey });
+    setEditingCell({ rowId, columnKey });
+    setCellStatus(`${columnLabel(columnKey)} ready to edit.`);
+  }
+
+  function announceCellSelection(rowIndex: number, columnIndex: number) {
+    setCellStatus(`${config.title} row ${rowIndex + 1}, ${config.columns[columnIndex]?.label || "cell"} selected. Press Enter to edit or Delete to clear.`);
+  }
+
+  function columnLabel(columnKey: string) {
+    return config.columns.find((column) => column.key === columnKey)?.label || "Cell";
+  }
+
+  function isCellEditable(rowId: string, columnKey: string) {
+    const column = config.columns.find((item) => item.key === columnKey);
+    const row = rows.find((item) => item.id === rowId);
+    return Boolean(row && column && !column.readOnly && typeof getComputedCell?.(row, columnKey) !== "string");
+  }
+
+  function cellClassName(rowId: string, columnKey: string, base = "") {
+    return [
+      base,
+      cellMatches(selectedCell, rowId, columnKey) ? "cell-selected" : "",
+      cellMatches(editingCell, rowId, columnKey) ? "cell-editing" : "",
+    ].filter(Boolean).join(" ");
   }
 
   function addRow() {
@@ -159,13 +199,44 @@ export default function Spreadsheet({
     const next = tableRef.current?.querySelector<HTMLElement>(
       `[data-row-index="${rowIndex}"][data-column-index="${columnIndex}"]`
     );
-    next?.focus();
+    if (!next) return;
+    setEditingCell(null);
+    next.focus();
   }
 
   function handleKeyDown(event: React.KeyboardEvent, rowIndex: number, columnIndex: number, rowId?: string, columnKey?: string) {
     const lastColumn = config.columns.length - 1;
     const lastRow = visibleRows.length - 1;
-    if (event.key === "ArrowRight") {
+    const editing = Boolean(rowId && columnKey && cellMatches(editingCell, rowId, columnKey));
+    const currentValue = (event.currentTarget as HTMLInputElement | HTMLSelectElement).value;
+
+    if (editing) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (rowId && columnKey) commitCell(rowId, columnKey, currentValue);
+        setEditingCell(null);
+        setCellStatus(`${columnLabel(columnKey || "")} selected. Editing stopped.`);
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        if (rowId && columnKey) commitCell(rowId, columnKey, currentValue);
+        setEditingCell(null);
+        moveFocus(Math.min(lastRow, rowIndex + 1), columnIndex);
+      } else if (event.key === "Tab" && rowId && columnKey) {
+        commitCell(rowId, columnKey, currentValue);
+        setEditingCell(null);
+      }
+      return;
+    }
+
+    if ((event.key === "Delete" || event.key === "Backspace") && rowId && columnKey) {
+      event.preventDefault();
+      if (!isCellEditable(rowId, columnKey)) {
+        setCellStatus(`${columnLabel(columnKey)} is read only.`);
+        return;
+      }
+      updateCell(rowId, columnKey, "");
+      setCellStatus(`${columnLabel(columnKey)} cleared.`);
+    } else if (event.key === "ArrowRight") {
       event.preventDefault();
       moveFocus(rowIndex, Math.min(lastColumn, columnIndex + 1));
     } else if (event.key === "ArrowLeft") {
@@ -183,17 +254,20 @@ export default function Spreadsheet({
     } else if (event.key === "End") {
       event.preventDefault();
       moveFocus(rowIndex, lastColumn);
-    } else if (event.key === "Enter") {
+    } else if ((event.key === "Enter" || event.key === "F2") && rowId && columnKey) {
       event.preventDefault();
-      if (rowId && columnKey) {
-        commitCell(rowId, columnKey, (event.currentTarget as HTMLInputElement).value);
-        activeCellRef.current = null;
+      if (isCellEditable(rowId, columnKey)) {
+        setEditingCell({ rowId, columnKey });
+        setCellStatus(`${columnLabel(columnKey)} ready to edit. Press Escape to return to cell selection.`);
+        if (event.currentTarget instanceof HTMLInputElement) {
+          const input = event.currentTarget;
+          window.requestAnimationFrame(() => input.select());
+        }
       }
-      moveFocus(Math.min(lastRow, rowIndex + 1), columnIndex);
-    } else if (event.key === "Tab" && rowId && columnKey) {
-      commitCell(rowId, columnKey, (event.currentTarget as HTMLInputElement).value);
     } else if (event.key === "Escape") {
       (event.currentTarget as HTMLElement).blur();
+    } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
     }
   }
 
@@ -228,8 +302,11 @@ export default function Spreadsheet({
         {validationMessage && <p className="table-validation" role="alert">{validationMessage}</p>}
       </div>
 
+      <p id={keyboardHelpId} className="sr-only">Use arrow keys to select cells. Press Delete or Backspace to clear the selected cell. Press Enter or F2, or click the cell, to edit it.</p>
+      <p className="sr-only" role="status" aria-live="polite">{cellStatus}</p>
+
       <div className="table-wrap" ref={tableRef} onPointerDownCapture={commitFocusedCell}>
-        <table>
+        <table aria-describedby={keyboardHelpId}>
           <thead>
             <tr>
               <th className="row-action-heading">Actions</th>
@@ -255,13 +332,14 @@ export default function Spreadsheet({
                   if (config.key === "inventory" && column.key === "alert") {
                     const tone = value.toLowerCase();
                     return (
-                      <td key={column.key} data-label={column.label}>
+                      <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key)}>
                         <button
                           type="button"
                           className={`inventory-alert-button ${tone}`}
                           data-row-index={rowIndex}
                           data-column-index={columnIndex}
                           aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}: ${value}`}
+                          onFocus={() => handleCellFocus(row.id, column.key, value, rowIndex, columnIndex)}
                           onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex)}
                           onClick={() => document.getElementById("buy-next")?.scrollIntoView({ behavior: "smooth" })}
                         >
@@ -272,7 +350,7 @@ export default function Spreadsheet({
                   }
                   if (config.key === "transactions" && column.key === "type") {
                     return (
-                      <td key={column.key} data-label={column.label}>
+                      <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key)}>
                         <select
                           data-row-index={rowIndex}
                           data-column-index={columnIndex}
@@ -280,11 +358,13 @@ export default function Spreadsheet({
                           data-column-key={column.key}
                           value={value}
                           aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
-                          onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value)}
+                          onPointerDown={() => beginPointerEdit(row.id, column.key)}
+                          onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value, rowIndex, columnIndex)}
                           onChange={(event) => updateCell(row.id, column.key, event.target.value)}
                           onBlur={(event) => {
                             commitCell(row.id, column.key, event.currentTarget.value);
                             activeCellRef.current = null;
+                            setEditingCell(null);
                           }}
                           onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
                         >
@@ -299,7 +379,7 @@ export default function Spreadsheet({
                   if (!readOnly && columnSelectOptions) {
                     const hasLegacyValue = Boolean(value) && !columnSelectOptions.some((option) => option.value === value);
                     return (
-                      <td key={column.key} data-label={column.label}>
+                      <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key)}>
                         <select
                           data-row-index={rowIndex}
                           data-column-index={columnIndex}
@@ -307,7 +387,10 @@ export default function Spreadsheet({
                           data-column-key={column.key}
                           value={value}
                           aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
+                          onPointerDown={() => beginPointerEdit(row.id, column.key)}
+                          onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value, rowIndex, columnIndex)}
                           onChange={(event) => updateCell(row.id, column.key, event.target.value)}
+                          onBlur={() => setEditingCell(null)}
                           onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
                         >
                           <option value="">Select {column.label.toLowerCase()}</option>
@@ -320,7 +403,7 @@ export default function Spreadsheet({
                   if (config.key === "bills" && column.key === "status") {
                     const status = billStatusValue(value);
                     return (
-                      <td key={column.key} data-label={column.label} className="bill-status-cell">
+                      <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key, "bill-status-cell")}>
                         <div className={`bill-status-control ${status}`}>
                           <span className="bill-status-indicator" aria-hidden="true" />
                           <select
@@ -330,7 +413,10 @@ export default function Spreadsheet({
                             data-column-key={column.key}
                             value={status}
                             aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}: ${status}`}
+                            onPointerDown={() => beginPointerEdit(row.id, column.key)}
+                            onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value, rowIndex, columnIndex)}
                             onChange={(event) => updateCell(row.id, column.key, event.target.value)}
+                            onBlur={() => setEditingCell(null)}
                             onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
                           >
                             <option value="unpaid">Unpaid</option>
@@ -342,7 +428,7 @@ export default function Spreadsheet({
                     );
                   }
                   return (
-                    <td key={column.key} data-label={column.label}>
+                    <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key)}>
                       <BufferedTextInput
                         type={inputType}
                         className={column.type === "date" ? "calendar-input" : undefined}
@@ -356,7 +442,8 @@ export default function Spreadsheet({
                         aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
                         aria-readonly={readOnly}
                         delay={320}
-                        onValueFocus={(currentValue) => handleCellFocus(row.id, column.key, currentValue)}
+                        onPointerDown={() => beginPointerEdit(row.id, column.key)}
+                        onValueFocus={(currentValue) => handleCellFocus(row.id, column.key, currentValue, rowIndex, columnIndex)}
                         onValueChange={(nextValue) => updateCell(row.id, column.key, nextValue)}
                         onClick={(event) => {
                           if (column.type === "date" && !readOnly) openDatePicker(event.currentTarget);
@@ -364,6 +451,7 @@ export default function Spreadsheet({
                         onValueBlur={(currentValue) => {
                           commitCell(row.id, column.key, currentValue);
                           activeCellRef.current = null;
+                          setEditingCell(null);
                         }}
                         onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
                       />
@@ -377,6 +465,10 @@ export default function Spreadsheet({
       </div>
     </section>
   );
+}
+
+function cellMatches(cell: CellAddress | null, rowId: string, columnKey: string): boolean {
+  return cell?.rowId === rowId && cell.columnKey === columnKey;
 }
 
 function billStatusValue(value: string): "paid" | "unpaid" | "overdue" {

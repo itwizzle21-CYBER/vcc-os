@@ -17,7 +17,7 @@ describe("connected paycheck planner", () => {
 
   it("offers common deposit accounts and creates the selected Money Snapshot account on lock", () => {
     const data = createZeroData();
-    expect(depositAccountOptions(data).map((option) => option.label)).toEqual(["Chime", "Apple Cash", "Wise", "Cash App", "Cash"]);
+    expect(depositAccountOptions(data).map((option) => option.label)).toEqual(["Chime", "Apple Cash", "Wise", "Cash App", "Cash on Hand"]);
     data.paycheckPlanner = {
       incomeSource: "Client work",
       depositAccountId: "money-account-wise",
@@ -37,6 +37,14 @@ describe("connected paycheck planner", () => {
       cells: expect.objectContaining({ label: "Wise", amount: "400.00", section: "cash" }),
     }));
     expect(next.sections.transactions[0].cells.account).toBe("Wise");
+  });
+
+  it("treats an existing Cash row as Cash on Hand without offering a duplicate", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "wallet", cells: { label: "Cash", section: "cash", amount: "40" } }];
+
+    const cashOptions = depositAccountOptions(data).filter((option) => option.label === "Cash on Hand");
+    expect(cashOptions).toEqual([{ id: "wallet", label: "Cash on Hand", balance: 40, isNew: false }]);
   });
 
   it("applies a sourced paycheck to one account and carries it into a savings transfer without double-counting", () => {
