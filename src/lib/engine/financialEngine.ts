@@ -2,7 +2,7 @@ import { getInventoryAlert } from "./inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./transactionEngine";
 import { summarizeCarLoan } from "./carLoanEngine";
 import { isBalanceAppliedTransaction } from "./savingsTransferEngine";
-import { isBlankRow, isValidIsoDate, toNumber, weekBounds } from "../calculations/currency";
+import { isBlankRow, isValidIsoDate, todayIso, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
 export function computeFinancialState(data: AppData): FinancialState {
@@ -67,14 +67,14 @@ export function computeFinancialState(data: AppData): FinancialState {
     .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const payWeek = activePayWeek(data);
   const currentWeekTransactions = transactions.filter((row) => isWithinDateRange(row.cells.date, payWeek.start, payWeek.end));
-  const currentWeekTransactionIncome = currentWeekTransactions
-    .filter((row) => transactionType(row) === "income")
+  const currentWeekAdditionalTransactionIncome = currentWeekTransactions
+    .filter((row) => transactionType(row) === "income" && !row.cells.paycheckHistoryId)
     .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const transactionNet = currentWeekTransactions
     .filter((row) => !isBalanceAppliedTransaction(row))
     .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const plannedIncome = lockedIncome || extraIncome;
-  const weeklyIncome = lockedIncome || extraIncome || currentWeekTransactionIncome;
+  const weeklyIncome = plannedIncome + currentWeekAdditionalTransactionIncome;
   const monthlyIncome = weeklyIncome * 4.33;
   const receivedIncome = data.paycheckHistory.reduce((sum, row) => sum + toNumber(row.income), 0) + transactionIncome;
   const spendableCash = Math.max(0, cashRows.length > 0 ? operatingCash + plannedIncome + transactionNet - repaymentImpact : operatingCash + transactionNet);
@@ -241,9 +241,12 @@ function parseDate(value: string): Date | null {
 
 function activePayWeek(data: AppData): { start: string; end: string } {
   if (data.paycheckPlanner.weekStart && data.paycheckPlanner.weekEnd) {
-    return { start: data.paycheckPlanner.weekStart, end: data.paycheckPlanner.weekEnd };
+    const today = todayIso();
+    if (today >= data.paycheckPlanner.weekStart && today <= data.paycheckPlanner.weekEnd) {
+      return { start: data.paycheckPlanner.weekStart, end: data.paycheckPlanner.weekEnd };
+    }
   }
-  return weekBounds(data.paycheckPlanner.payDate);
+  return weekBounds(todayIso());
 }
 
 function isWithinDateRange(value: string, startText: string, endText: string): boolean {

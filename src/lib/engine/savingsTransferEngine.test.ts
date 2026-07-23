@@ -115,4 +115,21 @@ describe("savings transfer engine", () => {
     expect(next.sections.savings[0].cells.balance).toBe("30.00");
     expect(next.sections.money.find((row) => row.cells.label === "Apple Cash")?.cells.amount).toBe("20.00");
   });
+
+  it("applies cash income and expenses to the selected account and dashboard totals", () => {
+    const data = createZeroData();
+    const today = new Date();
+    const date = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-");
+    const income = { id: "cash-income", cells: { description: "Cash work", type: "income", amount: "125", date, account: "Cash" } };
+
+    const paid = syncTransactionTransfers(data, [income]);
+    expect(paid.sections.money.find((row) => row.cells.label === "Cash")?.cells.amount).toBe("125.00");
+    expect(paid.sections.transactions[0].cells).toMatchObject({ balanceEffect: "income", balanceApplied: "yes" });
+    expect(computeFinancialState(paid)).toMatchObject({ totalCash: 125, weeklyIncome: 125, receivedIncome: 125 });
+
+    const expense = { id: "cash-expense", cells: { description: "Cash purchase", type: "expense", amount: "25", date, account: "Cash" } };
+    const spent = syncTransactionTransfers(paid, [paid.sections.transactions[0], expense]);
+    expect(spent.sections.money.find((row) => row.cells.label === "Cash")?.cells.amount).toBe("100.00");
+    expect(computeFinancialState(spent).weeklySpending).toBe(25);
+  });
 });

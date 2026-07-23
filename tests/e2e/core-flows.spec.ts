@@ -357,6 +357,45 @@ test("moves transaction transfers between linked accounts and savings vaults in 
   })).toEqual(["2890.32", "12750.00"]);
 });
 
+test("applies cash income to Money Snapshot and keeps dropdown choices readable", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.getByRole("button", { name: "Add Transaction" }).click();
+  const row = page.locator("table tbody tr").last();
+  const accountSelect = row.locator('select[data-column-key="account"]');
+  const cashOptionStyles = await accountSelect.locator('option[value="Cash"]').evaluate((option) => {
+    const style = getComputedStyle(option);
+    return { color: style.color, background: style.backgroundColor };
+  });
+  expect(cashOptionStyles).toEqual({ color: "rgb(20, 32, 51)", background: "rgb(255, 255, 255)" });
+  await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+  const darkCashOptionStyles = await accountSelect.locator('option[value="Cash"]').evaluate((option) => {
+    const style = getComputedStyle(option);
+    return { color: style.color, background: style.backgroundColor };
+  });
+  expect(darkCashOptionStyles).toEqual({ color: "rgb(248, 250, 252)", background: "rgb(17, 24, 39)" });
+
+  const date = await page.evaluate(() => {
+    const now = new Date();
+    return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+  });
+  await row.locator('select[data-column-key="type"]').selectOption("income");
+  await row.locator('input[data-column-key="amount"]').fill("125");
+  await row.locator('input[data-column-key="amount"]').press("Tab");
+  await row.locator('input[data-column-key="date"]').fill(date);
+  await accountSelect.selectOption("Cash");
+
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return data.sections.money.find((item: { cells: { label: string } }) => item.cells.label === "Cash")?.cells.amount;
+  })).toBe("125.00");
+
+  await page.goto("/");
+  await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
+  const moneySnapshot = page.locator('a.dashboard-module-card[href="/money"]');
+  await expect(moneySnapshot).toContainText("Total Cash$19,605.32");
+  await expect(moneySnapshot).toContainText("Weekly Income$1,325.00");
+});
+
 test("keeps the closed mobile drawer inert and restores focus after use", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes("mobile"), "Mobile keyboard containment check.");
   await page.goto("/settings");

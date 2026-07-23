@@ -1,5 +1,6 @@
 import { isValidIsoDate, toNumber } from "../calculations/currency";
 import { depositAccountOptions, eligibleDepositAccounts } from "./paycheckPlannerEngine";
+import { transactionType } from "./transactionEngine";
 import type { AppData, SpreadsheetRow } from "../types/app";
 
 export interface SavingsTransferInput {
@@ -60,6 +61,7 @@ export function transactionEndpointOptions(data: AppData): TransactionEndpointOp
 
 export function syncTransactionTransfers(data: AppData, nextTransactions: SpreadsheetRow[]): AppData {
   const endpointOptions = transactionEndpointOptions(data);
+  const previousTransactions = new Map(data.sections.transactions.map((row) => [row.id, row]));
   const moneyBalances = new Map(endpointOptions.filter((option) => option.kind === "money").map((option) => [option.id, option.balance]));
   const savingsBalances = new Map(endpointOptions.filter((option) => option.kind === "savings").map((option) => [option.id, option.balance]));
   const materializedMoneyIds = new Set(data.sections.money.map((row) => row.id));
@@ -67,14 +69,53 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
   for (const row of data.sections.transactions) {
     if (row.cells.balanceApplied !== "yes" || row.cells.balanceApplication !== TRANSACTION_EDITOR) continue;
     const amount = Math.abs(toNumber(row.cells.amount));
-    adjustEndpointBalance(row.cells.transferSourceId, amount, moneyBalances, savingsBalances);
-    adjustEndpointBalance(row.cells.transferDestinationId, -amount, moneyBalances, savingsBalances);
+    const effect = row.cells.balanceEffect || transactionType(row);
+    if (effect === "transfer") {
+      adjustEndpointBalance(row.cells.transferSourceId, amount, moneyBalances, savingsBalances);
+      adjustEndpointBalance(row.cells.transferDestinationId, -amount, moneyBalances, savingsBalances);
+    } else {
+      adjustEndpointBalance(row.cells.balanceEndpointId, effect === "income" ? -amount : amount, moneyBalances, savingsBalances);
+    }
   }
 
   const transactions = nextTransactions.map((row) => {
     const cleanRow = stripEditorApplication(row);
-    if (transactionTypeValue(row) !== "transfer") return cleanRow;
     if (row.cells.balanceApplied === "yes" && row.cells.balanceApplication !== TRANSACTION_EDITOR) return row;
+    const previous = previousTransactions.get(row.id);
+    const shouldApplyBalance = !previous
+      || previous.cells.balanceApplication === TRANSACTION_EDITOR
+      || balanceFieldsChanged(previous, row);
+    if (!shouldApplyBalance) return row;
+    const type = transactionType(row);
+
+    if (type === "income" || type === "expense") {
+      const accountValue = row.cells.account?.trim();
+      const amount = Math.abs(toNumber(row.cells.amount));
+      const date = row.cells.date?.trim();
+      if (!accountValue || !amount || !date) return cleanRow;
+      const endpoint = resolveEndpoint(endpointOptions, accountValue, row.cells.balanceEndpointId);
+      if (!endpoint) throw new Error("Choose a valid account or savings vault.");
+      if (!isValidIsoDate(date)) throw new Error("Choose a valid transaction date.");
+      const currentBalance = endpointBalance(endpoint, moneyBalances, savingsBalances);
+      if (type === "expense" && amount > currentBalance) throw new Error(`This expense exceeds the ${endpointName(endpoint)} balance.`);
+      adjustEndpointBalance(endpoint.id, type === "income" ? amount : -amount, moneyBalances, savingsBalances);
+      if (endpoint.kind === "money") materializedMoneyIds.add(endpoint.id);
+      return {
+        ...cleanRow,
+        cells: {
+          ...cleanRow.cells,
+          type,
+          amount: currencyValue(type === "income" ? amount : -amount),
+          account: endpoint.value,
+          balanceEndpointId: endpoint.id,
+          balanceEffect: type,
+          balanceApplied: "yes",
+          balanceApplication: TRANSACTION_EDITOR,
+        },
+      };
+    }
+
+    if (type !== "transfer") return cleanRow;
 
     const sourceValue = row.cells.account?.trim();
     const destinationValue = row.cells.transferDestination?.trim();
@@ -116,6 +157,7 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
         transferDestination: destination.value,
         transferSourceId: source.id,
         transferDestinationId: destination.id,
+        balanceEffect: "transfer",
         balanceApplied: "yes",
         balanceApplication: TRANSACTION_EDITOR,
         notes: cleanRow.cells.notes || `Moved from ${endpointName(source)} to ${endpointName(destination)}. Balances applied automatically.`,
@@ -215,6 +257,8 @@ function stripEditorApplication(row: SpreadsheetRow): SpreadsheetRow {
   delete cells.balanceApplication;
   delete cells.transferSourceId;
   delete cells.transferDestinationId;
+  delete cells.balanceEndpointId;
+  delete cells.balanceEffect;
   return { ...row, cells };
 }
 
@@ -222,8 +266,9 @@ function withTransferValidation(row: SpreadsheetRow, message: string): Spreadshe
   return { ...row, cells: { ...row.cells, transferValidation: message } };
 }
 
-function transactionTypeValue(row: SpreadsheetRow): string {
-  return String(row.cells.type || "").trim().toLowerCase();
+function balanceFieldsChanged(previous: SpreadsheetRow, next: SpreadsheetRow): boolean {
+  return ["type", "amount", "date", "account", "transferDestination"]
+    .some((key) => String(previous.cells[key] || "") !== String(next.cells[key] || ""));
 }
 
 function endpointName(option: TransactionEndpointOption): string {

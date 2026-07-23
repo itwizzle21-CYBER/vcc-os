@@ -54,6 +54,21 @@ describe("financial dashboard totals", () => {
     expect(computeFinancialState(data).borrowedMoney).toBe(0);
   });
 
+  it("adds current-week transaction income to income-page planning without duplicating paycheck history", () => {
+    const data = createZeroData();
+    const today = new Date();
+    const date = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-");
+    data.sections.income = [row("planned", { source: "Side work", amount: "200" })];
+    data.paycheckPlanner.weekStart = "2020-01-01";
+    data.paycheckPlanner.weekEnd = "2020-01-07";
+    data.sections.transactions = [
+      row("cash", { description: "Cash income", type: "income", amount: "75", date, account: "Cash" }),
+      row("paycheck", { description: "Paycheck", type: "income", amount: "500", date, account: "Chime", paycheckHistoryId: "history" }),
+    ];
+
+    expect(computeFinancialState(data).weeklyIncome).toBe(275);
+  });
+
   it("keeps unpaid and overdue bill amounts in dashboard pressure", () => {
     const data = createZeroData();
     const yesterday = new Date();

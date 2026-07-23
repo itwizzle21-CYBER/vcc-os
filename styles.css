@@ -8891,6 +8891,11 @@ body {
   color: var(--text);
 }
 
+:root[data-theme="dark"] .reference-shell select option {
+  background: #111827;
+  color: #f8fafc;
+}
+
 :root[data-theme="light"] .reference-shell input:focus,
 :root[data-theme="light"] .reference-shell select:focus,
 :root[data-theme="light"] .reference-shell textarea:focus {

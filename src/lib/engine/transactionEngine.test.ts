@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createZeroData } from "../storage/defaultData";
+import { todayIso, weekBounds } from "../calculations/currency";
 import type { SpreadsheetRow } from "../types/app";
 import { computeFinancialState } from "./financialEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType } from "./transactionEngine";
@@ -37,11 +38,13 @@ describe("transaction engine", () => {
 
   it("uses signed expenses in the financial totals and weekly net", () => {
     const data = createZeroData();
-    data.paycheckPlanner.weekStart = "2026-07-12";
-    data.paycheckPlanner.weekEnd = "2026-07-18";
+    const today = todayIso();
+    const week = weekBounds(today);
+    data.paycheckPlanner.weekStart = week.start;
+    data.paycheckPlanner.weekEnd = week.end;
     data.sections.transactions = [
-      transaction("paycheck", "income", "$500.00", "Income"),
-      transaction("groceries", "expense", "$125.00", "Groceries"),
+      transaction("paycheck", "income", "$500.00", "Income", today),
+      transaction("groceries", "expense", "$125.00", "Groceries", today),
     ];
 
     const state = computeFinancialState(data);
@@ -53,7 +56,7 @@ describe("transaction engine", () => {
 
   it("calculates monthly spending from the current calendar month", () => {
     const data = createZeroData();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIso();
     data.sections.transactions = [transaction("current-expense", "expense", "$90.00", "Utilities", today)];
 
     expect(computeFinancialState(data).monthlySpending).toBe(90);
