@@ -397,7 +397,7 @@ test("applies cash-on-hand income to Money Snapshot and keeps dropdown choices r
   await expect(moneySnapshot).toContainText("Weekly Income$1,325.00");
 });
 
-test("selects whole spreadsheet cells for keyboard navigation and clearing before edit", async ({ page }) => {
+test("keeps spreadsheet cells ready for immediate desktop typing and keyboard navigation", async ({ page }) => {
   await page.goto("/transactions");
   const description = page.locator('input[data-column-key="description"]').first();
   const descriptionCell = description.locator("..");
@@ -406,7 +406,9 @@ test("selects whole spreadsheet cells for keyboard navigation and clearing befor
   await expect(descriptionCell).toHaveClass(/cell-selected/);
   await expect(descriptionCell).not.toHaveClass(/cell-editing/);
   await page.keyboard.type("x");
-  await expect(description).toHaveValue("Primary paycheck");
+  await expect(description).toHaveValue("x");
+  await expect(descriptionCell).toHaveClass(/cell-editing/);
+  await page.keyboard.press("Escape");
 
   await page.keyboard.press("ArrowRight");
   const type = page.locator('select[data-column-key="type"]').first();
@@ -426,6 +428,13 @@ test("selects whole spreadsheet cells for keyboard navigation and clearing befor
   await page.keyboard.press("Escape");
   await expect(descriptionCell).not.toHaveClass(/cell-editing/);
   await expect(description).toHaveValue("Edited paycheck");
+
+  await page.getByRole("button", { name: "Add Transaction" }).click();
+  const newDescription = page.locator('input[data-column-key="description"]').last();
+  await expect(newDescription).toBeFocused();
+  await expect(newDescription.locator("..")).toHaveClass(/cell-editing/);
+  await page.keyboard.type("Coffee");
+  await expect(newDescription).toHaveValue("Coffee");
 });
 
 test("keeps the closed mobile drawer inert and restores focus after use", async ({ page }, testInfo) => {

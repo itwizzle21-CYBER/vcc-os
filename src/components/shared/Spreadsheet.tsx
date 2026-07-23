@@ -1,5 +1,5 @@
 import { Trash2 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SectionConfig, SectionKey, SpreadsheetRow } from "../../lib/types/app";
 import { formatCurrency } from "../../lib/calculations/currency";
 import BufferedTextInput from "./BufferedTextInput";
@@ -45,6 +45,7 @@ export default function Spreadsheet({
   const keyboardHelpId = `${config.key}-spreadsheet-keyboard-help`;
   const tableRef = useRef<HTMLDivElement>(null);
   const activeCellRef = useRef<{ rowId: string; columnKey: string; value: string } | null>(null);
+  const pendingNewRowFocusRef = useRef("");
   const editableColumnKeys = useMemo(
     () => config.columns.filter((column) => !column.readOnly).map((column) => column.key),
     [config.columns]
@@ -78,6 +79,27 @@ export default function Spreadsheet({
     const visibleBlanks = search.trim() ? blanks.filter((row) => row.id === newRowId) : blanks;
     return [...sorted, ...visibleBlanks];
   }, [blankRowIds, config.columns, getComputedCell, newRowId, rows, search, sortBy]);
+
+  useEffect(() => {
+    const rowId = pendingNewRowFocusRef.current;
+    if (!rowId) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      pendingNewRowFocusRef.current = "";
+      return;
+    }
+    const columnKey = editableColumnKeys[0];
+    if (!columnKey) return;
+    const input = tableRef.current?.querySelector<HTMLElement>(
+      `[data-row-id="${rowId}"][data-column-key="${columnKey}"]`
+    );
+    if (!input) return;
+    pendingNewRowFocusRef.current = "";
+    input.focus();
+    setSelectedCell({ rowId, columnKey });
+    setEditingCell({ rowId, columnKey });
+    const columnName = config.columns.find((column) => column.key === columnKey)?.label || "cell";
+    setCellStatus(`New ${config.title.toLowerCase()} row ready. Start typing ${columnName.toLowerCase()}.`);
+  }, [config.columns, config.title, editableColumnKeys, rows]);
 
   function updateCell(rowId: string, columnKey: string, value: string) {
     if (preventDuplicateKey === columnKey && value.trim()) {
@@ -173,6 +195,7 @@ export default function Spreadsheet({
 
   function addRow() {
     const id = `${config.key}-${Date.now()}`;
+    pendingNewRowFocusRef.current = id;
     setNewRowId(id);
     const cells = Object.fromEntries(config.columns.map((column) => [column.key, ""]));
     if (config.key === "bills") cells.status = "unpaid";
@@ -267,7 +290,17 @@ export default function Spreadsheet({
     } else if (event.key === "Escape") {
       (event.currentTarget as HTMLElement).blur();
     } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-      event.preventDefault();
+      if (rowId && columnKey && isCellEditable(rowId, columnKey) && event.currentTarget instanceof HTMLInputElement && event.currentTarget.type !== "date") {
+        setEditingCell({ rowId, columnKey });
+        setCellStatus(`${columnLabel(columnKey)} editing.`);
+        try {
+          event.currentTarget.select();
+        } catch {
+          // Some specialized input types do not support text selection; typing can still continue.
+        }
+      } else {
+        event.preventDefault();
+      }
     }
   }
 
@@ -302,7 +335,7 @@ export default function Spreadsheet({
         {validationMessage && <p className="table-validation" role="alert">{validationMessage}</p>}
       </div>
 
-      <p id={keyboardHelpId} className="sr-only">Use arrow keys to select cells. Press Delete or Backspace to clear the selected cell. Press Enter or F2, or click the cell, to edit it.</p>
+      <p id={keyboardHelpId} className="sr-only">Use arrow keys to select cells. Start typing to replace a selected text cell. Press Delete or Backspace to clear it, or Enter or F2 to edit the existing value.</p>
       <p className="sr-only" role="status" aria-live="polite">{cellStatus}</p>
 
       <div className="table-wrap" ref={tableRef} onPointerDownCapture={commitFocusedCell}>
