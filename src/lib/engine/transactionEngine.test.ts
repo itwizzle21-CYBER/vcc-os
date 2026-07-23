@@ -97,6 +97,10 @@ describe("transaction engine", () => {
     expect(identifyTransactionCategory(transaction("AMZN Mktp US*AB12C", "expense", "$31.09", ""))).toBe("Shopping");
     expect(identifyTransactionCategory(transaction("MCDONALD'S F123", "expense", "$12.18", ""))).toBe("Restaurants");
     expect(identifyTransactionCategory(transaction("MURPHY USA #7788", "expense", "$46.72", ""))).toBe("Fuel");
+    expect(identifyTransactionCategory(transaction("Hidden Valley Ranch", "expense", "$5.25", ""))).toBe("Groceries");
+    expect(identifyTransactionCategory(transaction("Rockstar energy drink", "expense", "$3.85", "Income"))).toBe("Groceries");
+    expect(identifyTransactionCategory(transaction("Jordans wings 12pc", "expense", "$9.69", ""))).toBe("Restaurants");
+    expect(identifyTransactionCategory(transaction("BLK Grap", "expense", "$2.52", ""))).toBe("Tobacco");
   });
 
   it("uses the completed retail description instead of a stale automatic category", () => {

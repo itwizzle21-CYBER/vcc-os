@@ -73,6 +73,7 @@ const worldwideTransactionCategories = [
   "Entertainment",
   "Shopping",
   "Personal Care",
+  "Tobacco",
   "Taxes",
   "Fees",
   "Gifts & Donations",
@@ -706,6 +707,19 @@ function TransactionsPage({
         </div>
       </section>
 
+      <Spreadsheet
+        config={sectionConfigs.transactions}
+        rows={visibleTransactionRows}
+        sortBy={data.sortBy.transactions}
+        onSortChange={updateSort}
+        onRowsChange={updateVisibleTransactionRows}
+        onResetSection={resetSection}
+        getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
+        selectOptions={transactionSelectOptions}
+        addLabel="Add Transaction"
+      />
+      {transferMessage && <p className="table-validation" role="alert">{transferMessage}</p>}
+
       <section className="spending-period-panel" aria-labelledby="spending-period-title">
         <div className="spending-period-heading">
           <div>
@@ -738,18 +752,6 @@ function TransactionsPage({
         </article>
       </section>
 
-      <Spreadsheet
-        config={sectionConfigs.transactions}
-        rows={visibleTransactionRows}
-        sortBy={data.sortBy.transactions}
-        onSortChange={updateSort}
-        onRowsChange={updateVisibleTransactionRows}
-        onResetSection={resetSection}
-        getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
-        selectOptions={transactionSelectOptions}
-        addLabel="Add Transaction"
-      />
-      {transferMessage && <p className="table-validation" role="alert">{transferMessage}</p>}
     </div>
   );
 }

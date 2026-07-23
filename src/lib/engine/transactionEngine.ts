@@ -57,11 +57,11 @@ const categoryRules: Array<{ category: string; keywords: string[] }> = [
   },
   {
     category: "Groceries",
-    keywords: ["grocery", "groceries", "supermarket", "hypermarket", "food market", "fresh market", "milk", "bread", "eggs", "meat", "produce", "vegetables", "fruit", "dairy", "aldi", "lidl", "kroger", "whole foods", "trader joe", "food lion", "publix", "safeway", "albertsons", "meijer", "heb", "h-e-b", "instacart", "wegmans", "sprouts farmers market", "winco", "shoprite", "stop & shop", "giant food", "harris teeter", "hy-vee", "save a lot", "piggly wiggly", "tesco", "sainsbury", "asda", "morrisons", "waitrose", "carrefour", "auchan", "metro market", "rewe", "edeka", "mercadona", "dia supermarket", "coles", "woolworths", "loblaws", "sobeys", "no frills", "superstore", "costco grocery", "sam's club grocery", "walmart grocery", "target grocery"],
+    keywords: ["grocery", "groceries", "supermarket", "hypermarket", "food market", "fresh market", "milk", "bread", "eggs", "meat", "produce", "vegetables", "fruit", "dairy", "ranch", "hidden valley", "energy drink", "rockstar", "ghost energy", "aldi", "lidl", "kroger", "whole foods", "trader joe", "food lion", "publix", "safeway", "albertsons", "meijer", "heb", "h-e-b", "instacart", "wegmans", "sprouts farmers market", "winco", "shoprite", "stop & shop", "giant food", "harris teeter", "hy-vee", "save a lot", "piggly wiggly", "tesco", "sainsbury", "asda", "morrisons", "waitrose", "carrefour", "auchan", "metro market", "rewe", "edeka", "mercadona", "dia supermarket", "coles", "woolworths", "loblaws", "sobeys", "no frills", "superstore", "costco grocery", "sam's club grocery", "walmart grocery", "target grocery"],
   },
   {
     category: "Restaurants",
-    keywords: ["restaurant", "coffee", "cafe", "cafeteria", "bakery", "diner", "bar and grill", "doordash", "uber eats", "ubereats", "grubhub", "deliveroo", "just eat", "mcdonald", "burger king", "wendy", "kfc", "popeyes", "chick-fil-a", "chick fil a", "chipotle", "taco bell", "pizza hut", "dominos", "domino's", "subway", "panera", "starbucks", "dunkin", "sonic drive", "whataburger", "five guys", "little caesars", "panda express", "olive garden", "buffalo wild wings", "costa coffee", "tim hortons", "pret a manger", "nando"],
+    keywords: ["restaurant", "coffee", "cafe", "cafeteria", "bakery", "diner", "bar and grill", "wings", "wingstop", "doordash", "uber eats", "ubereats", "grubhub", "deliveroo", "just eat", "mcdonald", "burger king", "wendy", "kfc", "popeyes", "chick-fil-a", "chick fil a", "chipotle", "taco bell", "pizza hut", "dominos", "domino's", "subway", "panera", "starbucks", "dunkin", "sonic drive", "whataburger", "five guys", "little caesars", "panda express", "olive garden", "buffalo wild wings", "costa coffee", "tim hortons", "pret a manger", "nando"],
   },
   {
     category: "Transportation",
@@ -114,6 +114,10 @@ const categoryRules: Array<{ category: string; keywords: string[] }> = [
   {
     category: "Personal Care",
     keywords: ["haircut", "salon", "barber", "nails", "spa", "beauty", "cosmetics", "makeup", "skincare", "gym", "fitness", "planet fitness", "la fitness", "anytime fitness", "sephora", "ulta", "bath & body works", "body shop"],
+  },
+  {
+    category: "Tobacco",
+    keywords: ["tobacco", "cigarette", "cigarettes", "cigar", "cigarillo", "vape", "nicotine", "blk grape", "blk grap", "blk berry"],
   },
   {
     category: "Shopping",
