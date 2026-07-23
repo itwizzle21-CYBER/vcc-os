@@ -244,6 +244,22 @@ export default function Spreadsheet({
         if (rowId && columnKey) commitCell(rowId, columnKey, currentValue);
         setEditingCell(null);
         moveFocus(Math.min(lastRow, rowIndex + 1), columnIndex);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        if (rowId && columnKey) commitCell(rowId, columnKey, currentValue);
+        moveFocus(rowIndex, Math.min(lastColumn, columnIndex + 1));
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        if (rowId && columnKey) commitCell(rowId, columnKey, currentValue);
+        moveFocus(rowIndex, Math.max(0, columnIndex - 1));
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (rowId && columnKey) commitCell(rowId, columnKey, currentValue);
+        moveFocus(Math.min(lastRow, rowIndex + 1), columnIndex);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (rowId && columnKey) commitCell(rowId, columnKey, currentValue);
+        moveFocus(Math.max(0, rowIndex - 1), columnIndex);
       } else if (event.key === "Tab" && rowId && columnKey) {
         commitCell(rowId, columnKey, currentValue);
         setEditingCell(null);
@@ -335,7 +351,7 @@ export default function Spreadsheet({
         {validationMessage && <p className="table-validation" role="alert">{validationMessage}</p>}
       </div>
 
-      <p id={keyboardHelpId} className="sr-only">Use arrow keys to select cells. Start typing to replace a selected text cell. Press Delete or Backspace to clear it, or Enter or F2 to edit the existing value.</p>
+      <p id={keyboardHelpId} className="sr-only">Use arrow keys to move between cells, including while editing. Start typing to replace a selected text cell. Press Delete or Backspace to clear it, or Enter or F2 to edit the existing value.</p>
       <p className="sr-only" role="status" aria-live="polite">{cellStatus}</p>
 
       <div className="table-wrap" ref={tableRef} onPointerDownCapture={commitFocusedCell}>

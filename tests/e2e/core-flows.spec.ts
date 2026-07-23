@@ -408,7 +408,6 @@ test("keeps spreadsheet cells ready for immediate desktop typing and keyboard na
   await page.keyboard.type("x");
   await expect(description).toHaveValue("x");
   await expect(descriptionCell).toHaveClass(/cell-editing/);
-  await page.keyboard.press("Escape");
 
   await page.keyboard.press("ArrowRight");
   const type = page.locator('select[data-column-key="type"]').first();
