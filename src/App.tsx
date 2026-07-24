@@ -705,6 +705,19 @@ function TransactionsPage({
           <em>{categoryFilter === "all" ? "All categories" : categoryFilter}</em>
           <em>{recurringCount} recurring</em>
         </div>
+        <div className="transactions-period-section" aria-labelledby="spending-period-title">
+          <div className="spending-period-heading">
+            <div>
+              <p className="eyebrow">Spending by period</p>
+              <h2 id="spending-period-title">Know exactly when the money was spent</h2>
+            </div>
+            <span>Expenses only · calendar periods</span>
+          </div>
+          <div className="spending-period-groups">
+            <SpendingPeriodComparison label="Week to week" currentLabel="This week" previousLabel="Last week" current={thisWeekSpending} previous={lastWeekSpending} onCurrentClick={() => setDateFilter("week")} onPreviousClick={() => setDateFilter("lastweek")} />
+            <SpendingPeriodComparison label="Month to month" currentLabel="This month" previousLabel="Last month" current={thisMonthSpending} previous={lastMonthSpending} onCurrentClick={() => setDateFilter("month")} onPreviousClick={() => setDateFilter("lastmonth")} />
+          </div>
+        </div>
       </section>
 
       <Spreadsheet
@@ -719,20 +732,6 @@ function TransactionsPage({
         addLabel="Add Transaction"
       />
       {transferMessage && <p className="table-validation" role="alert">{transferMessage}</p>}
-
-      <section className="spending-period-panel" aria-labelledby="spending-period-title">
-        <div className="spending-period-heading">
-          <div>
-            <p className="eyebrow">Spending by period</p>
-            <h2 id="spending-period-title">Know exactly when the money was spent</h2>
-          </div>
-          <span>Expenses only · calendar periods</span>
-        </div>
-        <div className="spending-period-groups">
-          <SpendingPeriodComparison label="Week to week" currentLabel="This week" previousLabel="Last week" current={thisWeekSpending} previous={lastWeekSpending} onCurrentClick={() => setDateFilter("week")} onPreviousClick={() => setDateFilter("lastweek")} />
-          <SpendingPeriodComparison label="Month to month" currentLabel="This month" previousLabel="Last month" current={thisMonthSpending} previous={lastMonthSpending} onCurrentClick={() => setDateFilter("month")} onPreviousClick={() => setDateFilter("lastmonth")} />
-        </div>
-      </section>
 
       <section className="transactions-insight-grid">
         <article className="panel transaction-flow-card">

@@ -311,6 +311,14 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   await page.getByRole("textbox", { name: "Search VCC OS" }).fill("Goals");
   await expect(page.locator(".search-results").getByRole("link", { name: /Goals/ }).first()).toBeVisible();
 
+  await page.goto("/transactions");
+  const transactionControl = page.locator(".transactions-command-panel");
+  await expect(transactionControl.getByRole("heading", { name: "Know exactly when the money was spent" })).toBeVisible();
+  await expect(transactionControl.locator(".spending-period-group")).toHaveCount(2);
+  await expect(page.locator(".spending-period-panel")).toHaveCount(0);
+  await transactionControl.getByRole("button", { name: /^Last month/ }).click();
+  await expect(page.getByRole("combobox", { name: "Transaction date range" })).toHaveValue("lastmonth");
+
   await page.goto("/reports");
   await page.getByRole("button", { name: "Monthly" }).click();
   await expect(page.getByRole("button", { name: "Monthly" })).toHaveAttribute("aria-pressed", "true");

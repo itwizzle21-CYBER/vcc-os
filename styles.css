@@ -3095,14 +3095,11 @@ td textarea[readonly] {
   color: #ff6666;
 }
 
-.spending-period-panel {
+.transactions-period-section {
   display: grid;
   gap: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 0.95rem;
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
-  box-shadow: var(--shadow-raised);
-  padding: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
 }
 
 .spending-period-heading {
