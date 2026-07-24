@@ -397,9 +397,8 @@ test("applies cash-on-hand income to Money Snapshot and keeps dropdown choices r
   await expect(moneySnapshot).toContainText("Cash on Hand$125.00");
   await expect(moneySnapshot).toContainText("Weekly Income$1,325.00");
   await expect(moneySnapshot).toContainText("Week Net Impact$0.00");
-  await expect(moneySnapshot).toContainText("Protected Savings$12,800.00");
   await expect(moneySnapshot).toContainText("Borrowed Money$1,700.00");
-  await expect(moneySnapshot).not.toContainText("Week Spending");
+  await expect(moneySnapshot).not.toContainText(/Week Spending|Protected Savings/);
 });
 
 test("keeps spreadsheet cells ready for immediate desktop typing and keyboard navigation", async ({ page }) => {

@@ -58,7 +58,6 @@ export default function Dashboard({
         ["Cash on Hand", formatExactCurrency(financialState.cashOnHand)],
         ["Weekly Income", formatExactCurrency(financialState.weeklyIncome)],
         ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
-        ["Protected Savings", formatExactCurrency(financialState.protectedSavings)],
         ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
       ],
     },
