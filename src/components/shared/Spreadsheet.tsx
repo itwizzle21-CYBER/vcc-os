@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SectionConfig, SectionKey, SpreadsheetRow } from "../../lib/types/app";
 import { formatCurrency } from "../../lib/calculations/currency";
@@ -43,6 +43,7 @@ export default function Spreadsheet({
   const [editingCell, setEditingCell] = useState<CellAddress | null>(null);
   const [cellStatus, setCellStatus] = useState("");
   const keyboardHelpId = `${config.key}-spreadsheet-keyboard-help`;
+  const activeSort = parseSort(sortBy);
   const tableRef = useRef<HTMLDivElement>(null);
   const activeCellRef = useRef<{ rowId: string; columnKey: string; value: string } | null>(null);
   const pendingNewRowFocusRef = useRef("");
@@ -73,8 +74,12 @@ export default function Spreadsheet({
           Object.values(row.cells).some((value) => String(value || "").toLowerCase().includes(search.toLowerCase()))
         )
       : filled;
-    const sorted = sortBy
-      ? [...searched].sort((a, b) => String(a.cells[sortBy] || "").localeCompare(String(b.cells[sortBy] || ""), undefined, { numeric: true }))
+    const { columnKey: sortColumnKey, direction: sortDirection } = parseSort(sortBy);
+    const sorted = sortColumnKey
+      ? [...searched].sort((a, b) => {
+          const result = compareCellValues(a.cells[sortColumnKey], b.cells[sortColumnKey]);
+          return sortDirection === "descending" ? -result : result;
+        })
       : searched;
     const visibleBlanks = search.trim() ? blanks.filter((row) => row.id === newRowId) : blanks;
     return [...sorted, ...visibleBlanks];
@@ -218,6 +223,17 @@ export default function Spreadsheet({
     onResetSection(config.key);
   }
 
+  function changeSort(columnKey: string) {
+    const nextSort = nextSortValue(sortBy, columnKey);
+    onSortChange(config.key, nextSort);
+    const next = parseSort(nextSort);
+    setCellStatus(
+      next.columnKey
+        ? `${columnLabel(columnKey)} sorted ${next.direction}.`
+        : `${columnLabel(columnKey)} sorting cleared.`
+    );
+  }
+
   function moveFocus(rowIndex: number, columnIndex: number) {
     const next = tableRef.current?.querySelector<HTMLElement>(
       `[data-row-index="${rowIndex}"][data-column-index="${columnIndex}"]`
@@ -329,16 +345,6 @@ export default function Spreadsheet({
         </div>
         <div className="toolbar-controls">
           <label>
-            <select aria-label={`Sort ${config.title}`} value={sortBy || ""} onChange={(event) => onSortChange(config.key, event.target.value)}>
-              <option value="">Sort by: None</option>
-              {config.columns.map((column) => (
-                <option key={column.key} value={column.key}>
-                  Sort by: {column.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
             <BufferedTextInput aria-label={`Search ${config.title} rows`} value={search} onValueChange={setSearch} placeholder={`Search ${config.title} rows`} />
           </label>
           <button type="button" onClick={addRow}>
@@ -359,9 +365,33 @@ export default function Spreadsheet({
           <thead>
             <tr>
               <th className="row-action-heading">Actions</th>
-              {config.columns.map((column) => (
-                <th key={column.key}>{column.label}</th>
-              ))}
+              {config.columns.map((column) => {
+                const isActive = activeSort.columnKey === column.key;
+                const ariaSort = isActive ? activeSort.direction : "none";
+                const nextAction = !isActive
+                  ? "sort ascending"
+                  : activeSort.direction === "ascending"
+                    ? "sort descending"
+                    : "clear sorting";
+                return (
+                  <th key={column.key} aria-sort={ariaSort}>
+                    <button
+                      type="button"
+                      className={`column-sort-button ${isActive ? "active" : ""}`}
+                      aria-label={`${column.label}: ${nextAction}`}
+                      title={`${column.label}: ${nextAction}`}
+                      onClick={() => changeSort(column.key)}
+                    >
+                      <span>{column.label}</span>
+                      {isActive
+                        ? activeSort.direction === "ascending"
+                          ? <ArrowUp aria-hidden="true" size={14} />
+                          : <ArrowDown aria-hidden="true" size={14} />
+                        : <ArrowUpDown aria-hidden="true" size={14} />}
+                    </button>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -518,6 +548,42 @@ export default function Spreadsheet({
 
 function cellMatches(cell: CellAddress | null, rowId: string, columnKey: string): boolean {
   return cell?.rowId === rowId && cell.columnKey === columnKey;
+}
+
+type SortDirection = "ascending" | "descending";
+
+export function parseSort(sortBy?: string): { columnKey: string; direction: SortDirection } {
+  if (!sortBy) return { columnKey: "", direction: "ascending" };
+  return sortBy.startsWith("-")
+    ? { columnKey: sortBy.slice(1), direction: "descending" }
+    : { columnKey: sortBy, direction: "ascending" };
+}
+
+export function nextSortValue(currentSort: string | undefined, columnKey: string): string {
+  const current = parseSort(currentSort);
+  if (current.columnKey !== columnKey) return columnKey;
+  if (current.direction === "ascending") return `-${columnKey}`;
+  return "";
+}
+
+export function compareCellValues(left: string | undefined, right: string | undefined): number {
+  const leftValue = String(left || "").trim();
+  const rightValue = String(right || "").trim();
+  if (isNumericCellValue(leftValue) && isNumericCellValue(rightValue)) {
+    return numericCellValue(leftValue) - numericCellValue(rightValue);
+  }
+  return leftValue.localeCompare(rightValue, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function isNumericCellValue(value: string): boolean {
+  return /^[-+]?\s*[$€£]?\s*\d[\d,]*(?:\.\d+)?%?$/.test(value);
+}
+
+function numericCellValue(value: string): number {
+  return Number(value.replace(/[$€£,%\s]/g, ""));
 }
 
 function billStatusValue(value: string): "paid" | "unpaid" | "overdue" {
