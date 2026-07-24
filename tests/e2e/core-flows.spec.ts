@@ -238,7 +238,7 @@ test("loads every application page without runtime or heading-structure failures
 test("keeps rejected duplicate inventory edits and blank currency cells consistent", async ({ page }) => {
   await page.goto("/inventory");
   await page.getByRole("button", { name: "Add Item" }).click();
-  const newItem = page.locator('input[aria-label^="Item, Inventory row"]').last();
+  const newItem = page.locator('textarea[aria-label^="Item, Inventory row"]').last();
   await newItem.fill("Milk");
   await page.locator("h1").click();
   await expect(page.getByRole("alert")).toContainText("already in Inventory");
@@ -290,7 +290,7 @@ test("VitaScan saves to this VCC workspace and keeps light-theme actions readabl
   await expect(viewTransactions).toHaveAttribute("href", "/transactions");
   await viewTransactions.click();
   await expect(page).toHaveURL(/127\.0\.0\.1:4173\/transactions$/);
-  await expect(page.locator('input[aria-label^="Description, Transactions row"]').last()).toHaveValue("NORTH MARKET");
+  await expect(page.locator('textarea[aria-label^="Description, Transactions row"]').last()).toHaveValue("NORTH MARKET");
 });
 
 test("exercises major navigation, filter, report, and car-loan controls", async ({ page }, testInfo) => {
@@ -399,7 +399,7 @@ test("applies cash-on-hand income to Money Snapshot and keeps dropdown choices r
 
 test("keeps spreadsheet cells ready for immediate desktop typing and keyboard navigation", async ({ page }) => {
   await page.goto("/transactions");
-  const description = page.locator('input[data-column-key="description"]').first();
+  const description = page.locator('textarea[data-column-key="description"]').first();
   const descriptionCell = description.locator("..");
 
   await description.focus();
@@ -429,7 +429,7 @@ test("keeps spreadsheet cells ready for immediate desktop typing and keyboard na
   await expect(description).toHaveValue("Edited paycheck");
 
   await page.getByRole("button", { name: "Add Transaction" }).click();
-  const newDescription = page.locator('input[data-column-key="description"]').last();
+  const newDescription = page.locator('textarea[data-column-key="description"]').last();
   await expect(newDescription).toBeFocused();
   await expect(newDescription.locator("..")).toHaveClass(/cell-editing/);
   await page.keyboard.type("Coffee");
@@ -462,8 +462,8 @@ test("updates the transaction category from completed U.S. retail descriptions",
   await page.goto("/transactions");
   await page.getByRole("button", { name: "Add Transaction" }).click();
   const row = page.locator("table tbody tr").last();
-  const description = row.locator('input[data-column-key="description"]');
-  const category = row.locator('input[data-column-key="category"]');
+  const description = row.locator('textarea[data-column-key="description"]');
+  const category = row.locator('textarea[data-column-key="category"]');
 
   await description.fill("KROGER #0456");
   await expect(category).toHaveValue("Groceries");

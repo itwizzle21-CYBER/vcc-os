@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SectionConfig, SectionKey, SpreadsheetRow } from "../../lib/types/app";
 import { formatCurrency } from "../../lib/calculations/currency";
+import BufferedTextArea from "./BufferedTextArea";
 import BufferedTextInput from "./BufferedTextInput";
 
 interface SpreadsheetProps {
@@ -150,7 +151,7 @@ export default function Spreadsheet({
   function commitFocusedCell() {
     if (typeof document === "undefined") return;
     const focused = document.activeElement;
-    if (!(focused instanceof HTMLInputElement)) return;
+    if (!(focused instanceof HTMLInputElement || focused instanceof HTMLTextAreaElement)) return;
     const rowId = focused.dataset.rowId;
     const columnKey = focused.dataset.columnKey;
     if (!rowId || !columnKey) return;
@@ -243,7 +244,7 @@ export default function Spreadsheet({
     const lastColumn = config.columns.length - 1;
     const lastRow = visibleRows.length - 1;
     const editing = Boolean(rowId && columnKey && cellMatches(editingCell, rowId, columnKey));
-    const currentValue = (event.currentTarget as HTMLInputElement | HTMLSelectElement).value;
+    const currentValue = (event.currentTarget as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value;
 
     if (editing) {
       if (event.key === "Escape") {
@@ -310,7 +311,7 @@ export default function Spreadsheet({
       if (isCellEditable(rowId, columnKey)) {
         setEditingCell({ rowId, columnKey });
         setCellStatus(`${columnLabel(columnKey)} ready to edit. Press Escape to return to cell selection.`);
-        if (event.currentTarget instanceof HTMLInputElement) {
+        if (event.currentTarget instanceof HTMLInputElement || event.currentTarget instanceof HTMLTextAreaElement) {
           const input = event.currentTarget;
           window.requestAnimationFrame(() => input.select());
         }
@@ -318,7 +319,13 @@ export default function Spreadsheet({
     } else if (event.key === "Escape") {
       (event.currentTarget as HTMLElement).blur();
     } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-      if (rowId && columnKey && isCellEditable(rowId, columnKey) && event.currentTarget instanceof HTMLInputElement && event.currentTarget.type !== "date") {
+      if (
+        rowId
+        && columnKey
+        && isCellEditable(rowId, columnKey)
+        && (event.currentTarget instanceof HTMLTextAreaElement
+          || (event.currentTarget instanceof HTMLInputElement && event.currentTarget.type !== "date"))
+      ) {
         setEditingCell({ rowId, columnKey });
         setCellStatus(`${columnLabel(columnKey)} editing.`);
         try {
@@ -499,6 +506,32 @@ export default function Spreadsheet({
                             <option value="overdue">Overdue</option>
                           </select>
                         </div>
+                      </td>
+                    );
+                  }
+                  if (!column.type) {
+                    return (
+                      <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key, "wrapping-text-cell")}>
+                        <BufferedTextArea
+                          rows={1}
+                          data-row-index={rowIndex}
+                          data-column-index={columnIndex}
+                          data-row-id={row.id}
+                          data-column-key={column.key}
+                          value={value}
+                          readOnly={readOnly}
+                          aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
+                          aria-readonly={readOnly}
+                          delay={320}
+                          onPointerDown={() => beginPointerEdit(row.id, column.key)}
+                          onValueFocus={(currentValue) => handleCellFocus(row.id, column.key, currentValue, rowIndex, columnIndex)}
+                          onValueChange={(nextValue) => updateCell(row.id, column.key, nextValue)}
+                          onValueBlur={() => {
+                            activeCellRef.current = null;
+                            setEditingCell(null);
+                          }}
+                          onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
+                        />
                       </td>
                     );
                   }

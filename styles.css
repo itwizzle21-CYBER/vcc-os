@@ -2399,6 +2399,7 @@ td {
 }
 
 td input,
+td textarea,
 td select {
   width: 100%;
   min-width: 8rem;
@@ -2408,6 +2409,16 @@ td select {
   color: var(--text);
   padding: var(--cell-pad);
   outline: none;
+}
+
+td textarea {
+  min-height: 2.45rem;
+  field-sizing: content;
+  resize: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+  white-space: pre-wrap;
 }
 
 td select {
@@ -2421,6 +2432,7 @@ td select {
 }
 
 .spreadsheet-panel td.cell-selected:not(.cell-editing) input,
+.spreadsheet-panel td.cell-selected:not(.cell-editing) textarea,
 .spreadsheet-panel td.cell-selected:not(.cell-editing) select {
   caret-color: transparent;
 }
@@ -2431,11 +2443,13 @@ td select {
 }
 
 .spreadsheet-panel td.cell-editing input,
+.spreadsheet-panel td.cell-editing textarea,
 .spreadsheet-panel td.cell-editing select {
   caret-color: auto;
 }
 
 td input:focus,
+td textarea:focus,
 td select:focus {
   border-color: var(--accent);
   background: var(--accent-soft);
@@ -2474,7 +2488,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   opacity: 0.82;
 }
 
-td input[readonly] {
+td input[readonly],
+td textarea[readonly] {
   color: var(--muted);
 }
 
@@ -7293,6 +7308,7 @@ td input:focus {
 }
 
 .reference-shell td input,
+.reference-shell td textarea,
 .reference-shell td select {
   min-height: 2rem;
   border: 0;
@@ -7492,6 +7508,7 @@ td input:focus {
   }
 
   .reference-shell .spreadsheet-panel td input,
+  .reference-shell .spreadsheet-panel td textarea,
   .reference-shell .money-simple-inputs td input {
     min-width: 0;
   }
