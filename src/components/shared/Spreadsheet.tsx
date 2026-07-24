@@ -88,10 +88,6 @@ export default function Spreadsheet({
   useEffect(() => {
     const rowId = pendingNewRowFocusRef.current;
     if (!rowId) return;
-    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-      pendingNewRowFocusRef.current = "";
-      return;
-    }
     const columnKey = editableColumnKeys[0];
     if (!columnKey) return;
     const input = tableRef.current?.querySelector<HTMLElement>(
