@@ -131,6 +131,7 @@ describe("savings transfer engine", () => {
     expect(next.sections.money.find((row) => row.id === "checking")?.cells.amount).toBe("60.00");
     expect(next.sections.money.find((row) => row.id === "cash-app")?.cells.amount).toBe("65.00");
     expect(next.sections.transactions[0].cells).toMatchObject({
+      category: "Transfers",
       transferSourceId: "checking",
       transferDestinationId: "cash-app",
       balanceApplied: "yes",
@@ -156,6 +157,52 @@ describe("savings transfer engine", () => {
       transferDestinationId: "travel",
       balanceApplied: "yes",
     });
+  });
+
+  it("keeps applied transactions linked by account id after the account is renamed", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "100" } }];
+    const expense = { id: "expense", cells: { type: "expense", amount: "20", date: "2026-07-22", account: "Checking" } };
+
+    const applied = syncTransactionTransfers(data, [expense]);
+    const renamed = {
+      ...applied,
+      sections: {
+        ...applied.sections,
+        money: applied.sections.money.map((row) => row.id === "checking"
+          ? { ...row, cells: { ...row.cells, label: "Primary Checking" } }
+          : row),
+      },
+    };
+    const resynced = syncTransactionTransfers(renamed, renamed.sections.transactions);
+
+    expect(resynced.sections.money[0].cells.amount).toBe("80.00");
+    expect(resynced.sections.transactions[0].cells).toMatchObject({
+      account: "Primary Checking",
+      balanceEndpointId: "checking",
+    });
+  });
+
+  it("clears transfer-only fields when a transaction changes to an expense", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "100" } }];
+    data.sections.savings = [{ id: "vault", cells: { name: "Emergency", balance: "0" } }];
+    const transfer = { id: "move", cells: { type: "transfer", amount: "25", date: "2026-07-22", account: "Checking", transferDestination: "Emergency" } };
+
+    const applied = syncTransactionTransfers(data, [transfer]);
+    const changed = syncTransactionTransfers(applied, [{
+      ...applied.sections.transactions[0],
+      cells: { ...applied.sections.transactions[0].cells, type: "expense", amount: "10" },
+    }]);
+
+    expect(changed.sections.money[0].cells.amount).toBe("90.00");
+    expect(changed.sections.savings[0].cells.balance).toBe("0.00");
+    expect(changed.sections.transactions[0].cells).toMatchObject({
+      type: "expense",
+      transferDestination: "",
+    });
+    expect(changed.sections.transactions[0].cells.transferSourceId).toBeUndefined();
+    expect(changed.sections.transactions[0].cells.transferDestinationId).toBeUndefined();
   });
 
   it("applies cash income and expenses to the selected account and dashboard totals", () => {

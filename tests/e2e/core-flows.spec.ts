@@ -399,7 +399,7 @@ test("applies cash-on-hand income to Money Snapshot and keeps dropdown choices r
 
   await page.goto("/");
   await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
-  const moneySnapshot = page.locator('a.dashboard-module-card[href="/money"]');
+  const moneySnapshot = page.locator(".dashboard-money-card");
   await expect(moneySnapshot).toContainText("Spendable this week");
   await expect(moneySnapshot).toContainText("Total Cash$19,605.32");
   await expect(moneySnapshot).toContainText("Cash on Hand$125.00");

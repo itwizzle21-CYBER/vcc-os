@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SectionConfig, SectionKey, SpreadsheetRow } from "../../lib/types/app";
 import { formatCurrency } from "../../lib/calculations/currency";
+import { transactionType } from "../../lib/engine/transactionEngine";
 import BufferedTextArea from "./BufferedTextArea";
 import BufferedTextInput from "./BufferedTextInput";
 
@@ -460,6 +461,9 @@ export default function Spreadsheet({
                   }
                   if (!readOnly && columnSelectOptions) {
                     const hasLegacyValue = Boolean(value) && !columnSelectOptions.some((option) => option.value === value);
+                    const transferOnlyDisabled = config.key === "transactions"
+                      && column.key === "transferDestination"
+                      && transactionType(row) !== "transfer";
                     return (
                       <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key)}>
                         <select
@@ -468,14 +472,16 @@ export default function Spreadsheet({
                           data-row-id={row.id}
                           data-column-key={column.key}
                           value={value}
+                          disabled={transferOnlyDisabled}
                           aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
+                          aria-description={transferOnlyDisabled ? "Available when transaction type is Transfer." : undefined}
                           onPointerDown={() => beginPointerEdit(row.id, column.key)}
                           onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value, rowIndex, columnIndex)}
                           onChange={(event) => updateCell(row.id, column.key, event.target.value)}
                           onBlur={() => setEditingCell(null)}
                           onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
                         >
-                          <option value="">Select {column.label.toLowerCase()}</option>
+                          <option value="">{transferOnlyDisabled ? "Transfer transactions only" : `Select ${column.label.toLowerCase()}`}</option>
                           {hasLegacyValue && <option value={value}>{value}</option>}
                           {columnSelectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                         </select>

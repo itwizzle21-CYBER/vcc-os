@@ -89,10 +89,11 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
     const type = transactionType(row);
 
     if (type === "income" || type === "expense") {
+      const transactionRow = stripTransferFields(cleanRow);
       const accountValue = row.cells.account?.trim();
       const amount = Math.abs(toNumber(row.cells.amount));
       const date = row.cells.date?.trim();
-      if (!accountValue || !amount || !date) return cleanRow;
+      if (!accountValue || !amount || !date) return transactionRow;
       const endpoint = resolveEndpoint(endpointOptions, accountValue, row.cells.balanceEndpointId);
       if (!endpoint) throw new Error("Choose a valid account or savings vault.");
       if (!isValidIsoDate(date)) throw new Error("Choose a valid transaction date.");
@@ -101,9 +102,9 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
       adjustEndpointBalance(endpoint.id, type === "income" ? amount : -amount, moneyBalances, savingsBalances);
       if (endpoint.kind === "money") materializedMoneyIds.add(endpoint.id);
       return {
-        ...cleanRow,
+        ...transactionRow,
         cells: {
-          ...cleanRow.cells,
+          ...transactionRow.cells,
           type,
           amount: currencyValue(type === "income" ? amount : -amount),
           account: endpoint.value,
@@ -148,7 +149,7 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
         description: descriptionWasGenerated ? generatedDescription : cleanRow.cells.description,
         transferDescriptionApplied: descriptionWasGenerated ? "yes" : "",
         type: "transfer",
-        category: "Savings",
+        category: source.kind === "money" && destination.kind === "money" ? "Transfers" : "Savings",
         amount: currencyValue(-amount),
         account: source.value,
         transferDestination: destination.value,
@@ -229,11 +230,9 @@ export function applySavingsTransfer(data: AppData, input: SavingsTransferInput)
 }
 
 function resolveEndpoint(options: TransactionEndpointOption[], value: string, id?: string): TransactionEndpointOption | undefined {
-  if (id) {
-    const byId = options.find((option) => option.id === id);
-    if (byId && byId.value === value) return byId;
-  }
-  return options.find((option) => normalizeEndpointLabel(option.value) === normalizeEndpointLabel(value));
+  const byValue = options.find((option) => normalizeEndpointLabel(option.value) === normalizeEndpointLabel(value));
+  if (byValue) return byValue;
+  return id ? options.find((option) => option.id === id) : undefined;
 }
 
 function endpointBalance(option: TransactionEndpointOption, moneyBalances: Map<string, number>, savingsBalances: Map<string, number>): number {
@@ -256,6 +255,15 @@ function stripEditorApplication(row: SpreadsheetRow): SpreadsheetRow {
   delete cells.transferDestinationId;
   delete cells.balanceEndpointId;
   delete cells.balanceEffect;
+  return { ...row, cells };
+}
+
+function stripTransferFields(row: SpreadsheetRow): SpreadsheetRow {
+  const cells: Record<string, string> = { ...row.cells, transferDestination: "" };
+  delete cells.transferSourceId;
+  delete cells.transferDestinationId;
+  delete cells.transferDescriptionApplied;
+  delete cells.transferValidation;
   return { ...row, cells };
 }
 
