@@ -116,6 +116,48 @@ describe("savings transfer engine", () => {
     expect(next.sections.money.find((row) => row.cells.label === "Apple Cash")?.cells.amount).toBe("20.00");
   });
 
+  it("moves money between two Money Snapshot accounts", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      { id: "checking", cells: { label: "Checking", section: "cash", amount: "100" } },
+      { id: "cash-app", cells: { label: "Cash App", section: "cash", amount: "25" } },
+    ];
+
+    const next = syncTransactionTransfers(data, [{
+      id: "account-transfer",
+      cells: { type: "transfer", amount: "40", date: "2026-07-22", account: "Checking", transferDestination: "Cash App" },
+    }]);
+
+    expect(next.sections.money.find((row) => row.id === "checking")?.cells.amount).toBe("60.00");
+    expect(next.sections.money.find((row) => row.id === "cash-app")?.cells.amount).toBe("65.00");
+    expect(next.sections.transactions[0].cells).toMatchObject({
+      transferSourceId: "checking",
+      transferDestinationId: "cash-app",
+      balanceApplied: "yes",
+    });
+  });
+
+  it("moves money between two savings vaults", () => {
+    const data = createZeroData();
+    data.sections.savings = [
+      { id: "emergency", cells: { name: "Emergency", balance: "100" } },
+      { id: "travel", cells: { name: "Travel", balance: "25" } },
+    ];
+
+    const next = syncTransactionTransfers(data, [{
+      id: "vault-transfer",
+      cells: { type: "transfer", amount: "30", date: "2026-07-22", account: "Emergency", transferDestination: "Travel" },
+    }]);
+
+    expect(next.sections.savings.find((row) => row.id === "emergency")?.cells.balance).toBe("70.00");
+    expect(next.sections.savings.find((row) => row.id === "travel")?.cells.balance).toBe("55.00");
+    expect(next.sections.transactions[0].cells).toMatchObject({
+      transferSourceId: "emergency",
+      transferDestinationId: "travel",
+      balanceApplied: "yes",
+    });
+  });
+
   it("applies cash income and expenses to the selected account and dashboard totals", () => {
     const data = createZeroData();
     const today = new Date();

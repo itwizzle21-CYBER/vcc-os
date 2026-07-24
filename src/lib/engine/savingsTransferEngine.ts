@@ -130,9 +130,6 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
     if (source.id === destination.id && source.kind === destination.kind) {
       return withTransferValidation(cleanRow, "Choose two different places for this transfer.");
     }
-    if (source.kind === destination.kind) {
-      return withTransferValidation(cleanRow, "Choose one Money Snapshot account and one savings vault.");
-    }
     if (!isValidIsoDate(date)) throw new Error("Choose a valid transfer date.");
     const sourceBalance = endpointBalance(source, moneyBalances, savingsBalances);
     if (amount > sourceBalance) throw new Error(`This transfer exceeds the ${endpointName(source)} balance.`);
