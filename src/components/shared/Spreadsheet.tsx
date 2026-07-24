@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { SectionConfig, SectionKey, SpreadsheetRow } from "../../lib/types/app";
 import { formatCurrency } from "../../lib/calculations/currency";
 import { transactionType } from "../../lib/engine/transactionEngine";
@@ -18,6 +18,8 @@ interface SpreadsheetProps {
   selectOptions?: Partial<Record<string, Array<{ value: string; label: string }>>>;
   preventDuplicateKey?: string;
   addLabel?: string;
+  toolbarContent?: ReactNode;
+  hideSearch?: boolean;
 }
 
 interface CellAddress {
@@ -37,6 +39,8 @@ export default function Spreadsheet({
   selectOptions,
   preventDuplicateKey,
   addLabel = "Add Row",
+  toolbarContent,
+  hideSearch = false,
 }: SpreadsheetProps) {
   const [search, setSearch] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
@@ -348,9 +352,12 @@ export default function Spreadsheet({
           <h2>{config.title}</h2>
         </div>
         <div className="toolbar-controls">
-          <label>
-            <BufferedTextInput aria-label={`Search ${config.title} rows`} value={search} onValueChange={setSearch} placeholder={`Search ${config.title} rows`} />
-          </label>
+          {toolbarContent}
+          {!hideSearch && (
+            <label>
+              <BufferedTextInput aria-label={`Search ${config.title} rows`} value={search} onValueChange={setSearch} placeholder={`Search ${config.title} rows`} />
+            </label>
+          )}
           <button type="button" onClick={addRow}>
             {addLabel}
           </button>

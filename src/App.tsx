@@ -201,7 +201,17 @@ export default function App() {
     updateData(section === "transactions" ? syncTransactionTransfers(data, resetData.sections.transactions) : resetData);
   }
 
-  if (path === "/vitascan") return <Suspense fallback={<main className="vitascan-loading" role="status">Opening VitaScan…</main>}><VitaScan data={data} onChange={updateData} /><CloudSyncControl sync={cloudSync}/></Suspense>;
+  if (path === "/vitascan") return (
+    <Suspense fallback={(
+      <main className="vitascan-loading" role="status">
+        <h1 className="sr-only">VitaScan</h1>
+        <span>Opening VitaScan…</span>
+      </main>
+    )}>
+      <VitaScan data={data} onChange={updateData} />
+      <CloudSyncControl sync={cloudSync}/>
+    </Suspense>
+  );
 
   return (
     <>
@@ -689,44 +699,6 @@ function TransactionsPage({
           <p className="eyebrow">Transactions Control</p>
           <h2>Track every dollar in and out</h2>
         </div>
-        <div className="transactions-filter-row">
-          <label className="transactions-search">
-            <span>Search transactions</span>
-            <BufferedTextInput aria-label="Search transactions" value={transactionSearch} onValueChange={setTransactionSearch} placeholder="Search descriptions, categories, accounts" />
-          </label>
-          <div className="transactions-filter-controls">
-            <label>
-              <span>Worldwide Category</span>
-              <select aria-label="Transaction category" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-                <option value="all">All Categories</option>
-                {worldwideTransactionCategories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Type</span>
-              <select aria-label="Transaction type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-                <option value="all">All Types</option>
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-                <option value="transfer">Transfer</option>
-              </select>
-            </label>
-            <label>
-              <span>Date</span>
-              <select aria-label="Transaction date range" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
-                <option value="all">All Time</option>
-                <option value="week">This Week</option>
-                <option value="lastweek">Last Week</option>
-                <option value="month">This Month</option>
-                <option value="lastmonth">Last Month</option>
-              </select>
-            </label>
-          </div>
-        </div>
         <div className="transactions-inline-stats">
           <span>{visibleFilledRows.length} transactions</span>
           <strong className="income">+{formatCurrency(incomeTotal)}</strong>
@@ -761,6 +733,45 @@ function TransactionsPage({
         getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
         selectOptions={transactionSelectOptions}
         addLabel="Add Transaction"
+        hideSearch
+        toolbarContent={(
+          <div className="transactions-table-filters" aria-label="Transaction filters">
+            <label className="transactions-table-search">
+              <span className="sr-only">Search transactions</span>
+              <BufferedTextInput aria-label="Search transactions" value={transactionSearch} onValueChange={setTransactionSearch} placeholder="Search transactions" />
+            </label>
+            <label>
+              <span className="sr-only">Worldwide Category</span>
+              <select aria-label="Transaction category" title="Worldwide Category" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                <option value="all">All Categories</option>
+                {worldwideTransactionCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="sr-only">Type</span>
+              <select aria-label="Transaction type" title="Type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+                <option value="all">All Types</option>
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+                <option value="transfer">Transfer</option>
+              </select>
+            </label>
+            <label>
+              <span className="sr-only">Date</span>
+              <select aria-label="Transaction date range" title="Date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
+                <option value="all">All Time</option>
+                <option value="week">This Week</option>
+                <option value="lastweek">Last Week</option>
+                <option value="month">This Month</option>
+                <option value="lastmonth">Last Month</option>
+              </select>
+            </label>
+          </div>
+        )}
       />
       {transferMessage && <p className="table-validation" role="alert">{transferMessage}</p>}
 

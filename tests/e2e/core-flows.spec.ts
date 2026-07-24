@@ -33,7 +33,14 @@ test("dashboard exposes trustworthy decisions, metrics, and module routes", asyn
   await expect(page.getByRole("heading", { name: "VCC-OS Dashboard" })).toBeAttached();
   await expect(page.getByText("Recommended next move", { exact: true })).toBeVisible();
   await expect(page.getByRole("progressbar")).toHaveCount(3);
-  for (const href of ["/money", "/bills", "/inventory", "/transactions", "/savings", "/goals", "/car-payment"]) {
+  const moneyCard = page.locator(".dashboard-money-card");
+  await expect(moneyCard).toHaveCount(1);
+  await expect(moneyCard.getByRole("link", { name: "Open Money Snapshot" })).toHaveAttribute("href", "/money");
+  const accountDropdown = moneyCard.locator(".dashboard-account-dropdown");
+  await accountDropdown.locator("summary").click();
+  await expect(accountDropdown).toHaveAttribute("open", "");
+  await expect(accountDropdown.locator("dd").first()).toBeVisible();
+  for (const href of ["/bills", "/inventory", "/transactions", "/savings", "/goals", "/car-payment"]) {
     await expect(page.locator(`.dashboard-module-card[href="${href}"]`)).toHaveCount(1);
   }
 
@@ -315,7 +322,16 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   const transactionControl = page.locator(".transactions-command-panel");
   await expect(transactionControl.getByRole("heading", { name: "Know exactly when the money was spent" })).toBeVisible();
   await expect(transactionControl.locator(".spending-period-group")).toHaveCount(2);
+  await expect(transactionControl.getByRole("textbox", { name: "Search transactions" })).toHaveCount(0);
+  await expect(transactionControl.getByRole("combobox", { name: "Transaction category" })).toHaveCount(0);
   await expect(page.locator(".spending-period-panel")).toHaveCount(0);
+  const transactionToolbar = page.locator(".transactions-page .spreadsheet-toolbar");
+  const tableFilters = transactionToolbar.locator(".transactions-table-filters");
+  await expect(tableFilters.getByRole("textbox", { name: "Search transactions" })).toBeVisible();
+  await expect(tableFilters.getByRole("combobox", { name: "Transaction category" })).toBeVisible();
+  await expect(tableFilters.getByRole("combobox", { name: "Transaction type" })).toBeVisible();
+  await expect(tableFilters.getByRole("combobox", { name: "Transaction date range" })).toBeVisible();
+  expect((await transactionToolbar.boundingBox())?.height).toBeLessThanOrEqual(64);
   await transactionControl.getByRole("button", { name: /^Last month/ }).click();
   await expect(page.getByRole("combobox", { name: "Transaction date range" })).toHaveValue("lastmonth");
 

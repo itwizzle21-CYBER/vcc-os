@@ -3102,6 +3102,65 @@ td textarea[readonly] {
   gap: 0.65rem;
 }
 
+.transactions-table-filters {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 28rem;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.transactions-table-filters label {
+  min-width: 0;
+  flex: 1 1 6.5rem;
+}
+
+.transactions-table-filters .transactions-table-search {
+  flex: 1 1 6.5rem;
+}
+
+.transactions-table-filters input,
+.transactions-table-filters select {
+  width: 100%;
+  min-width: 0;
+  min-height: 1.9rem;
+}
+
+.reference-shell .transactions-page .spreadsheet-panel {
+  container-type: inline-size;
+}
+
+.reference-shell .transactions-page .spreadsheet-panel .spreadsheet-toolbar {
+  grid-template-columns: 1fr;
+}
+
+.reference-shell .transactions-page .spreadsheet-panel .toolbar-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@container (min-width: 30rem) {
+  .transactions-table-filters .transactions-table-search {
+    flex: 2 1 11rem;
+  }
+}
+
+@container (min-width: 52rem) {
+  .reference-shell .transactions-page .spreadsheet-panel .spreadsheet-toolbar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .reference-shell .transactions-page .spreadsheet-panel .toolbar-controls {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+
+  .transactions-table-filters {
+    flex-wrap: nowrap;
+  }
+}
+
 .car-payment-bill-link {
   display: flex;
   align-items: center;
