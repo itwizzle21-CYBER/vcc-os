@@ -30,7 +30,7 @@ export function eligibleDepositAccounts(data: AppData): SpreadsheetRow[] {
 
 export function depositAccountOptions(data: AppData): DepositAccountOption[] {
   const existing = eligibleDepositAccounts(data);
-  const existingLabels = new Set(existing.map((row) => normalizeAccountLabel(row.cells.label)));
+  const existingLabels = new Set(existing.map((row) => canonicalAccountLabel(row.cells.label)));
   const currentOptions = existing.map((row) => ({
     id: row.id,
     label: normalizeAccountLabel(row.cells.label) === "cashonhand" ? "Cash on Hand" : row.cells.label,
@@ -38,7 +38,7 @@ export function depositAccountOptions(data: AppData): DepositAccountOption[] {
     isNew: false,
   }));
   const suggestedOptions = suggestedAccounts
-    .filter((account) => !existingLabels.has(normalizeAccountLabel(account.label)))
+    .filter((account) => !existingLabels.has(canonicalAccountLabel(account.label)))
     .map((account) => ({ ...account, balance: 0, isNew: true }));
   return [...currentOptions, ...suggestedOptions];
 }
@@ -168,6 +168,15 @@ function createMoneyAccount(id: string, label: string): SpreadsheetRow {
 function normalizeAccountLabel(value: string | undefined): string {
   const normalized = String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   return ["cash", "cashonhand", "physicalcash", "walletcash"].includes(normalized) ? "cashonhand" : normalized;
+}
+
+function canonicalAccountLabel(value: string | undefined): string {
+  const normalized = normalizeAccountLabel(value);
+  if (["chime", "chimechecking", "chimecard", "chimedebit"].includes(normalized)) return "chime";
+  if (["applecash", "applecashcard"].includes(normalized)) return "applecash";
+  if (["wise", "wiseaccount", "wisecard"].includes(normalized)) return "wise";
+  if (["cashapp", "cashappcard"].includes(normalized)) return "cashapp";
+  return normalized;
 }
 
 function allocateBorrowedRepayments(

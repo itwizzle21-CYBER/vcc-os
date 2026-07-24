@@ -47,6 +47,22 @@ describe("connected paycheck planner", () => {
     expect(cashOptions).toEqual([{ id: "wallet", label: "Cash on Hand", balance: 40, isNew: false }]);
   });
 
+  it("links common account name variants without showing duplicate suggested accounts", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      { id: "chime-checking", cells: { label: "Chime Checking", section: "cash", amount: "125" } },
+      { id: "apple-card", cells: { label: "Apple Cash Card", section: "cash", amount: "50" } },
+    ];
+
+    const options = depositAccountOptions(data);
+    expect(options.filter((option) => option.label.toLowerCase().includes("chime"))).toEqual([
+      { id: "chime-checking", label: "Chime Checking", balance: 125, isNew: false },
+    ]);
+    expect(options.filter((option) => option.label.toLowerCase().includes("apple cash"))).toEqual([
+      { id: "apple-card", label: "Apple Cash Card", balance: 50, isNew: false },
+    ]);
+  });
+
   it("applies a sourced paycheck to one account and carries it into a savings transfer without double-counting", () => {
     const data = createZeroData();
     data.sections.money = [

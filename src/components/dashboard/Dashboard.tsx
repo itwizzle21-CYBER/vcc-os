@@ -16,12 +16,14 @@ import {
   Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import type { DepositAccountOption } from "../../lib/engine/paycheckPlannerEngine";
 import type { ActivityEvent, DecisionState, FinancialState } from "../../lib/types/app";
 
 interface DashboardProps {
   financialState: FinancialState;
   decisionState: DecisionState;
   activity: ActivityEvent[];
+  accounts: DepositAccountOption[];
 }
 
 interface DashboardModuleCardProps {
@@ -43,6 +45,7 @@ export default function Dashboard({
   financialState,
   decisionState,
   activity,
+  accounts,
 }: DashboardProps) {
   const missionIcon = iconForMission(decisionState.todayMission.href);
   const moduleCards: DashboardModuleCardProps[] = [
@@ -53,13 +56,7 @@ export default function Dashboard({
       title: "Money Snapshot",
       value: formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend)),
       detail: "Spendable this week",
-      metrics: [
-        ["Total Cash", formatExactCurrency(financialState.totalCash)],
-        ["Cash on Hand", formatExactCurrency(financialState.cashOnHand)],
-        ["Weekly Income", formatExactCurrency(financialState.weeklyIncome)],
-        ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
-        ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
-      ],
+      metrics: accounts.map((account) => [account.label, formatExactCurrency(account.balance)]),
     },
     {
       href: "/bills",

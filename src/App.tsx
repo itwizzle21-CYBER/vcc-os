@@ -45,7 +45,7 @@ import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
 import { applySavingsTransfer, syncTransactionTransfers, transactionEndpointOptions } from "./lib/engine/savingsTransferEngine";
-import { eligibleDepositAccounts } from "./lib/engine/paycheckPlannerEngine";
+import { depositAccountOptions, eligibleDepositAccounts, type DepositAccountOption } from "./lib/engine/paycheckPlannerEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, normalizeAppData, resetAllData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
 import { applyVisualSettings, getSystemTheme } from "./lib/theme/themePreference";
@@ -207,7 +207,7 @@ export default function App() {
     <>
     {path === "/" && <WelcomeTransition settings={data.settings} />}
     <AppShell currentPath={path} settings={data.settings} activeTheme={activeTheme} wallpaperPreview={wallpaperPreview} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
-      {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} activity={data.activity} />}
+      {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} activity={data.activity} accounts={depositAccountOptions(data)} />}
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
       )}
@@ -299,6 +299,7 @@ function MoneyPage({
   onChange: (data: AppData) => void;
 }) {
   const moneyRows = data.sections.money;
+  const accounts = depositAccountOptions(data);
   const spendableSafe = Math.min(financialState.spendableCash, financialState.safeToSpend);
   const moneyStats = [
     { label: "Total Cash", value: financialState.totalCash },
@@ -326,6 +327,8 @@ function MoneyPage({
         </div>
       </section>
 
+      <MoneyAccountOverview accounts={accounts} />
+
       <PaycheckPlanner data={data} onChange={onChange} showHistory={false} />
 
       <section className="money-simple-inputs">
@@ -343,6 +346,34 @@ function MoneyPage({
 
       <MoneyPaycheckHistory data={data} />
     </div>
+  );
+}
+
+function MoneyAccountOverview({ accounts }: { accounts: DepositAccountOption[] }) {
+  const connectedCount = accounts.filter((account) => !account.isNew).length;
+
+  return (
+    <section className="money-account-panel" aria-labelledby="money-accounts-title">
+      <div className="money-account-heading">
+        <div>
+          <p className="eyebrow">Linked Accounts</p>
+          <h2 id="money-accounts-title">Every account in one view</h2>
+          <p>These balances are shared with Transactions, savings transfers, and the Current Week Planner.</p>
+        </div>
+        <span>{connectedCount} with activity</span>
+      </div>
+      <div className="money-account-grid">
+        {accounts.map((account) => (
+          <article key={account.id} className={account.isNew ? "available" : "connected"}>
+            <div>
+              <strong>{account.label}</strong>
+              <small>{account.isNew ? "Ready for first transaction" : "Linked and updating"}</small>
+            </div>
+            <b>{formatCurrency(account.balance)}</b>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
