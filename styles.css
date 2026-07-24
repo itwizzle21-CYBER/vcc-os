@@ -5773,6 +5773,41 @@ td textarea[readonly] {
   gap: 0.3rem;
 }
 
+.dashboard-module-card a.dashboard-module-title {
+  text-decoration: none;
+}
+
+.dashboard-module-open {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 0.55rem;
+  color: #8e9299;
+  transition: background-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.dashboard-module-open:hover,
+.dashboard-module-card a.dashboard-module-title:hover small {
+  color: #f5f5f7;
+}
+
+.dashboard-module-open:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-module-open:active,
+.dashboard-module-card a.dashboard-module-title:active {
+  transform: scale(0.97);
+}
+
+.dashboard-module-open:focus-visible,
+.dashboard-module-card a.dashboard-module-title:focus-visible,
+.dashboard-account-dropdown summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .dashboard-module-title small,
 .dashboard-module-title em {
   color: #8e9299;
@@ -8448,6 +8483,68 @@ body {
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.dashboard-money-card {
+  align-content: start;
+}
+
+.dashboard-account-dropdown {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.65rem;
+}
+
+.dashboard-account-dropdown summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 0.5rem;
+  color: #f5f5f7;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 850;
+  list-style: none;
+  padding: 0.35rem 0.25rem;
+  transition: background-color 140ms ease, transform 140ms ease;
+}
+
+.dashboard-account-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.dashboard-account-dropdown summary:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.dashboard-account-dropdown summary:active {
+  transform: scale(0.985);
+}
+
+.dashboard-account-dropdown summary small {
+  color: #8e9299;
+  font-size: 0.74rem;
+}
+
+.dashboard-account-dropdown summary svg {
+  transition: transform 140ms ease;
+}
+
+.dashboard-account-dropdown[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.dashboard-account-dropdown > dl {
+  margin-top: 0.45rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-module-open,
+  .dashboard-module-card a.dashboard-module-title,
+  .dashboard-account-dropdown summary,
+  .dashboard-account-dropdown summary svg {
+    transition: none;
+  }
 }
 
 .dashboard-top-brand.has-profile > span {

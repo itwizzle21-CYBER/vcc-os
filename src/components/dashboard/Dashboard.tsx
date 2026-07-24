@@ -5,6 +5,7 @@ import {
   Car,
   Check,
   CheckCircle2,
+  ChevronDown,
   Circle,
   CreditCard,
   ListChecks,
@@ -34,6 +35,7 @@ interface DashboardModuleCardProps {
   value: string;
   detail: string;
   metrics: Array<[string, string]>;
+  accounts?: DepositAccountOption[];
   progress?: {
     label: string;
     value: number;
@@ -56,7 +58,14 @@ export default function Dashboard({
       title: "Money Snapshot",
       value: formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend)),
       detail: "Spendable this week",
-      metrics: accounts.map((account) => [account.label, formatExactCurrency(account.balance)]),
+      metrics: [
+        ["Total Cash", formatExactCurrency(financialState.totalCash)],
+        ["Cash on Hand", formatExactCurrency(financialState.cashOnHand)],
+        ["Weekly Income", formatExactCurrency(financialState.weeklyIncome)],
+        ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
+        ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
+      ],
+      accounts,
     },
     {
       href: "/bills",
@@ -264,18 +273,25 @@ function DashboardModuleCard({
   detail,
   metrics,
   progress,
+  accounts,
 }: DashboardModuleCardProps) {
-  return (
-    <a href={href} className="base-panel dashboard-module-card">
+  const content = (
+    <>
       <div className="dashboard-module-head">
         <span className={tone}>{icon}</span>
-        <ArrowRight size={17} aria-hidden="true" />
+        {accounts
+          ? <a className="dashboard-module-open" href={href} aria-label={`Open ${title}`}><ArrowRight size={17} aria-hidden="true" /></a>
+          : <ArrowRight size={17} aria-hidden="true" />}
       </div>
-      <div className="dashboard-module-title">
+      {accounts ? <a className="dashboard-module-title" href={href}>
         <small>{title}</small>
         <strong>{value}</strong>
         <em>{detail}</em>
-      </div>
+      </a> : <div className="dashboard-module-title">
+        <small>{title}</small>
+        <strong>{value}</strong>
+        <em>{detail}</em>
+      </div>}
       {progress && (
         <div className="dashboard-card-progress" aria-label={`${progress.label}: ${Math.round(progress.value)}%`}>
           <div>
@@ -294,7 +310,30 @@ function DashboardModuleCard({
           </div>
         ))}
       </dl>
-    </a>
+    </>
+  );
+
+  if (!accounts) return <a href={href} className="base-panel dashboard-module-card">{content}</a>;
+
+  return (
+    <article className="base-panel dashboard-module-card dashboard-money-card">
+      {content}
+      <details className="dashboard-account-dropdown">
+        <summary>
+          <span>Accounts</span>
+          <small>{accounts.length}</small>
+          <ChevronDown size={16} aria-hidden="true" />
+        </summary>
+        <dl>
+          {accounts.map((account) => (
+            <div key={account.id}>
+              <dt>{account.label}</dt>
+              <dd>{formatExactCurrency(account.balance)}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+    </article>
   );
 }
 
