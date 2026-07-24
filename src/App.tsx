@@ -633,26 +633,41 @@ function TransactionsPage({
   const [transactionSearch, setTransactionSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [accountFilter, setAccountFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [transferMessage, setTransferMessage] = useState("");
+  const transactionEndpoints = useMemo(() => transactionEndpointOptions(data), [data]);
   const transactionSelectOptions = useMemo(() => {
-    const options = transactionEndpointOptions(data).map(({ value, label }) => ({ value, label }));
+    const options = transactionEndpoints.map(({ value, label }) => ({ value, label }));
     return { account: options, transferDestination: options };
-  }, [data]);
+  }, [transactionEndpoints]);
+  const accountFilterOptions = useMemo(() => {
+    const uniqueAccounts = new Map<string, string>();
+    [
+      ...transactionEndpoints.map((option) => option.value),
+      ...data.sections.transactions.flatMap((row) => [row.cells.account, row.cells.transferDestination]),
+    ].forEach((account) => {
+      const label = account?.trim();
+      if (label) uniqueAccounts.set(label.toLowerCase(), label);
+    });
+    return [...uniqueAccounts.values()].sort((left, right) => left.localeCompare(right));
+  }, [data.sections.transactions, transactionEndpoints]);
   const transactionRows = data.sections.transactions.map(normalizeTransactionRow);
   const visibleTransactionRows = transactionRows.filter((row) => {
-    if (isBlankRow(row.cells)) return !transactionSearch.trim() && categoryFilter === "all" && typeFilter === "all" && dateFilter === "all";
+    if (isBlankRow(row.cells)) return !transactionSearch.trim() && categoryFilter === "all" && typeFilter === "all" && accountFilter === "all" && dateFilter === "all";
     const type = transactionType(row);
     const category = transactionCategory(row);
     const query = transactionSearch.trim().toLowerCase();
     const matchesCategory = categoryFilter === "all" || category.toLowerCase() === categoryFilter.toLowerCase();
     const matchesType = typeFilter === "all" || type === typeFilter;
+    const matchesAccount = accountFilter === "all" || [row.cells.account, row.cells.transferDestination]
+      .some((account) => account?.trim().toLowerCase() === accountFilter.toLowerCase());
     const matchesSearch = !query || [row.cells.description, row.cells.category, row.cells.account, row.cells.transferDestination, row.cells.notes]
       .join(" ")
       .toLowerCase()
       .includes(query);
     const matchesDate = dateFilter === "all" || transactionDateMatches(row.cells.date, dateFilter);
-    return matchesCategory && matchesType && matchesSearch && matchesDate;
+    return matchesCategory && matchesType && matchesAccount && matchesSearch && matchesDate;
   });
   const visibleTransactionIds = new Set(visibleTransactionRows.map((row) => row.id));
   const visibleFilledRows = visibleTransactionRows.filter((row) => !isBlankRow(row.cells));
@@ -706,6 +721,7 @@ function TransactionsPage({
           <em>{formatCurrency(transferTotal)} transfers</em>
           <em>Week impact {formatCurrency(financialState.transactionWeekNet)}</em>
           <em>{categoryFilter === "all" ? "All categories" : categoryFilter}</em>
+          <em>{accountFilter === "all" ? "All accounts" : accountFilter}</em>
           <em>{recurringCount} recurring</em>
         </div>
         <div className="transactions-period-section" aria-labelledby="spending-period-title">
@@ -758,6 +774,17 @@ function TransactionsPage({
                 <option value="income">Income</option>
                 <option value="expense">Expense</option>
                 <option value="transfer">Transfer</option>
+              </select>
+            </label>
+            <label>
+              <span className="sr-only">Account</span>
+              <select aria-label="Transaction account" title="Account" value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}>
+                <option value="all">All Accounts</option>
+                {accountFilterOptions.map((account) => (
+                  <option key={account} value={account}>
+                    {account}
+                  </option>
+                ))}
               </select>
             </label>
             <label>

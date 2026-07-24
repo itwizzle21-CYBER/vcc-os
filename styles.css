@@ -3146,7 +3146,7 @@ td textarea[readonly] {
   }
 }
 
-@container (min-width: 52rem) {
+@container (min-width: 60rem) {
   .reference-shell .transactions-page .spreadsheet-panel .spreadsheet-toolbar {
     grid-template-columns: auto minmax(0, 1fr);
   }

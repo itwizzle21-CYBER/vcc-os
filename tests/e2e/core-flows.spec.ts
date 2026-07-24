@@ -324,14 +324,21 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   await expect(transactionControl.locator(".spending-period-group")).toHaveCount(2);
   await expect(transactionControl.getByRole("textbox", { name: "Search transactions" })).toHaveCount(0);
   await expect(transactionControl.getByRole("combobox", { name: "Transaction category" })).toHaveCount(0);
+  await expect(transactionControl.getByRole("combobox", { name: "Transaction account" })).toHaveCount(0);
   await expect(page.locator(".spending-period-panel")).toHaveCount(0);
   const transactionToolbar = page.locator(".transactions-page .spreadsheet-toolbar");
   const tableFilters = transactionToolbar.locator(".transactions-table-filters");
   await expect(tableFilters.getByRole("textbox", { name: "Search transactions" })).toBeVisible();
   await expect(tableFilters.getByRole("combobox", { name: "Transaction category" })).toBeVisible();
   await expect(tableFilters.getByRole("combobox", { name: "Transaction type" })).toBeVisible();
+  const accountFilter = tableFilters.getByRole("combobox", { name: "Transaction account" });
+  await expect(accountFilter).toBeVisible();
   await expect(tableFilters.getByRole("combobox", { name: "Transaction date range" })).toBeVisible();
   expect((await transactionToolbar.boundingBox())?.height).toBeLessThanOrEqual(64);
+  await accountFilter.selectOption("Cash App");
+  await expect(page.locator("table tbody tr")).toHaveCount(1);
+  await expect(page.locator('select[data-column-key="account"]')).toHaveValue("Cash App");
+  await accountFilter.selectOption("all");
   await transactionControl.getByRole("button", { name: /^Last month/ }).click();
   await expect(page.getByRole("combobox", { name: "Transaction date range" })).toHaveValue("lastmonth");
 
