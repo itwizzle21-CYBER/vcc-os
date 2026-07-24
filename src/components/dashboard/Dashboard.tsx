@@ -31,7 +31,7 @@ interface DashboardModuleCardProps {
   title: string;
   value: string;
   detail: string;
-  metrics: Array<[string, string]>;
+  metrics?: Array<[string, string]>;
   progress?: {
     label: string;
     value: number;
@@ -51,17 +51,8 @@ export default function Dashboard({
       tone: "blue",
       icon: <Wallet size={22} />,
       title: "Money Snapshot",
-      value: formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend)),
-      detail: "Spendable this week",
-      metrics: [
-        ["Total Cash", formatExactCurrency(financialState.totalCash)],
-        ["Cash on Hand", formatExactCurrency(financialState.cashOnHand)],
-        ["Weekly Income", formatExactCurrency(financialState.weeklyIncome)],
-        ["Week Spending", formatDashboardSpending(financialState.weeklySpending)],
-        ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
-        ["Protected Savings", formatExactCurrency(financialState.protectedSavings)],
-        ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
-      ],
+      value: formatExactCurrency(financialState.receivedIncome),
+      detail: "All income received",
     },
     {
       href: "/bills",
@@ -291,14 +282,16 @@ function DashboardModuleCard({
           <small>{progress.detail}</small>
         </div>
       )}
-      <dl>
-        {metrics.map(([label, metric]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd>{metric}</dd>
-          </div>
-        ))}
-      </dl>
+      {metrics?.length ? (
+        <dl>
+          {metrics.map(([label, metric]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{metric}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </a>
   );
 }

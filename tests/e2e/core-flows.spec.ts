@@ -392,9 +392,9 @@ test("applies cash-on-hand income to Money Snapshot and keeps dropdown choices r
   await page.goto("/");
   await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
   const moneySnapshot = page.locator('a.dashboard-module-card[href="/money"]');
-  await expect(moneySnapshot).toContainText("Total Cash$19,605.32");
-  await expect(moneySnapshot).toContainText("Cash on Hand$125.00");
-  await expect(moneySnapshot).toContainText("Weekly Income$1,325.00");
+  await expect(moneySnapshot).toContainText("Money Snapshot$1,325.00All income received");
+  await expect(moneySnapshot.locator("dl")).toHaveCount(0);
+  await expect(moneySnapshot).not.toContainText(/Spending|Savings|Cash on Hand|Borrowed Money/);
 });
 
 test("keeps spreadsheet cells ready for immediate desktop typing and keyboard navigation", async ({ page }) => {
