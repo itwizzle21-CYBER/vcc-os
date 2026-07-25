@@ -68,6 +68,21 @@ export default function Dashboard({
       accounts,
     },
     {
+      href: "/transactions",
+      tone: "red",
+      icon: <TrendingDown size={22} />,
+      title: "Transactions",
+      value: formatDashboardSpending(financialState.monthlySpending),
+      detail: "Monthly spending",
+      metrics: [
+        ["Week Impact", formatExactCurrency(financialState.transactionWeekNet)],
+        ["Weekly Spending", formatDashboardSpending(financialState.weeklySpending)],
+        ["Monthly Spending", formatDashboardSpending(financialState.monthlySpending)],
+        ["Largest Expense", financialState.largestExpense],
+        ["Last Transaction", financialState.lastTransaction],
+      ],
+    },
+    {
       href: "/bills",
       tone: "gold",
       icon: <ReceiptText size={22} />,
@@ -93,21 +108,6 @@ export default function Dashboard({
         ["Low Stock", String(financialState.lowStock)],
         ["Buy Next", String(financialState.buyNextCount)],
         ["Refill Cost", formatWholeCurrency(financialState.estimatedRefillCost)],
-      ],
-    },
-    {
-      href: "/transactions",
-      tone: "red",
-      icon: <TrendingDown size={22} />,
-      title: "Transactions",
-      value: formatDashboardSpending(financialState.monthlySpending),
-      detail: "Monthly spending",
-      metrics: [
-        ["Week Impact", formatExactCurrency(financialState.transactionWeekNet)],
-        ["Weekly Spending", formatDashboardSpending(financialState.weeklySpending)],
-        ["Monthly Spending", formatDashboardSpending(financialState.monthlySpending)],
-        ["Largest Expense", financialState.largestExpense],
-        ["Last Transaction", financialState.lastTransaction],
       ],
     },
     {
