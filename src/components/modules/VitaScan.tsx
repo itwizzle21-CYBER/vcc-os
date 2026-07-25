@@ -55,14 +55,20 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
     const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     const appleIcon = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
     const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    const applicationName = document.querySelector<HTMLMetaElement>('meta[name="application-name"]');
+    const appleAppTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
     manifest?.setAttribute("href", "/vitascan.webmanifest");
     appleIcon?.setAttribute("href", "/icons/vitascan-apple-180.png?v=2");
     favicon?.setAttribute("href", "/icons/vitascan-android-192.png?v=2");
+    applicationName?.setAttribute("content", "VitaScan");
+    appleAppTitle?.setAttribute("content", "VitaScan");
     return () => {
       document.body.classList.remove("vitascan-body");
       manifest?.setAttribute("href", "/vcc.webmanifest");
       appleIcon?.setAttribute("href", "/icons/vcc-apple-180.png?v=1");
       favicon?.setAttribute("href", "/icons/vcc-android-192.png?v=1");
+      applicationName?.setAttribute("content", "VCC-OS");
+      appleAppTitle?.setAttribute("content", "VCC-OS");
     };
   }, []);
 
@@ -125,7 +131,6 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
         amount: signed.toFixed(2),
         date: savedDraft.date,
         account: draft.account,
-        recurring: "No",
         notes,
       },
     };

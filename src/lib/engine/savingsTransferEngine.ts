@@ -281,7 +281,9 @@ function endpointName(option: TransactionEndpointOption): string {
 }
 
 function normalizeEndpointLabel(value: string | undefined): string {
-  return String(value || "").trim().toLowerCase();
+  const normalized = String(value || "").trim().toLowerCase();
+  const compact = normalized.replace(/[^a-z0-9]/g, "");
+  return ["cash", "cashonhand", "physicalcash", "walletcash"].includes(compact) ? "cash" : normalized;
 }
 
 export function isBalanceAppliedTransaction(row: SpreadsheetRow): boolean {
@@ -305,7 +307,6 @@ function createSavingsTransferTransaction(
       amount: currencyValue(-amount),
       date,
       account: source.cells.label || "Money Snapshot account",
-      recurring: "No",
       notes: `Moved from ${source.cells.label || "Money Snapshot account"} to ${destination.cells.name || "Savings"}. Balances applied automatically.`,
       transferSourceId: source.id,
       transferDestinationId: destination.id,

@@ -124,7 +124,6 @@ export function receiptToTransaction(receipt: CarLoanReceipt): SpreadsheetRow {
       amount: String(receipt.totalPaid),
       date: receipt.paidDate,
       account: receipt.paymentMethod,
-      recurring: "No",
       notes: `Confirmed dealer receipt ${receipt.receiptNumber}. Car payment recorded from verified evidence.`,
       principalAmount: String(value(receipt.principalPaid)),
       interestAmount: String(value(receipt.interestPaid)),

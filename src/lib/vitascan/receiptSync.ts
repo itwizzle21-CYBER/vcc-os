@@ -25,7 +25,6 @@ export function vitaReceiptToTransaction(receipt: VitaReceiptRecord): Spreadshee
       amount: signedAmount.toFixed(2),
       date: receipt.occurred_on,
       account: receipt.account_name,
-      recurring: "No",
       notes: `VitaScan${receipt.reference_code ? ` - Ref ${receipt.reference_code}` : ""}${receipt.raw_text ? `\nFull scan:\n${receipt.raw_text}` : ""}`,
     },
   };

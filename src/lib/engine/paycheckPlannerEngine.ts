@@ -13,7 +13,7 @@ const suggestedAccounts = [
   { id: "money-account-apple-cash", label: "Apple Cash" },
   { id: "money-account-wise", label: "Wise" },
   { id: "money-account-cash-app", label: "Cash App" },
-  { id: "money-account-cash", label: "Cash on Hand" },
+  { id: "money-account-cash", label: "Cash" },
 ] as const;
 
 export function eligibleDepositAccounts(data: AppData): SpreadsheetRow[] {
@@ -33,7 +33,7 @@ export function depositAccountOptions(data: AppData): DepositAccountOption[] {
   const existingLabels = new Set(existing.map((row) => canonicalAccountLabel(row.cells.label)));
   const currentOptions = existing.map((row) => ({
     id: row.id,
-    label: normalizeAccountLabel(row.cells.label) === "cashonhand" ? "Cash on Hand" : row.cells.label,
+    label: displayAccountLabel(row.cells.label),
     balance: toNumber(row.cells.amount),
     isNew: false,
   }));
@@ -136,7 +136,6 @@ function paycheckTransaction(history: PaycheckHistoryRow, depositAccount: Spread
       amount: currencyValue(toNumber(history.income)),
       date: history.payDate,
       account: depositAccount.cells.label || "Money Snapshot account",
-      recurring: "No",
       notes: repaymentTotal > 0
         ? `${currencyValue(repaymentTotal)} in SpotMe/MyPay repayments; ${currencyValue(toNumber(history.remaining))} deposited and applied to the account balance.`
         : `${currencyValue(toNumber(history.remaining))} deposited and applied to the account balance.`,
@@ -168,6 +167,11 @@ function createMoneyAccount(id: string, label: string): SpreadsheetRow {
 function normalizeAccountLabel(value: string | undefined): string {
   const normalized = String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   return ["cash", "cashonhand", "physicalcash", "walletcash"].includes(normalized) ? "cashonhand" : normalized;
+}
+
+export function displayAccountLabel(value: string | undefined): string {
+  const label = String(value || "").trim();
+  return normalizeAccountLabel(label) === "cashonhand" ? "Cash" : label;
 }
 
 function canonicalAccountLabel(value: string | undefined): string {

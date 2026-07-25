@@ -17,7 +17,7 @@ describe("connected paycheck planner", () => {
 
   it("offers common deposit accounts and creates the selected Money Snapshot account on lock", () => {
     const data = createZeroData();
-    expect(depositAccountOptions(data).map((option) => option.label)).toEqual(["Chime", "Apple Cash", "Wise", "Cash App", "Cash on Hand"]);
+    expect(depositAccountOptions(data).map((option) => option.label)).toEqual(["Chime", "Apple Cash", "Wise", "Cash App", "Cash"]);
     data.paycheckPlanner = {
       incomeSource: "Client work",
       depositAccountId: "money-account-wise",
@@ -39,12 +39,12 @@ describe("connected paycheck planner", () => {
     expect(next.sections.transactions[0].cells.account).toBe("Wise");
   });
 
-  it("treats an existing Cash row as Cash on Hand without offering a duplicate", () => {
+  it("treats an existing Cash row as Cash without offering a duplicate", () => {
     const data = createZeroData();
     data.sections.money = [{ id: "wallet", cells: { label: "Cash", section: "cash", amount: "40" } }];
 
-    const cashOptions = depositAccountOptions(data).filter((option) => option.label === "Cash on Hand");
-    expect(cashOptions).toEqual([{ id: "wallet", label: "Cash on Hand", balance: 40, isNew: false }]);
+    const cashOptions = depositAccountOptions(data).filter((option) => option.label === "Cash");
+    expect(cashOptions).toEqual([{ id: "wallet", label: "Cash", balance: 40, isNew: false }]);
   });
 
   it("links common account name variants without showing duplicate suggested accounts", () => {

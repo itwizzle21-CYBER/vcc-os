@@ -111,6 +111,22 @@ test("renders an actionable not-found page for unknown routes", async ({ page })
   await expect(page.getByRole("link", { name: "Go to dashboard" })).toHaveAttribute("href", "/");
 });
 
+test("publishes VitaScan mobile install identity before the VCC app boots", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile"), "Mobile installation metadata.");
+  await page.route("**/main.tsx", (route) => route.abort());
+
+  await page.goto("/");
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/vcc.webmanifest");
+  await expect(page.locator('meta[name="application-name"]')).toHaveAttribute("content", "VCC-OS");
+
+  await page.goto("/vitascan");
+  await expect(page).toHaveTitle("VitaScan — VCC Receipt Scanner");
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/vitascan.webmanifest");
+  await expect(page.locator('meta[name="application-name"]')).toHaveAttribute("content", "VitaScan");
+  await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute("content", "VitaScan");
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", "/icons/vitascan-apple-180.png?v=2");
+});
+
 test("keeps desktop navigation labels visible and navigates correctly", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "Desktop navigation uses the mobile drawer on small screens.");
   await page.goto("/bills");
@@ -335,6 +351,14 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   await expect(accountFilter).toBeVisible();
   await expect(tableFilters.getByRole("combobox", { name: "Transaction date range" })).toBeVisible();
   expect((await transactionToolbar.boundingBox())?.height).toBeLessThanOrEqual(64);
+  await expect(page.getByRole("columnheader", { name: /Recurring/ })).toHaveCount(0);
+  await expect(page.locator('[data-column-key="recurring"]')).toHaveCount(0);
+  const incomeAmount = page.locator(".transaction-amount-income .transaction-amount-display").first();
+  const expenseAmount = page.locator(".transaction-amount-expense .transaction-amount-display").first();
+  await expect(incomeAmount).toHaveText("+$1,200.00");
+  await expect(expenseAmount).toHaveText("-$72.15");
+  expect(await incomeAmount.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(8, 122, 79)");
+  expect(await expenseAmount.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(197, 40, 40)");
   await accountFilter.selectOption("Cash App");
   await expect(page.locator("table tbody tr")).toHaveCount(1);
   await expect(page.locator('select[data-column-key="account"]')).toHaveValue("Cash App");
@@ -388,18 +412,18 @@ test("moves transaction transfers between linked accounts and savings vaults in 
   })).toEqual(["2890.32", "12750.00"]);
 });
 
-test("applies cash-on-hand income to Money Snapshot and keeps dropdown choices readable", async ({ page }) => {
+test("applies cash income to Money Snapshot and keeps dropdown choices readable", async ({ page }) => {
   await page.goto("/transactions");
   await page.getByRole("button", { name: "Add Transaction" }).click();
   const row = page.locator("table tbody tr").last();
   const accountSelect = row.locator('select[data-column-key="account"]');
-  const cashOptionStyles = await accountSelect.locator('option[value="Cash on Hand"]').evaluate((option) => {
+  const cashOptionStyles = await accountSelect.locator('option[value="Cash"]').evaluate((option) => {
     const style = getComputedStyle(option);
     return { color: style.color, background: style.backgroundColor };
   });
   expect(cashOptionStyles).toEqual({ color: "rgb(20, 32, 51)", background: "rgb(255, 255, 255)" });
   await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
-  const darkCashOptionStyles = await accountSelect.locator('option[value="Cash on Hand"]').evaluate((option) => {
+  const darkCashOptionStyles = await accountSelect.locator('option[value="Cash"]').evaluate((option) => {
     const style = getComputedStyle(option);
     return { color: style.color, background: style.backgroundColor };
   });
@@ -413,11 +437,11 @@ test("applies cash-on-hand income to Money Snapshot and keeps dropdown choices r
   await row.locator('input[data-column-key="amount"]').fill("125");
   await row.locator('input[data-column-key="amount"]').press("Tab");
   await row.locator('input[data-column-key="date"]').fill(date);
-  await accountSelect.selectOption("Cash on Hand");
+  await accountSelect.selectOption("Cash");
 
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
-    return data.sections.money.find((item: { cells: { label: string } }) => item.cells.label === "Cash on Hand")?.cells.amount;
+    return data.sections.money.find((item: { cells: { label: string } }) => item.cells.label === "Cash")?.cells.amount;
   })).toBe("125.00");
 
   await page.goto("/");
@@ -425,7 +449,7 @@ test("applies cash-on-hand income to Money Snapshot and keeps dropdown choices r
   const moneySnapshot = page.locator(".dashboard-money-card");
   await expect(moneySnapshot).toContainText("Spendable this week");
   await expect(moneySnapshot).toContainText("Total Cash$19,605.32");
-  await expect(moneySnapshot).toContainText("Cash on Hand$125.00");
+  await expect(moneySnapshot).toContainText("Cash$125.00");
   await expect(moneySnapshot).toContainText("Weekly Income$1,325.00");
   await expect(moneySnapshot).toContainText("Week Net Impact$0.00");
   await expect(moneySnapshot).toContainText("Borrowed Money$1,700.00");

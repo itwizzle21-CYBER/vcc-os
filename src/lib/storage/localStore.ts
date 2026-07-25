@@ -2,6 +2,7 @@ import type { AppData, SectionKey, SpreadsheetRow, ThemeMode } from "../types/ap
 import { isBlankRow, toNumber } from "../calculations/currency";
 import { normalizeInventoryRow } from "../engine/inventoryEngine";
 import { syncConfirmedReceiptTransactions } from "../engine/carLoanEngine";
+import { displayAccountLabel } from "../engine/paycheckPlannerEngine";
 import { createVerifiedCarLoanData } from "./carLoanReference";
 import { createStarterData, createZeroData, sectionConfigs } from "./defaultData";
 
@@ -91,9 +92,14 @@ export function normalizeAppData(raw: unknown): AppData {
   const starter = createZeroData();
   const source = raw as Partial<AppData> & Record<string, unknown>;
   const sections = { ...starter.sections };
-  const carLoan = source.carLoan && typeof source.carLoan === "object"
+  const rawCarLoan = source.carLoan && typeof source.carLoan === "object"
     ? { ...starter.carLoan, ...source.carLoan }
     : createVerifiedCarLoanData();
+  const carLoan = {
+    ...rawCarLoan,
+    receipts: (Array.isArray(rawCarLoan.receipts) ? rawCarLoan.receipts : [])
+      .map((receipt) => ({ ...receipt, paymentMethod: displayAccountLabel(receipt.paymentMethod) })),
+  };
 
   for (const section of Object.keys(sectionConfigs) as SectionKey[]) {
     const maybeRows = source.sections && Array.isArray(source.sections[section])
@@ -111,6 +117,25 @@ export function normalizeAppData(raw: unknown): AppData {
   }
 
   sections.inventory = sections.inventory.map(normalizeInventoryRow);
+  sections.money = sections.money.map((row) => ({
+    ...row,
+    cells: { ...row.cells, label: displayAccountLabel(row.cells.label) },
+  }));
+  sections.transactions = sections.transactions.map((row) => {
+    const cells = { ...row.cells };
+    delete cells.recurring;
+    delete cells.is_recurring;
+    return {
+      ...row,
+      cells: {
+        ...cells,
+        account: displayAccountLabel(cells.account),
+        transferDestination: displayAccountLabel(cells.transferDestination),
+        description: replaceCashAccountText(cells.description),
+        notes: replaceCashAccountText(cells.notes),
+      },
+    };
+  });
   sections.transactions = syncConfirmedReceiptTransactions(sections.transactions, carLoan.receipts);
 
   if (!sections.carPayment.length && carLoan.contract) {
@@ -155,7 +180,8 @@ export function normalizeAppData(raw: unknown): AppData {
     carLoan,
     sortBy: { ...starter.sortBy, ...(typeof source.sortBy === "object" ? source.sortBy : {}) },
     paycheckPlanner: { ...starter.paycheckPlanner, ...(typeof source.paycheckPlanner === "object" ? source.paycheckPlanner : {}) },
-    paycheckHistory: Array.isArray(source.paycheckHistory) ? source.paycheckHistory : starter.paycheckHistory,
+    paycheckHistory: (Array.isArray(source.paycheckHistory) ? source.paycheckHistory : starter.paycheckHistory)
+      .map((row) => ({ ...row, depositAccountLabel: displayAccountLabel(row.depositAccountLabel) })),
     activity: Array.isArray(source.activity) ? source.activity : starter.activity,
     settings: { ...starter.settings, ...sourceSettings, theme, appearanceTheme },
   } as AppData;
@@ -244,6 +270,10 @@ function matchesSeed(row: SpreadsheetRow, id: string, label: string | undefined,
 
 function normalizeText(value: string | undefined): string {
   return String(value || "").trim().toLowerCase();
+}
+
+function replaceCashAccountText(value: string | undefined): string {
+  return String(value || "").replace(/\bcash on hand\b/gi, "Cash");
 }
 
 function isEmptyAppData(data: AppData): boolean {

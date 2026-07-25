@@ -680,7 +680,6 @@ function TransactionsPage({
   const transferTotal = visibleFilledRows
     .filter((row) => transactionType(row) === "transfer")
     .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
-  const recurringCount = visibleFilledRows.filter((row) => isAffirmative(row.cells.recurring)).length;
   const expenseRows = transactionRows.filter((row) => !isBlankRow(row.cells) && transactionType(row) === "expense");
   const spendingByPeriod = (period: TransactionPeriod) => expenseRows
     .filter((row) => transactionMatchesPeriod(row.cells.date, period))
@@ -722,7 +721,6 @@ function TransactionsPage({
           <em>Week impact {formatCurrency(financialState.transactionWeekNet)}</em>
           <em>{categoryFilter === "all" ? "All categories" : categoryFilter}</em>
           <em>{accountFilter === "all" ? "All accounts" : accountFilter}</em>
-          <em>{recurringCount} recurring</em>
         </div>
         <div className="transactions-period-section" aria-labelledby="spending-period-title">
           <div className="spending-period-heading">
@@ -814,9 +812,7 @@ function TransactionsPage({
         <article className="panel transaction-flow-card">
           <p className="eyebrow">Activity Signal</p>
           <h2>{visibleFilledRows.length ? `${visibleFilledRows.length} visible rows` : "No transactions found"}</h2>
-          <p className="empty-copy">
-            {recurringCount ? `${recurringCount} recurring transaction${recurringCount > 1 ? "s are" : " is"} visible in this view.` : "Use filters to isolate income, expenses, transfers, and recent months."}
-          </p>
+          <p className="empty-copy">Use filters to isolate accounts, income, expenses, transfers, and recent months.</p>
         </article>
       </section>
 
@@ -1296,7 +1292,6 @@ function CarPaymentPage(props: Omit<Parameters<typeof ModulePage>[0], "section" 
         amount: formatCurrency(amount),
         date: paymentDate,
         account: loan.cells.lender || "",
-        recurring: "No",
         notes: `Car payment recorded from Car Payment. Interest: ${interest}%. Principal: ${formatCurrency(principalAmount)}. Remaining: ${formatCurrency(nextRemaining)}.`,
         interestPercent: String(interest),
         interestAmount: String(interestAmount),
@@ -2696,7 +2691,7 @@ function summaryForSection(section: SectionKey, financialState: ReturnType<typeo
   return {
     money: [
       { label: "Total Cash", value: financialState.totalCash },
-      { label: "Cash on Hand", value: financialState.cashOnHand },
+      { label: "Cash", value: financialState.cashOnHand },
       { label: "Spendable / Safe", value: Math.min(financialState.spendableCash, financialState.safeToSpend) },
       { label: "Week Spending", value: -Math.abs(financialState.weeklySpending), tone: "bad" as const },
       { label: "Week Net Impact", value: financialState.transactionWeekNet, tone: financialState.transactionWeekNet < 0 ? "bad" as const : "good" as const },
@@ -2816,19 +2811,21 @@ function normalizeBillRow(row: SpreadsheetRow): SpreadsheetRow {
 }
 
 function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
+  const cells = { ...row.cells };
+  delete cells.recurring;
+  delete cells.is_recurring;
   const normalizedRow = {
     ...row,
     cells: {
-      ...row.cells,
-      description: row.cells.description || "",
-      type: row.cells.type || "",
-      category: row.cells.category || "",
-      amount: row.cells.amount || "",
-      date: row.cells.date || "",
-      account: row.cells.account || "",
-      transferDestination: row.cells.transferDestination || "",
-      recurring: row.cells.recurring || row.cells.is_recurring || "",
-      notes: row.cells.notes || "",
+      ...cells,
+      description: cells.description || "",
+      type: cells.type || "",
+      category: cells.category || "",
+      amount: cells.amount || "",
+      date: cells.date || "",
+      account: cells.account || "",
+      transferDestination: cells.transferDestination || "",
+      notes: cells.notes || "",
     },
   };
 

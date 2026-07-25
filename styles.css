@@ -2425,6 +2425,57 @@ td select {
   min-height: 2.45rem;
 }
 
+.transaction-amount-control {
+  position: relative;
+  min-width: 8rem;
+}
+
+.transaction-amount-display {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding: var(--cell-pad);
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+.transaction-amount-cell:not(.cell-editing) .transaction-amount-input {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.transaction-amount-cell.cell-editing .transaction-amount-display {
+  opacity: 0;
+}
+
+.transaction-amount-cell.cell-editing .transaction-amount-input {
+  color: var(--text);
+  -webkit-text-fill-color: currentColor;
+}
+
+.transaction-amount-income .transaction-amount-display {
+  color: #25d39b;
+}
+
+.transaction-amount-expense .transaction-amount-display {
+  color: #ff6666;
+}
+
+.transaction-amount-transfer .transaction-amount-display {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .transaction-amount-income .transaction-amount-display {
+  color: #087a4f;
+}
+
+:root[data-theme="light"] .transaction-amount-expense .transaction-amount-display {
+  color: #c52828;
+}
+
 .spreadsheet-panel td.cell-selected {
   position: relative;
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));

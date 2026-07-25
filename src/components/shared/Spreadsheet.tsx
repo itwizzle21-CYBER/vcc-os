@@ -142,7 +142,9 @@ export default function Spreadsheet({
     if (column?.type !== "currency") return;
     const row = rows.find((item) => item.id === rowId);
     const value = currentValue ?? row?.cells[columnKey] ?? "";
-    const formatted = formatLooseCurrency(value);
+    const formatted = config.key === "transactions" && columnKey === "amount" && row
+      ? formatTransactionCurrency(value, row, true)
+      : formatLooseCurrency(value);
     if (formatted !== value) updateCell(rowId, columnKey, formatted);
   }
 
@@ -522,6 +524,40 @@ export default function Spreadsheet({
                       </td>
                     );
                   }
+                  if (config.key === "transactions" && column.key === "amount") {
+                    const type = transactionType(row);
+                    const displayValue = formatTransactionCurrency(value, row);
+                    return (
+                      <td
+                        key={column.key}
+                        data-label={column.label}
+                        className={cellClassName(row.id, column.key, `transaction-amount-cell transaction-amount-${type}`)}
+                      >
+                        <div className="transaction-amount-control">
+                          <span className="transaction-amount-display" aria-hidden="true">{displayValue}</span>
+                          <BufferedTextInput
+                            className="transaction-amount-input"
+                            data-row-index={rowIndex}
+                            data-column-index={columnIndex}
+                            data-row-id={row.id}
+                            data-column-key={column.key}
+                            value={value}
+                            aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
+                            delay={320}
+                            onPointerDown={() => beginPointerEdit(row.id, column.key)}
+                            onValueFocus={(currentValue) => handleCellFocus(row.id, column.key, currentValue, rowIndex, columnIndex)}
+                            onValueChange={(nextValue) => updateCell(row.id, column.key, nextValue)}
+                            onValueBlur={(currentValue) => {
+                              commitCell(row.id, column.key, currentValue);
+                              activeCellRef.current = null;
+                              setEditingCell(null);
+                            }}
+                            onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
+                          />
+                        </div>
+                      </td>
+                    );
+                  }
                   if (!column.type) {
                     return (
                       <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key, "wrapping-text-cell")}>
@@ -640,6 +676,18 @@ function formatLooseCurrency(value: string): string {
   const number = Number(value.replace(/[$,\s]/g, ""));
   if (!Number.isFinite(number)) return value;
   return formatCurrency(number);
+}
+
+function formatTransactionCurrency(value: string, row: SpreadsheetRow, forStorage = false): string {
+  if (!value.trim()) return "";
+  const number = Number(value.replace(/[$,\s]/g, ""));
+  if (!Number.isFinite(number)) return value;
+  const magnitude = Math.abs(number);
+  const type = transactionType(row);
+  if (forStorage) return formatCurrency(type === "income" ? magnitude : -magnitude);
+  if (type === "income") return `+${formatCurrency(magnitude)}`;
+  if (type === "expense") return `-${formatCurrency(magnitude)}`;
+  return formatCurrency(magnitude);
 }
 
 function openDatePicker(input: HTMLInputElement) {

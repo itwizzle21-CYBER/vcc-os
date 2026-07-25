@@ -13,6 +13,6 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   </React.StrictMode>
 );
 
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
+if ("serviceWorker" in navigator && import.meta.env.PROD && /^\/vitascan(?:\/|$)/.test(window.location.pathname)) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/vitascan-sw.js", { scope: "/vitascan" }));
 }

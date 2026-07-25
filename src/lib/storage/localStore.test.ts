@@ -71,4 +71,33 @@ describe("import normalization", () => {
     expect(imported.sections.transactions).toEqual(expect.any(Array));
     expect(imported.carLoan.receipts).toEqual(expect.any(Array));
   });
+
+  it("renames legacy cash labels and removes recurring transaction fields", () => {
+    const imported = normalizeAppData({
+      sections: {
+        money: [{ id: "wallet", cells: { label: "Cash on Hand", section: "cash", amount: "40" } }],
+        transactions: [{
+          id: "cash-purchase",
+          cells: {
+            description: "Paid from Cash on Hand",
+            type: "expense",
+            amount: "5",
+            account: "Cash on Hand",
+            recurring: "Yes",
+            notes: "Cash on hand purchase",
+          },
+        }],
+      },
+      paycheckHistory: [{ id: "pay", depositAccountLabel: "Cash on Hand" }],
+    });
+
+    expect(imported.sections.money[0].cells.label).toBe("Cash");
+    expect(imported.sections.transactions.find((row) => row.id === "cash-purchase")?.cells).toMatchObject({
+      description: "Paid from Cash",
+      account: "Cash",
+      notes: "Cash purchase",
+    });
+    expect(imported.sections.transactions.find((row) => row.id === "cash-purchase")?.cells).not.toHaveProperty("recurring");
+    expect(imported.paycheckHistory[0].depositAccountLabel).toBe("Cash");
+  });
 });

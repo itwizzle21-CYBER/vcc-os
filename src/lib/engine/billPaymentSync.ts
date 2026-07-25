@@ -52,7 +52,6 @@ function createBillPaymentTransaction(bill: SpreadsheetRow, paymentDate: string)
       amount: bill.cells.amount || "",
       date: paymentDate,
       account: "",
-      recurring: bill.cells.autopay || "",
       notes: carPayment
         ? `${CAR_PAYMENT_MARKER} Recorded automatically when ${name} was marked paid.`
         : `Recorded automatically when ${name} was marked paid.`,

@@ -50,7 +50,6 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
       { key: "date", label: "Date", type: "date" },
       { key: "account", label: "From Account / Vault" },
       { key: "transferDestination", label: "Transfer To" },
-      { key: "recurring", label: "Recurring" },
       { key: "notes", label: "Notes" },
     ],
   },
@@ -232,7 +231,6 @@ export function createStarterData(): AppData {
           amount: "$1,200.00",
           date: "2026-07-12",
           account: "Chime Checking",
-          recurring: "Yes",
           notes: "Main deposit",
         }),
         row("txn-groceries", {
@@ -242,7 +240,6 @@ export function createStarterData(): AppData {
           amount: "-$72.15",
           date: "2026-07-11",
           account: "Chime Checking",
-          recurring: "No",
           notes: "Weekly food run",
         }),
         row("txn-gas", {
@@ -252,7 +249,6 @@ export function createStarterData(): AppData {
           amount: "-$48.00",
           date: "2026-07-10",
           account: "Cash App",
-          recurring: "No",
           notes: "Commute",
         }),
         row("txn-savings", {
@@ -263,7 +259,6 @@ export function createStarterData(): AppData {
           date: "2026-07-09",
           account: "Chime Checking",
           transferDestination: "Emergency Fund",
-          recurring: "Yes",
           notes: "Protected savings",
           balanceApplied: "yes",
           balanceApplication: "seed",
