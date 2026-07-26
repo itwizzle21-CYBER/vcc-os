@@ -112,6 +112,22 @@ describe("transaction engine", () => {
     expect(identifyTransactionCategory(row)).toBe("Healthcare");
   });
 
+  it("matches category keywords as words instead of accidental substrings", () => {
+    expect(identifyTransactionCategory(transaction("sparkling water", "expense", "$7.00", ""))).toBe("Groceries");
+    expect(identifyTransactionCategory(transaction("Las Vegas hotel", "expense", "$180.00", ""))).toBe("Travel");
+    expect(identifyTransactionCategory(transaction("business software", "expense", "$29.00", ""))).toBe("Business");
+    expect(identifyTransactionCategory(transaction("carpet cleaner", "expense", "$14.00", ""))).toBe("Uncategorized");
+    expect(identifyTransactionCategory(transaction("cabinet hardware", "expense", "$48.00", ""))).toBe("Uncategorized");
+    expect(identifyTransactionCategory(transaction("parent support", "expense", "$30.00", ""))).toBe("Uncategorized");
+  });
+
+  it("keeps intentional plurals and retail word stems working", () => {
+    expect(identifyTransactionCategory(transaction("orthodontics appointment", "expense", "$90.00", ""))).toBe("Healthcare");
+    expect(identifyTransactionCategory(transaction("restaurant meals", "expense", "$35.00", ""))).toBe("Restaurants");
+    expect(identifyTransactionCategory(transaction("charity donations", "expense", "$25.00", ""))).toBe("Gifts & Donations");
+    expect(identifyTransactionCategory(transaction("service fees", "expense", "$4.00", ""))).toBe("Fees");
+  });
+
   it("does not categorize a retail purchase as a transfer from its payment account", () => {
     const row = transaction("TARGET STORE #1122", "expense", "$25.00", "");
     row.cells.account = "Cash App";

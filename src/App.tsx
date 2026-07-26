@@ -15,6 +15,8 @@ import {
   MonitorCog,
   Moon,
   Palette,
+  Plus,
+  ReceiptText,
   RotateCcw,
   Save,
   ScanLine,
@@ -22,6 +24,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Sun,
+  Trash2,
   Upload,
   UserRound,
   X,
@@ -662,7 +665,7 @@ function TransactionsPage({
     const matchesType = typeFilter === "all" || type === typeFilter;
     const matchesAccount = accountFilter === "all" || [row.cells.account, row.cells.transferDestination]
       .some((account) => account?.trim().toLowerCase() === accountFilter.toLowerCase());
-    const matchesSearch = !query || [row.cells.description, row.cells.category, row.cells.account, row.cells.transferDestination, row.cells.notes]
+    const matchesSearch = !query || [row.cells.description, row.cells.merchant, row.cells.category, row.cells.account, row.cells.transferDestination, row.cells.notes]
       .join(" ")
       .toLowerCase()
       .includes(query);
@@ -705,6 +708,18 @@ function TransactionsPage({
     }
   }
 
+  function addReceiptRows(rows: SpreadsheetRow[]): boolean {
+    try {
+      const next = syncTransactionTransfers(data, [...transactionRows, ...rows]);
+      onChange(next);
+      setTransferMessage("");
+      return true;
+    } catch (error) {
+      setTransferMessage(error instanceof Error ? error.message : "The receipt could not be added.");
+      return false;
+    }
+  }
+
   return (
     <div className="transactions-page module-page">
       <SummaryGrid items={summaryForSection("transactions", financialState)} />
@@ -736,6 +751,11 @@ function TransactionsPage({
           </div>
         </div>
       </section>
+
+      <ReceiptEntry
+        accounts={transactionSelectOptions.account || []}
+        onAddReceipt={addReceiptRows}
+      />
 
       <Spreadsheet
         config={sectionConfigs.transactions}
@@ -1379,7 +1399,211 @@ function CarPaymentPage(props: Omit<Parameters<typeof ModulePage>[0], "section" 
     </div>
   );
 }
+*/
 
+type ReceiptLineDraft = {
+  id: string;
+  item: string;
+  quantity: string;
+  unitPrice: string;
+};
+
+function createReceiptLine(): ReceiptLineDraft {
+  return {
+    id: `receipt-line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    item: "",
+    quantity: "1",
+    unitPrice: "",
+  };
+}
+
+function ReceiptEntry({
+  accounts,
+  onAddReceipt,
+}: {
+  accounts: Array<{ value: string; label: string }>;
+  onAddReceipt: (rows: SpreadsheetRow[]) => boolean;
+}) {
+  const [merchant, setMerchant] = useState("");
+  const [date, setDate] = useState(todayIso());
+  const [account, setAccount] = useState("");
+  const [tax, setTax] = useState("");
+  const [lines, setLines] = useState<ReceiptLineDraft[]>(() => [createReceiptLine()]);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!account && accounts.length) setAccount(accounts[0].value);
+  }, [account, accounts]);
+
+  const lineTotals = lines.map((line) => Math.max(0, toNumber(line.quantity)) * Math.max(0, toNumber(line.unitPrice)));
+  const subtotal = lineTotals.reduce((sum, amount) => sum + amount, 0);
+  const taxAmount = Math.max(0, toNumber(tax));
+  const total = subtotal + taxAmount;
+  const completeLineCount = lines.filter((line, index) => line.item.trim() && lineTotals[index] > 0).length;
+
+  function updateLine(id: string, field: keyof Omit<ReceiptLineDraft, "id">, value: string) {
+    setLines((current) => current.map((line) => line.id === id ? { ...line, [field]: value } : line));
+    setMessage("");
+  }
+
+  function removeLine(id: string) {
+    setLines((current) => current.length === 1 ? [createReceiptLine()] : current.filter((line) => line.id !== id));
+    setMessage("");
+  }
+
+  function postReceipt() {
+    const cleanMerchant = merchant.trim();
+    const completeLines = lines.filter((line, index) => line.item.trim() && lineTotals[index] > 0);
+    if (!cleanMerchant) {
+      setMessage("Add the store or merchant name first.");
+      return;
+    }
+    if (!date) {
+      setMessage("Choose the receipt date.");
+      return;
+    }
+    if (!account) {
+      setMessage("Choose the account used for this receipt.");
+      return;
+    }
+    if (!completeLines.length) {
+      setMessage("Add at least one item with a price greater than $0.");
+      return;
+    }
+    if (completeLines.length !== lines.length) {
+      setMessage("Finish or remove each blank item row before posting the receipt.");
+      return;
+    }
+
+    const receiptId = `receipt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const receiptNote = `${cleanMerchant} receipt · ${completeLines.length} item${completeLines.length === 1 ? "" : "s"} · Total ${formatCurrency(total)}`;
+    const rows: SpreadsheetRow[] = completeLines.map((line) => {
+      const amount = Math.max(0, toNumber(line.quantity)) * Math.max(0, toNumber(line.unitPrice));
+      const draft: SpreadsheetRow = {
+        id: `${receiptId}-${line.id}`,
+        cells: {
+          description: line.item.trim(),
+          merchant: cleanMerchant,
+          type: "expense",
+          category: "",
+          quantity: String(Math.max(0, toNumber(line.quantity))),
+          unitCost: Math.max(0, toNumber(line.unitPrice)).toFixed(2),
+          amount: (-amount).toFixed(2),
+          date,
+          account,
+          transferDestination: "",
+          receiptId,
+          receiptTotal: total.toFixed(2),
+          notes: receiptNote,
+        },
+      };
+      return { ...draft, cells: { ...draft.cells, category: identifyTransactionCategory(draft) } };
+    });
+    if (taxAmount > 0) {
+      rows.push({
+        id: `${receiptId}-tax`,
+        cells: {
+          description: "Sales tax",
+          merchant: cleanMerchant,
+          type: "expense",
+          category: "Taxes",
+          quantity: "1",
+          unitCost: taxAmount.toFixed(2),
+          amount: (-taxAmount).toFixed(2),
+          date,
+          account,
+          transferDestination: "",
+          receiptId,
+          receiptTotal: total.toFixed(2),
+          notes: receiptNote,
+        },
+      });
+    }
+
+    if (!onAddReceipt(rows)) return;
+    setMerchant("");
+    setTax("");
+    setLines([createReceiptLine()]);
+    setMessage(`Receipt posted: ${completeLines.length} item${completeLines.length === 1 ? "" : "s"} totaling ${formatCurrency(total)}.`);
+  }
+
+  return (
+    <section className="receipt-entry-panel" aria-labelledby="receipt-entry-title">
+      <div className="receipt-entry-heading">
+        <div className="receipt-entry-title">
+          <span className="receipt-entry-icon" aria-hidden="true"><ReceiptText size={21} /></span>
+          <div>
+            <p className="eyebrow">Manual receipt</p>
+            <h2 id="receipt-entry-title">Enter one ticket, item by item</h2>
+          </div>
+        </div>
+        <p>Like a store receipt, with spreadsheet-style rows and one overall total.</p>
+      </div>
+
+      <div className="receipt-meta-grid">
+        <label>
+          <span>Store / merchant</span>
+          <input value={merchant} onChange={(event) => { setMerchant(event.target.value); setMessage(""); }} placeholder="Where did you shop?" />
+        </label>
+        <label>
+          <span>Purchase date</span>
+          <input className="calendar-input" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+        </label>
+        <label>
+          <span>Paid from</span>
+          <select value={account} onChange={(event) => setAccount(event.target.value)}>
+            <option value="">Choose account</option>
+            {accounts.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div className="receipt-sheet" role="group" aria-label="Receipt items">
+        <div className="receipt-sheet-header" aria-hidden="true">
+          <span>Item</span><span>Qty</span><span>Each</span><span>Line total</span><span />
+        </div>
+        {lines.map((line, index) => (
+          <div className="receipt-line" key={line.id}>
+            <label>
+              <span className="sr-only">Item {index + 1}</span>
+              <input aria-label={`Receipt item ${index + 1}`} value={line.item} onChange={(event) => updateLine(line.id, "item", event.target.value)} placeholder={index === 0 ? "Item name" : "Next item"} />
+            </label>
+            <label>
+              <span className="sr-only">Quantity for item {index + 1}</span>
+              <input aria-label={`Quantity for receipt item ${index + 1}`} type="number" min="0.01" step="1" value={line.quantity} onChange={(event) => updateLine(line.id, "quantity", event.target.value)} />
+            </label>
+            <label className="receipt-money-input">
+              <span aria-hidden="true">$</span>
+              <input aria-label={`Unit price for receipt item ${index + 1}`} inputMode="decimal" value={line.unitPrice} onChange={(event) => updateLine(line.id, "unitPrice", event.target.value)} placeholder="0.00" />
+            </label>
+            <output aria-label={`Line total for receipt item ${index + 1}`}>{formatCurrency(lineTotals[index])}</output>
+            <button type="button" className="receipt-remove-line" aria-label={`Remove receipt item ${index + 1}`} onClick={() => removeLine(line.id)}><Trash2 size={16} /></button>
+          </div>
+        ))}
+        <button type="button" className="receipt-add-line" onClick={() => setLines((current) => [...current, createReceiptLine()])}><Plus size={16} /> Add another item</button>
+      </div>
+
+      <div className="receipt-footer">
+        <div className="receipt-help">
+          <strong>{completeLineCount} of {lines.length} item rows ready</strong>
+          <span>Each item becomes its own row in the Transactions spreadsheet.</span>
+        </div>
+        <div className="receipt-totals">
+          <span><small>Subtotal</small><strong>{formatCurrency(subtotal)}</strong></span>
+          <label><small>Tax</small><span className="receipt-tax-input"><b>$</b><input aria-label="Receipt tax" inputMode="decimal" value={tax} onChange={(event) => { setTax(event.target.value); setMessage(""); }} placeholder="0.00" /></span></label>
+          <span className="receipt-grand-total"><small>Total</small><strong>{formatCurrency(total)}</strong></span>
+        </div>
+      </div>
+
+      <div className="receipt-actions">
+        <p className="receipt-message" role="status" aria-live="polite">{message}</p>
+        <button type="button" className="receipt-post-button" onClick={postReceipt}><ReceiptText size={17} /> Post receipt to Transactions</button>
+      </div>
+    </section>
+  );
+}
+
+/* Legacy payment helper retained with the workspace above.
 function dateInputValue(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -2819,8 +3043,11 @@ function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
     cells: {
       ...cells,
       description: cells.description || "",
+      merchant: cells.merchant || (row.id.startsWith("vitascan-") ? cells.description : ""),
       type: cells.type || "",
       category: cells.category || "",
+      quantity: cells.quantity || "",
+      unitCost: cells.unitCost || "",
       amount: cells.amount || "",
       date: cells.date || "",
       account: cells.account || "",
@@ -2879,7 +3106,7 @@ function transactionCategory(row: SpreadsheetRow): string {
 }
 
 function hasTransactionIdentifier(row: SpreadsheetRow): boolean {
-  return [row.cells.description, row.cells.account, row.cells.transferDestination, row.cells.notes, row.cells.type, row.cells.amount, row.cells.category]
+  return [row.cells.description, row.cells.merchant, row.cells.account, row.cells.transferDestination, row.cells.notes, row.cells.type, row.cells.amount, row.cells.category]
     .some((value) => String(value || "").trim());
 }
 

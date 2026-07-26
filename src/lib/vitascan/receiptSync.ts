@@ -20,8 +20,11 @@ export function vitaReceiptToTransaction(receipt: VitaReceiptRecord): Spreadshee
     id: receipt.transaction_id,
     cells: {
       description: receipt.merchant,
+      merchant: receipt.merchant,
       type: receipt.direction,
       category: receipt.category,
+      quantity: "1",
+      unitCost: amount.toFixed(2),
       amount: signedAmount.toFixed(2),
       date: receipt.occurred_on,
       account: receipt.account_name,

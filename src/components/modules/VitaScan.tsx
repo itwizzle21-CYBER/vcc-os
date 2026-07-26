@@ -126,8 +126,11 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
       id,
       cells: {
         description: draft.merchant,
+        merchant: draft.merchant,
         type: draft.direction,
         category: draft.category,
+        quantity: "1",
+        unitCost: amount.toFixed(2),
         amount: signed.toFixed(2),
         date: savedDraft.date,
         account: draft.account,

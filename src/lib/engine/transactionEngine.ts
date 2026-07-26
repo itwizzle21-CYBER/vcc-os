@@ -57,7 +57,7 @@ const categoryRules: Array<{ category: string; keywords: string[] }> = [
   },
   {
     category: "Groceries",
-    keywords: ["grocery", "groceries", "supermarket", "hypermarket", "food market", "fresh market", "milk", "bread", "eggs", "meat", "produce", "vegetables", "fruit", "dairy", "ranch", "hidden valley", "energy drink", "rockstar", "ghost energy", "aldi", "lidl", "kroger", "whole foods", "trader joe", "food lion", "publix", "safeway", "albertsons", "meijer", "heb", "h-e-b", "instacart", "wegmans", "sprouts farmers market", "winco", "shoprite", "stop & shop", "giant food", "harris teeter", "hy-vee", "save a lot", "piggly wiggly", "tesco", "sainsbury", "asda", "morrisons", "waitrose", "carrefour", "auchan", "metro market", "rewe", "edeka", "mercadona", "dia supermarket", "coles", "woolworths", "loblaws", "sobeys", "no frills", "superstore", "costco grocery", "sam's club grocery", "walmart grocery", "target grocery"],
+    keywords: ["grocery", "groceries", "supermarket", "hypermarket", "food market", "fresh market", "milk", "bread", "eggs", "meat", "produce", "vegetables", "fruit", "dairy", "ranch", "hidden valley", "energy drink", "sparkling water", "bottled water", "rockstar", "ghost energy", "aldi", "lidl", "kroger", "whole foods", "trader joe", "food lion", "publix", "safeway", "albertsons", "meijer", "heb", "h-e-b", "instacart", "wegmans", "sprouts farmers market", "winco", "shoprite", "stop & shop", "giant food", "harris teeter", "hy-vee", "save a lot", "piggly wiggly", "tesco", "sainsbury", "asda", "morrisons", "waitrose", "carrefour", "auchan", "metro market", "rewe", "edeka", "mercadona", "dia supermarket", "coles", "woolworths", "loblaws", "sobeys", "no frills", "superstore", "costco grocery", "sam's club grocery", "walmart grocery", "target grocery"],
   },
   {
     category: "Restaurants",
@@ -153,7 +153,7 @@ export function identifyTransactionCategory(row: SpreadsheetRow): string {
   const eligibleRules = includesAny(explicitType, ["expense", "debit", "purchase", "payment", "outflow"])
     ? categoryRules.filter((item) => item.category !== "Income" && item.category !== "Transfers")
     : categoryRules;
-  const rule = eligibleRules.find((item) => item.keywords.some((keyword) => haystack.includes(normalizeRetailDescription(keyword))));
+  const rule = eligibleRules.find((item) => item.keywords.some((keyword) => retailKeywordMatches(haystack, keyword)));
   if (rule) return rule.category;
   if (explicitCategory && explicitCategory !== "Uncategorized") return explicitCategory;
   if (transactionType(row) === "income") return "Income";
@@ -191,7 +191,30 @@ function includesAny(value: string, values: string[]): boolean {
 function normalizeRetailDescription(value: string): string {
   return value
     .toLowerCase()
-    .replace(/[*#_/\\-]+/g, " ")
+    .replace(/[’']s\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function retailKeywordMatches(normalizedDescription: string, keyword: string): boolean {
+  const descriptionTokens = normalizedDescription.split(" ").filter(Boolean);
+  const keywordTokens = normalizeRetailDescription(keyword).split(" ").filter(Boolean);
+  if (!keywordTokens.length || keywordTokens.length > descriptionTokens.length) return false;
+
+  return descriptionTokens.some((_, startIndex) => {
+    if (startIndex + keywordTokens.length > descriptionTokens.length) return false;
+    return keywordTokens.every((keywordToken, tokenIndex) => {
+      const descriptionToken = descriptionTokens[startIndex + tokenIndex];
+      if (descriptionToken === keywordToken) return true;
+      if (tokenIndex !== keywordTokens.length - 1) return false;
+      return hasRetailWordSuffix(descriptionToken, keywordToken);
+    });
+  });
+}
+
+function hasRetailWordSuffix(descriptionToken: string, keywordToken: string): boolean {
+  if (keywordToken.length < 3 || !descriptionToken.startsWith(keywordToken)) return false;
+  const suffix = descriptionToken.slice(keywordToken.length);
+  return ["s", "es", "ed", "ing", "er", "ers", "al", "als", "ic", "ics", "ist", "ists"].includes(suffix);
 }

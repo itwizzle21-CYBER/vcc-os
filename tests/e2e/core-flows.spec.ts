@@ -412,6 +412,44 @@ test("moves transaction transfers between linked accounts and savings vaults in 
   })).toEqual(["2890.32", "12750.00"]);
 });
 
+test("posts a multi-item manual receipt as itemized transaction rows", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.getByPlaceholder("Where did you shop?").fill("Corner Market");
+  await page.getByLabel("Receipt item 1", { exact: true }).fill("Sparkling water");
+  await page.getByLabel("Quantity for receipt item 1", { exact: true }).fill("2");
+  await page.getByLabel("Unit price for receipt item 1", { exact: true }).fill("3.50");
+  await expect(page.getByLabel("Line total for receipt item 1", { exact: true })).toHaveText("$7.00");
+
+  await page.getByRole("button", { name: "Add another item" }).click();
+  await page.getByLabel("Receipt item 2", { exact: true }).fill("Granola bar");
+  await page.getByLabel("Unit price for receipt item 2", { exact: true }).fill("1.25");
+  await page.getByLabel("Receipt tax").fill("0.50");
+  await expect(page.locator(".receipt-grand-total strong")).toHaveText("$8.75");
+  await page.getByRole("button", { name: "Post receipt to Transactions" }).click();
+
+  await expect(page.getByRole("status").filter({ hasText: "Receipt posted" })).toContainText("2 items totaling $8.75");
+  const posted = await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    const receiptRows = data.sections.transactions.filter((row: { cells: { receiptId?: string } }) => row.cells.receiptId);
+    const receiptId = receiptRows.at(-1)?.cells.receiptId;
+    const rows = receiptRows.filter((row: { cells: { receiptId?: string } }) => row.cells.receiptId === receiptId);
+    return {
+      merchant: rows.map((row: { cells: { merchant: string } }) => row.cells.merchant),
+      descriptions: rows.map((row: { cells: { description: string } }) => row.cells.description),
+      categories: rows.map((row: { cells: { category: string } }) => row.cells.category),
+      total: rows.reduce((sum: number, row: { cells: { amount: string } }) => sum + Number(row.cells.amount), 0),
+      receiptTotal: rows[0]?.cells.receiptTotal,
+    };
+  });
+  expect(posted).toEqual({
+    merchant: ["Corner Market", "Corner Market", "Corner Market"],
+    descriptions: ["Sparkling water", "Granola bar", "Sales tax"],
+    categories: ["Groceries", "Uncategorized", "Taxes"],
+    total: -8.75,
+    receiptTotal: "8.75",
+  });
+});
+
 test("applies cash income to Money Snapshot and keeps dropdown choices readable", async ({ page }) => {
   await page.goto("/transactions");
   await page.getByRole("button", { name: "Add Transaction" }).click();
