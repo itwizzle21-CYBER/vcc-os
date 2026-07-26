@@ -450,6 +450,37 @@ test("posts a multi-item manual receipt as itemized transaction rows", async ({ 
   });
 });
 
+test("collapses manual receipt and transaction history without arrow icons", async ({ page }) => {
+  await page.goto("/transactions");
+  const receiptToggle = page.getByRole("button", { name: "Collapse manual receipt" });
+  const historyToggle = page.getByRole("button", { name: "Collapse transaction history" });
+
+  await expect(receiptToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(historyToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(receiptToggle.locator("svg.lucide-chevron-down, svg.lucide-chevron-up")).toHaveCount(0);
+  await expect(historyToggle.locator("svg.lucide-chevron-down, svg.lucide-chevron-up")).toHaveCount(0);
+
+  await page.getByPlaceholder("Where did you shop?").fill("Saved while folded");
+  await receiptToggle.click();
+  await expect(page.getByPlaceholder("Where did you shop?")).toHaveCount(0);
+  const showReceipt = page.getByRole("button", { name: "Expand manual receipt" });
+  await expect(showReceipt).toHaveAttribute("aria-expanded", "false");
+  await showReceipt.click();
+  await expect(page.getByPlaceholder("Where did you shop?")).toHaveValue("Saved while folded");
+
+  await historyToggle.click();
+  await expect(page.locator(".transaction-history-shell table")).toHaveCount(0);
+  const showHistory = page.getByRole("button", { name: "Expand transaction history" });
+  await expect(showHistory).toHaveAttribute("aria-expanded", "false");
+  await expect(showHistory.locator("svg.lucide-chevron-down, svg.lucide-chevron-up")).toHaveCount(0);
+  await showHistory.click();
+  const historyShell = page.locator(".transaction-history-shell");
+  const historySpreadsheet = historyShell.locator(".spreadsheet-panel");
+  await expect(historyShell.locator("table")).toHaveCount(1);
+  await expect(historyShell).toHaveCSS("border-top-width", "1px");
+  await expect(historySpreadsheet).toHaveCSS("border-top-width", "0px");
+});
+
 test("applies cash income to Money Snapshot and keeps dropdown choices readable", async ({ page }) => {
   await page.goto("/transactions");
   await page.getByRole("button", { name: "Add Transaction" }).click();

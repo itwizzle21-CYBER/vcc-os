@@ -3142,27 +3142,137 @@ td textarea[readonly] {
   gap: 1rem;
 }
 
+.receipt-entry-heading {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
 .receipt-entry-title {
   gap: 0.75rem;
 }
 
-.receipt-entry-title h2,
-.receipt-entry-heading p,
+.receipt-entry-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.receipt-entry-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.8rem;
+}
+
+.collapsible-section-title,
 .receipt-help strong,
 .receipt-help span,
 .receipt-message {
   margin: 0;
 }
 
-.receipt-entry-title h2 {
+.collapsible-section-title {
+  display: block;
   font-size: 1.05rem;
+  font-weight: 800;
 }
 
-.receipt-entry-heading > p {
+.receipt-entry-description {
+  display: block;
   max-width: 32rem;
   color: var(--muted);
   font-size: 0.82rem;
   text-align: right;
+}
+
+.collapsible-section-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.collapsible-section-state::before,
+.collapsible-section-state::after {
+  content: none;
+}
+
+.receipt-entry-heading:hover .collapsible-section-state,
+.transaction-history-heading:hover .collapsible-section-state {
+  color: var(--accent);
+}
+
+.receipt-entry-heading:focus-visible,
+.transaction-history-heading:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.transaction-history-shell {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-raised);
+}
+
+.transaction-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  padding: 0.9rem 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.transaction-history-heading-copy,
+.transaction-history-description {
+  display: block;
+}
+
+.transaction-history-heading-copy {
+  margin: 0;
+}
+
+.transaction-history-heading .collapsible-section-title {
+  font-size: 1rem;
+}
+
+.transaction-history-description {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.transaction-history-content {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.transaction-history-shell .spreadsheet-panel,
+.reference-shell .transaction-history-shell .spreadsheet-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .receipt-entry-icon {
@@ -3381,8 +3491,18 @@ td textarea[readonly] {
     flex-direction: column;
   }
 
-  .receipt-entry-heading > p {
+  .receipt-entry-heading-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .receipt-entry-description {
     text-align: left;
+  }
+
+  .transaction-history-heading {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .receipt-meta-grid {

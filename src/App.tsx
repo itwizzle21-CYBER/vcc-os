@@ -639,6 +639,7 @@ function TransactionsPage({
   const [accountFilter, setAccountFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [transferMessage, setTransferMessage] = useState("");
+  const [transactionHistoryOpen, setTransactionHistoryOpen] = useState(true);
   const transactionEndpoints = useMemo(() => transactionEndpointOptions(data), [data]);
   const transactionSelectOptions = useMemo(() => {
     const options = transactionEndpoints.map(({ value, label }) => ({ value, label }));
@@ -757,68 +758,91 @@ function TransactionsPage({
         onAddReceipt={addReceiptRows}
       />
 
-      <Spreadsheet
-        config={sectionConfigs.transactions}
-        rows={visibleTransactionRows}
-        sortBy={data.sortBy.transactions}
-        onSortChange={updateSort}
-        onRowsChange={updateVisibleTransactionRows}
-        onResetSection={resetSection}
-        getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
-        selectOptions={transactionSelectOptions}
-        addLabel="Add Transaction"
-        hideSearch
-        toolbarContent={(
-          <div className="transactions-table-filters" aria-label="Transaction filters">
-            <label className="transactions-table-search">
-              <span className="sr-only">Search transactions</span>
-              <BufferedTextInput aria-label="Search transactions" value={transactionSearch} onValueChange={setTransactionSearch} placeholder="Search transactions" />
-            </label>
-            <label>
-              <span className="sr-only">Worldwide Category</span>
-              <select aria-label="Transaction category" title="Worldwide Category" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-                <option value="all">All Categories</option>
-                {worldwideTransactionCategories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Type</span>
-              <select aria-label="Transaction type" title="Type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-                <option value="all">All Types</option>
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-                <option value="transfer">Transfer</option>
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Account</span>
-              <select aria-label="Transaction account" title="Account" value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}>
-                <option value="all">All Accounts</option>
-                {accountFilterOptions.map((account) => (
-                  <option key={account} value={account}>
-                    {account}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Date</span>
-              <select aria-label="Transaction date range" title="Date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
-                <option value="all">All Time</option>
-                <option value="week">This Week</option>
-                <option value="lastweek">Last Week</option>
-                <option value="month">This Month</option>
-                <option value="lastmonth">Last Month</option>
-              </select>
-            </label>
+      <section className={`transaction-history-shell ${transactionHistoryOpen ? "" : "is-collapsed"}`} aria-labelledby="transaction-history-title">
+        <button
+          type="button"
+          className="transaction-history-heading"
+          aria-label={transactionHistoryOpen ? "Collapse transaction history" : "Expand transaction history"}
+          aria-expanded={transactionHistoryOpen}
+          aria-controls="transaction-history-content"
+          onClick={() => setTransactionHistoryOpen((open) => !open)}
+        >
+          <span className="transaction-history-heading-copy">
+            <span className="eyebrow">Spreadsheet</span>
+            <span className="collapsible-section-title" id="transaction-history-title">Transaction history</span>
+            <span className="transaction-history-description">Search, filter, and edit every recorded transaction.</span>
+          </span>
+          <span className="collapsible-section-state">
+            {transactionHistoryOpen ? "Hide history" : "Show history"}
+          </span>
+        </button>
+        {transactionHistoryOpen && (
+          <div id="transaction-history-content" className="transaction-history-content">
+            <Spreadsheet
+              config={{ ...sectionConfigs.transactions, title: "Transaction History" }}
+              rows={visibleTransactionRows}
+              sortBy={data.sortBy.transactions}
+              onSortChange={updateSort}
+              onRowsChange={updateVisibleTransactionRows}
+              onResetSection={resetSection}
+              getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
+              selectOptions={transactionSelectOptions}
+              addLabel="Add Transaction"
+              hideSearch
+              toolbarContent={(
+                <div className="transactions-table-filters" aria-label="Transaction filters">
+                  <label className="transactions-table-search">
+                    <span className="sr-only">Search transactions</span>
+                    <BufferedTextInput aria-label="Search transactions" value={transactionSearch} onValueChange={setTransactionSearch} placeholder="Search transactions" />
+                  </label>
+                  <label>
+                    <span className="sr-only">Worldwide Category</span>
+                    <select aria-label="Transaction category" title="Worldwide Category" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                      <option value="all">All Categories</option>
+                      {worldwideTransactionCategories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="sr-only">Type</span>
+                    <select aria-label="Transaction type" title="Type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+                      <option value="all">All Types</option>
+                      <option value="income">Income</option>
+                      <option value="expense">Expense</option>
+                      <option value="transfer">Transfer</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span className="sr-only">Account</span>
+                    <select aria-label="Transaction account" title="Account" value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)}>
+                      <option value="all">All Accounts</option>
+                      {accountFilterOptions.map((account) => (
+                        <option key={account} value={account}>
+                          {account}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="sr-only">Date</span>
+                    <select aria-label="Transaction date range" title="Date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
+                      <option value="all">All Time</option>
+                      <option value="week">This Week</option>
+                      <option value="lastweek">Last Week</option>
+                      <option value="month">This Month</option>
+                      <option value="lastmonth">Last Month</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+            />
+            {transferMessage && <p className="table-validation" role="alert">{transferMessage}</p>}
           </div>
         )}
-      />
-      {transferMessage && <p className="table-validation" role="alert">{transferMessage}</p>}
+      </section>
 
       <section className="transactions-insight-grid">
         <article className="panel transaction-flow-card">
@@ -1430,6 +1454,7 @@ function ReceiptEntry({
   const [tax, setTax] = useState("");
   const [lines, setLines] = useState<ReceiptLineDraft[]>(() => [createReceiptLine()]);
   const [message, setMessage] = useState("");
+  const [receiptOpen, setReceiptOpen] = useState(true);
 
   useEffect(() => {
     if (!account && accounts.length) setAccount(accounts[0].value);
@@ -1529,17 +1554,31 @@ function ReceiptEntry({
 
   return (
     <section className="receipt-entry-panel" aria-labelledby="receipt-entry-title">
-      <div className="receipt-entry-heading">
-        <div className="receipt-entry-title">
+      <button
+        type="button"
+        className="receipt-entry-heading"
+        aria-label={receiptOpen ? "Collapse manual receipt" : "Expand manual receipt"}
+        aria-expanded={receiptOpen}
+        aria-controls="receipt-entry-content"
+        onClick={() => setReceiptOpen((open) => !open)}
+      >
+        <span className="receipt-entry-title">
           <span className="receipt-entry-icon" aria-hidden="true"><ReceiptText size={21} /></span>
-          <div>
-            <p className="eyebrow">Manual receipt</p>
-            <h2 id="receipt-entry-title">Enter one ticket, item by item</h2>
-          </div>
-        </div>
-        <p>Like a store receipt, with spreadsheet-style rows and one overall total.</p>
-      </div>
+          <span>
+            <span className="eyebrow">Manual receipt</span>
+            <span className="collapsible-section-title" id="receipt-entry-title">Enter one ticket, item by item</span>
+          </span>
+        </span>
+        <span className="receipt-entry-heading-actions">
+          <span className="receipt-entry-description">Like a store receipt, with spreadsheet-style rows and one overall total.</span>
+          <span className="collapsible-section-state">
+            {receiptOpen ? "Hide receipt" : "Show receipt"}
+          </span>
+        </span>
+      </button>
 
+      {receiptOpen && (
+      <div id="receipt-entry-content" className="receipt-entry-content">
       <div className="receipt-meta-grid">
         <label>
           <span>Store / merchant</span>
@@ -1599,6 +1638,8 @@ function ReceiptEntry({
         <p className="receipt-message" role="status" aria-live="polite">{message}</p>
         <button type="button" className="receipt-post-button" onClick={postReceipt}><ReceiptText size={17} /> Post receipt to Transactions</button>
       </div>
+      </div>
+      )}
     </section>
   );
 }
