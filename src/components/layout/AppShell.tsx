@@ -9,10 +9,10 @@ import {
   ChevronsLeft,
   ChevronsRight,
   CreditCard,
+  Ellipsis,
   FileBarChart,
   Home,
   Landmark,
-  Menu,
   X,
   ReceiptText,
   ScanLine,
@@ -45,6 +45,7 @@ const nav = [
 ];
 
 const primaryPaths = ["/", "/money", "/bills", "/inventory", "/transactions", "/vitascan", "/savings", "/goals", "/reports", "/settings"];
+const mobileTabPaths = ["/", "/money", "/transactions", "/bills"];
 const launcherHoldDelay = 240;
 
 export default function AppShell({
@@ -69,6 +70,7 @@ export default function AppShell({
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [launcherDragging, setLauncherDragging] = useState(false);
   const [launcherTarget, setLauncherTarget] = useState<string | null>(null);
+  const [pageOpen, setPageOpen] = useState(true);
   const [query, setQuery] = useState("");
   const brandRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -87,6 +89,13 @@ export default function AppShell({
   } | null>(null);
   const visibleNav = useMemo(() => nav.filter((item) => item.path !== "/vitascan" || settings.vitaScanEnabled), [settings.vitaScanEnabled]);
   const dashboardNav = useMemo(() => visibleNav.filter((item) => primaryPaths.includes(item.path)), [visibleNav]);
+  const mobileTabs = useMemo(
+    () => mobileTabPaths.flatMap((path) => {
+      const item = visibleNav.find((candidate) => candidate.path === path);
+      return item ? [item] : [];
+    }),
+    [visibleNav],
+  );
   const searchIndex = useMemo(() => buildSearchIndex(data), [data]);
   const results = useMemo(
     () => searchIndex.filter((result) => result.searchText.includes(query.trim().toLowerCase()))
@@ -95,6 +104,9 @@ export default function AppShell({
     [query, searchIndex, settings.vitaScanEnabled],
   );
   const isDashboard = normalize(currentPath) === "/";
+  const moreTabActive = !mobileTabPaths.includes(normalize(currentPath));
+  const pageTitle = titleForPath(currentPath, settings);
+  const pageContentId = `page-content-${normalize(currentPath).replace(/[^a-z0-9]+/gi, "-") || "dashboard"}`;
   const accountName = settings.accountName.trim();
   const firstName = accountName.split(/\s+/)[0] || "Account";
   const visualSettings = wallpaperPreview ? { ...settings, ...wallpaperPreview } : settings;
@@ -141,6 +153,19 @@ export default function AppShell({
 
   useEffect(() => () => {
     if (launcherHoldTimerRef.current) clearTimeout(launcherHoldTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    setPageOpen(true);
+  }, [currentPath]);
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 64.01rem)");
+    const closeMobileSheet = (event: MediaQueryListEvent) => {
+      if (event.matches) setMobileMenuOpen(false);
+    };
+    desktopQuery.addEventListener("change", closeMobileSheet);
+    return () => desktopQuery.removeEventListener("change", closeMobileSheet);
   }, []);
 
   useEffect(() => {
@@ -311,17 +336,6 @@ export default function AppShell({
             );
           })}
         </nav>
-        <button
-          ref={mobileMenuTriggerRef}
-          className="dashboard-mobile-menu-trigger"
-          type="button"
-          aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-          aria-expanded={mobileMenuOpen}
-          aria-controls="mobile-navigation"
-          onClick={() => setMobileMenuOpen((open) => !open)}
-        >
-          {mobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
-        </button>
       </header>
       <aside className="sidebar">
         <div className="brand-wrap" ref={brandRef}>
@@ -374,19 +388,20 @@ export default function AppShell({
 
       <main className="workspace">
         {!isDashboard && <header className="topbar">
-          <button
-            ref={mobileMenuTriggerRef}
-            className="mobile-menu-trigger"
-            type="button"
-            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-navigation"
-            onClick={() => setMobileMenuOpen((open) => !open)}
-          >
-            {mobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
-          </button>
           <div>
-            <h1>{titleForPath(currentPath, settings)}</h1>
+            <h1 aria-label={pageTitle}>
+              <button
+                className="page-collapse-heading"
+                type="button"
+                aria-label={`${pageOpen ? "Collapse" : "Expand"} ${pageTitle} page`}
+                aria-expanded={pageOpen}
+                aria-controls={pageContentId}
+                onClick={() => setPageOpen((open) => !open)}
+              >
+                <span>{pageTitle}</span>
+                <small className="collapsible-section-state">{pageOpen ? "Hide page" : "Show page"}</small>
+              </button>
+            </h1>
           </div>
           <div className="top-actions">
             <div className="search-shell">
@@ -419,7 +434,11 @@ export default function AppShell({
             </a>
           </div>
         </header>}
-        {children}
+        {isDashboard ? children : (
+          <div id={pageContentId} className="page-route-content" hidden={!pageOpen}>
+            {children}
+          </div>
+        )}
       </main>
 
       <div className={`mobile-menu-layer ${mobileMenuOpen ? "open" : ""}`} aria-hidden={!mobileMenuOpen}>
@@ -460,7 +479,7 @@ export default function AppShell({
             )}
           </div>
           <div className="mobile-drawer-nav">
-            {visibleNav.map((item) => {
+            {visibleNav.filter((item) => !mobileTabPaths.includes(item.path)).map((item) => {
               const Icon = item.icon;
               const active = normalize(currentPath) === item.path || (item.path === "/debt" && currentPath === "/debts");
               return (
@@ -473,6 +492,30 @@ export default function AppShell({
           </div>
         </nav>
       </div>
+      <nav className="ios-tab-bar" aria-label="Mobile tab navigation">
+        {mobileTabs.map((item) => {
+          const Icon = item.icon;
+          const active = normalize(currentPath) === item.path;
+          return (
+            <a key={item.path} href={item.path} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
+              <span className="ios-tab-icon"><Icon size={22} aria-hidden="true" /></span>
+              <small>{item.label === "Money Snapshot" ? "Money" : item.label}</small>
+            </a>
+          );
+        })}
+        <button
+          ref={mobileMenuTriggerRef}
+          type="button"
+          className={moreTabActive || mobileMenuOpen ? "active" : ""}
+          aria-label={mobileMenuOpen ? "Close More navigation" : "Open More navigation"}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-navigation"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+        >
+          <span className="ios-tab-icon"><Ellipsis size={23} aria-hidden="true" /></span>
+          <small>More</small>
+        </button>
+      </nav>
       <div className={`mobile-quick-launcher${launcherOpen ? " is-open" : ""}${launcherDragging ? " is-dragging" : ""}`} ref={launcherRef}>
         <div className="mobile-quick-launcher-menu" id="mobile-quick-launcher-menu" role="menu" aria-label="Quick page launcher" aria-hidden={!launcherOpen}>
           {visibleNav.map((item, index) => {

@@ -1,4 +1,4 @@
-.vcc-agent-widget { position: fixed; right: 22px; bottom: 22px; z-index: 80; display: grid; justify-items: end; gap: 10px; pointer-events: none; }
+.vcc-agent-widget { position: fixed; right: 22px; bottom: calc(5.15rem + env(safe-area-inset-bottom)); z-index: 80; display: grid; justify-items: end; gap: 10px; pointer-events: none; }
 .vcc-agent-widget > * { pointer-events: auto; }
 .vcc-agent-launcher { position: relative; display: grid; width: 48px; min-width: 48px; height: 48px; place-items: center; padding: 0; border: 1px solid rgba(145, 157, 255, .35); border-radius: 16px; color: #f7f8ff; background: linear-gradient(145deg, #6575f5, #4e5ad1); box-shadow: 0 12px 32px rgba(34, 43, 120, .36); cursor: pointer; transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease; }
 .vcc-agent-launcher span { font-weight: 750; white-space: nowrap; }
@@ -58,8 +58,9 @@
 @keyframes vcc-pet-spark { 0%, 100% { transform: rotate(-8deg) scale(.9); opacity: .72; } 50% { transform: rotate(8deg) scale(1.15); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .vcc-agent-popover { animation: none; } .vcc-agent-launcher, .vcc-agent-popover button { transition: none; } }
 @media (max-width: 640px) {
-  .vcc-agent-widget { right: 12px; bottom: 12px; }
+  .vcc-agent-widget { right: 12px; }
   .vcc-agent-launcher { width: 46px; min-width: 46px; height: 46px; justify-content: center; padding: 0; border-radius: 15px; }
   .vcc-agent-launcher span { display: none; }
   .vcc-agent-popover { max-height: min(600px, calc(100vh - 148px)); }
 }
+@media (min-width: 64.01rem) { .vcc-agent-widget { bottom: 22px; } }

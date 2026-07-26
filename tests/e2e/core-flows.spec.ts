@@ -71,15 +71,21 @@ test("dashboard keeps system status readable in light mode", async ({ page }) =>
   expect(contrastAgainstWhite).toBeGreaterThanOrEqual(4.5);
 });
 
-test("mobile dashboard launchers stay distinct and keyboard-operable", async ({ page }, testInfo) => {
-  test.skip(!testInfo.project.name.includes("mobile"), "Mobile launcher behavior.");
+test("mobile dashboard uses an iOS-style tab bar and keyboard-operable More sheet", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile"), "Mobile navigation behavior.");
   await page.goto("/");
   await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
 
-  const quick = page.getByRole("button", { name: "Open quick page launcher" });
+  const tabBar = page.getByRole("navigation", { name: "Mobile tab navigation" });
+  await expect(tabBar.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+  await expect(tabBar.getByRole("link", { name: "Money" })).toHaveAttribute("href", "/money");
+  await expect(tabBar.getByRole("link", { name: "Transactions" })).toHaveAttribute("href", "/transactions");
+  await expect(tabBar.getByRole("link", { name: "Bills" })).toHaveAttribute("href", "/bills");
+
+  const more = tabBar.getByRole("button", { name: "Open More navigation" });
   const agent = page.getByRole("button", { name: "Open VCC Agent" });
   const sync = page.locator(".cloud-sync-trigger");
-  const boxes = await Promise.all([quick.boundingBox(), agent.boundingBox(), sync.boundingBox()]);
+  const boxes = await Promise.all([tabBar.boundingBox(), agent.boundingBox(), sync.boundingBox()]);
   expect(boxes.every(Boolean)).toBe(true);
   const overlaps = (a: NonNullable<(typeof boxes)[number]>, b: NonNullable<(typeof boxes)[number]>) =>
     a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
@@ -87,21 +93,14 @@ test("mobile dashboard launchers stay distinct and keyboard-operable", async ({ 
   expect(overlaps(boxes[0]!, boxes[2]!)).toBe(false);
   expect(overlaps(boxes[1]!, boxes[2]!)).toBe(false);
 
-  await quick.click();
-  const dashboardItem = page.getByRole("menuitem", { name: "Dashboard" });
-  await expect(dashboardItem).toBeFocused();
-  await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("menuitem", { name: "Money Snapshot" })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(quick).toBeFocused();
-
-  const navigationTrigger = page.getByRole("button", { name: "Open navigation menu" });
-  await navigationTrigger.click();
+  await more.click();
   const drawer = page.getByRole("navigation", { name: "Primary mobile navigation" });
-  const closeNavigation = drawer.getByRole("button", { name: "Close navigation menu" });
-  await expect(closeNavigation).toBeVisible();
-  await closeNavigation.click();
-  await expect(navigationTrigger).toBeVisible();
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole("link", { name: "Inventory" })).toBeVisible();
+  await expect(drawer.getByRole("link", { name: "Settings" })).toBeVisible();
+  await expect(drawer.getByRole("link", { name: "Dashboard" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(more).toBeFocused();
 });
 
 test("renders an actionable not-found page for unknown routes", async ({ page }) => {
@@ -154,10 +153,13 @@ test("requires confirmation before deleting a financial row", async ({ page }) =
 test("mobile navigation exposes labeled destinations", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes("mobile"), "Mobile navigation check.");
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Open navigation menu" }).first().click();
+  const tabs = page.getByRole("navigation", { name: "Mobile tab navigation" });
+  await expect(tabs.getByRole("link", { name: "Dashboard" })).toBeVisible();
+  await expect(tabs.getByRole("link", { name: "Transactions" })).toBeVisible();
+  await tabs.getByRole("button", { name: "Open More navigation" }).click();
   const drawer = page.getByRole("navigation", { name: "Primary mobile navigation" });
-  await expect(drawer.getByRole("link", { name: "Dashboard" })).toBeVisible();
-  await expect(drawer.getByRole("link", { name: "Transactions" })).toBeVisible();
+  await expect(drawer.getByRole("link", { name: "Inventory" })).toBeVisible();
+  await expect(drawer.getByRole("link", { name: "Settings" })).toBeVisible();
 });
 
 test("VCC Agent stays out of the way and can start a guided walkthrough", async ({ page }) => {
@@ -279,13 +281,13 @@ test("keeps rejected duplicate inventory edits and blank currency cells consiste
   await page.getByRole("button", { name: "Add Item" }).click();
   const newItem = page.locator('textarea[aria-label^="Item, Inventory row"]').last();
   await newItem.fill("Milk");
-  await page.locator("h1").click();
+  await newItem.press("Tab");
   await expect(page.getByRole("alert")).toContainText("already in Inventory");
   await expect(newItem).toHaveValue("");
 
   const blankCost = page.locator('input[aria-label^="Cost, Inventory row"]').last();
   await blankCost.focus();
-  await page.locator("h1").click();
+  await blankCost.press("Tab");
   await expect(blankCost).toHaveValue("");
   const savedCost = await page.evaluate(() => {
     const saved = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -329,7 +331,7 @@ test("VitaScan saves to this VCC workspace and keeps light-theme actions readabl
   await expect(viewTransactions).toHaveAttribute("href", "/transactions");
   await viewTransactions.click();
   await expect(page).toHaveURL(/127\.0\.0\.1:4173\/transactions$/);
-  await expect(page.locator('textarea[aria-label^="Description, Transactions row"]').last()).toHaveValue("NORTH MARKET");
+  await expect(page.locator('textarea[aria-label^="Description, Transaction History row"]').last()).toHaveValue("NORTH MARKET");
 });
 
 test("exercises major navigation, filter, report, and car-loan controls", async ({ page }, testInfo) => {
@@ -622,7 +624,7 @@ test("keeps the closed mobile drawer inert and restores focus after use", async 
   await page.goto("/settings");
   const drawer = page.getByRole("navigation", { name: "Primary mobile navigation", includeHidden: true });
   await expect(drawer).toHaveAttribute("inert", "");
-  const trigger = page.getByRole("button", { name: "Open navigation menu" }).last();
+  const trigger = page.getByRole("button", { name: "Open More navigation" });
   await trigger.click();
   await expect(drawer).not.toHaveAttribute("inert", "");
   await expect(drawer.getByRole("link", { name: "VCC OS" })).toBeFocused();

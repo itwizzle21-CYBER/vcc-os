@@ -16,7 +16,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { DepositAccountOption } from "../../lib/engine/paycheckPlannerEngine";
 import type { ActivityEvent, DecisionState, FinancialState } from "../../lib/types/app";
 
@@ -49,6 +49,7 @@ export default function Dashboard({
   activity,
   accounts,
 }: DashboardProps) {
+  const [pageOpen, setPageOpen] = useState(true);
   const missionIcon = iconForMission(decisionState.todayMission.href);
   const moduleCards: DashboardModuleCardProps[] = [
     {
@@ -162,11 +163,20 @@ export default function Dashboard({
   return (
     <div className="base44-dashboard">
       <h1 className="sr-only">VCC-OS Dashboard</h1>
-      <p className="dashboard-status-line">
+      <button
+        className="dashboard-status-line dashboard-collapse-heading"
+        type="button"
+        aria-label={`${pageOpen ? "Collapse" : "Expand"} Dashboard page`}
+        aria-expanded={pageOpen}
+        aria-controls="dashboard-page-content"
+        onClick={() => setPageOpen((open) => !open)}
+      >
         <i aria-hidden="true" />
         <span>System Active</span>
-      </p>
+        <small className="collapsible-section-state">{pageOpen ? "Hide page" : "Show page"}</small>
+      </button>
 
+      <div id="dashboard-page-content" className="dashboard-page-content" hidden={!pageOpen}>
       <a href={decisionState.todayMission.href} className="mission-banner">
         <div>
           <p><Zap size={16} /> Today&apos;s Mission</p>
@@ -260,6 +270,7 @@ export default function Dashboard({
           <DashboardModuleCard key={card.href} {...card} />
         ))}
       </section>
+      </div>
     </div>
   );
 }

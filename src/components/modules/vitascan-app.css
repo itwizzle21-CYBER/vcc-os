@@ -12,6 +12,12 @@
 .vitascan-footer a { color: #7dd3fc; text-decoration: none; }
 .vitascan-footer a { display: inline-flex; align-items: center; min-height: 28px; padding-inline: 6px; border-radius: 7px; }
 .vitascan-loading { display: grid; min-height: 100dvh; place-items: center; background: #070b14; color: #f8fafc; font-weight: 800; }
+.vitascan-hero { position: relative; }
+.vitascan-page-heading { position: absolute; z-index: 1; inset: 0; width: 100%; border: 0; border-radius: inherit; background: transparent; cursor: pointer; }
+.vitascan-page-heading:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; }
+.vitascan-hero > .collapsible-section-state { z-index: 2; grid-column: 2; justify-self: end; color: #94a3b8; font-size: .72rem; white-space: nowrap; pointer-events: none; }
+.vitascan-page-content { display: grid; gap: inherit; }
+.vitascan-page-content[hidden] { display: none; }
 
 :root[data-theme="light"] .vitascan-brand small { color: #075985; }
 :root[data-theme="light"] .open-vcc { border-color: #7dd3fc; background: #e0f2fe; color: #075985; font-weight: 800; }
@@ -37,4 +43,4 @@
 :root[data-theme="light"] .vitascan-footer { color: #475569; }
 :root[data-theme="light"] .vitascan-footer a { color: #075985; }
 @media (min-width: 23em) { .open-vcc-short { display: none; } .open-vcc-wide { display: inline; } }
-@media (min-width: 48em) { .vitascan-app-shell { padding: 18px; } .vitascan-app-header,.vitascan-footer { width: min(100%, 64rem); } }
+@media (min-width: 48em) { .vitascan-app-shell { padding: 18px; } .vitascan-app-header,.vitascan-footer { width: min(100%, 64rem); } .vitascan-hero > .collapsible-section-state { grid-column: 3; } }
