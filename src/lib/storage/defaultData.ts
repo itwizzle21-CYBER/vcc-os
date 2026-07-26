@@ -420,6 +420,7 @@ export function createZeroData(): AppData {
       appearanceTheme: "signature",
       accent: "blue",
       density: "compact",
+      hideInterfaceGuidance: false,
       accountName: "",
       profileLabel: "Local Profile",
       localMode: true,

@@ -212,6 +212,22 @@ test("configures the welcome content, duration, and style", async ({ page }) => 
   await expect(welcome).toBeHidden({ timeout: 6_500 });
 });
 
+test("hides optional captions and hints for experienced users", async ({ page }) => {
+  await page.goto("/settings#settings-appearance");
+  await page.getByRole("link", { name: "Appearance" }).click();
+  const guidanceToggle = page.getByLabel("Hide captions and hints");
+  await guidanceToggle.check();
+  await expect(page.locator("html")).toHaveAttribute("data-guidance", "minimal");
+
+  await page.goto("/transactions");
+  await expect(page.getByRole("button", { name: "Collapse manual receipt" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Collapse transaction history" })).toBeVisible();
+  await expect(page.locator(".receipt-entry-panel .eyebrow")).toBeHidden();
+  await expect(page.locator(".receipt-entry-description")).toBeHidden();
+  await expect(page.locator(".transaction-history-description")).toBeHidden();
+  await expect(page.locator(".transaction-history-heading .collapsible-section-state")).toBeHidden();
+});
+
 test("has no measurable accessibility failures on the dashboard", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });

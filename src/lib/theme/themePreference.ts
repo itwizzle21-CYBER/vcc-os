@@ -18,6 +18,7 @@ export function applyVisualSettings(settings: UserSettings): void {
   root.dataset.appearance = settings.appearanceTheme;
   root.dataset.accent = settings.accent;
   root.dataset.density = settings.density;
+  root.dataset.guidance = settings.hideInterfaceGuidance ? "minimal" : "full";
   root.dataset.surface = settings.surfaceStyle;
   root.style.colorScheme = activeTheme;
 

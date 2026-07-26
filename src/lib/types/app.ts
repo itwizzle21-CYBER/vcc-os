@@ -62,6 +62,7 @@ export interface UserSettings {
   appearanceTheme: AppearanceTheme;
   accent: AccentColor;
   density: Density;
+  hideInterfaceGuidance: boolean;
   accountName: string;
   profileLabel: string;
   localMode: boolean;

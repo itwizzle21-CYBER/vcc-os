@@ -2294,6 +2294,12 @@ function SettingsPage({
                 { value: "ultra", label: "Dense" },
               ]} onChange={(density) => onChange({ ...data, settings: { ...data.settings, density: density as AppData["settings"]["density"] } })} />
             </SettingControlRow>
+            <SettingFeatureRow
+              title="Hide captions and hints"
+              description="Remove secondary guidance for a cleaner workspace while keeping headings, data, and accessible labels."
+              checked={data.settings.hideInterfaceGuidance}
+              onChange={(hideInterfaceGuidance) => onChange({ ...data, settings: { ...data.settings, hideInterfaceGuidance } })}
+            />
             <SettingControlRow label="Surface" description="Change panel depth and translucency.">
               <SettingSegmented label="Surface style" value={data.settings.surfaceStyle} options={[
                 { value: "glass", label: "Glass" },

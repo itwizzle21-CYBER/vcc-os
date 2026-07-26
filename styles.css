@@ -2989,6 +2989,22 @@ td textarea[readonly] {
   text-transform: uppercase;
 }
 
+:root[data-guidance="minimal"] .eyebrow,
+:root[data-guidance="minimal"] .settings-kicker,
+:root[data-guidance="minimal"] .collapsible-section-state,
+:root[data-guidance="minimal"] .receipt-entry-description,
+:root[data-guidance="minimal"] .transaction-history-description,
+:root[data-guidance="minimal"] .receipt-help > span,
+:root[data-guidance="minimal"] .spending-period-heading > span,
+:root[data-guidance="minimal"] .settings-section-heading small,
+:root[data-guidance="minimal"] .settings-row-copy small,
+:root[data-guidance="minimal"] .settings-welcome-heading small,
+:root[data-guidance="minimal"] .settings-appearance-intro > div > p:last-child,
+:root[data-guidance="minimal"] .settings-layer-heading > div > p:last-child,
+:root[data-guidance="minimal"] .settings-layer-card header small {
+  display: none !important;
+}
+
 .bills-due-metrics strong {
   color: var(--text);
   font-size: 0.86rem;
