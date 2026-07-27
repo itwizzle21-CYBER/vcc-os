@@ -21,11 +21,25 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
   const spendableSafe = mergedSpendable(financialState);
   const spendableTarget = Math.max(1, financialState.billsPressure);
   const spendableProgress = financialState.billsPressure > 0
-    ? Math.min(100, (spendableSafe / spendableTarget) * 100)
+    ? Math.max(0, Math.min(100, (spendableSafe / spendableTarget) * 100))
     : 100;
   const borrowedProgress = financialState.borrowedMoney > 0 ? 0 : 100;
   const inventoryProgress = financialState.buyNextCount > 0 ? 0 : 100;
   const alerts: DecisionState["priorityAlerts"] = [];
+  if (financialState.accountDeficit > 0) {
+    alerts.push({
+      title: "An account is below zero",
+      detail: `${formatCurrency(financialState.accountDeficit)} in account deficits is included in the cash totals.`,
+      tone: "warning",
+    });
+  }
+  if (financialState.unreconciledCash > 0) {
+    alerts.push({
+      title: "Unaccounted cash needs reconciliation",
+      detail: `${formatCurrency(financialState.unreconciledCash)} funded spending without a confirmed source and is reducing Spendable / Safe.`,
+      tone: "warning",
+    });
+  }
   if (financialState.overdueBills > 0) {
     alerts.push({
       title: "Overdue bill pressure",
@@ -152,6 +166,8 @@ function chooseRecommendedMove(financialState: FinancialState): string {
   const spendableSafe = mergedSpendable(financialState);
   if (financialState.overdueBills > 0) return "Pay overdue bills before new spending.";
   if (financialState.billsDueToday > 0) return "Pay or schedule today’s bills before new spending.";
+  if (financialState.accountDeficit > 0) return "Cover the negative account balance before new spending.";
+  if (financialState.unreconciledCash > 0) return "Reconcile the unaccounted cash source before new spending.";
   if (financialState.borrowedMoney > 0) return "Repay SpotMe/MyPay first, then recalculate Spendable / Safe.";
   if (financialState.billsPressure > spendableSafe * 0.5) return "Hold cash for bills due this week.";
   if (financialState.criticalItems > 0) return "Refill critical Buy Next items with the lowest-cost run.";
@@ -174,6 +190,24 @@ function chooseTodayMission(financialState: FinancialState): DecisionState["toda
       title: "Clear today's bills",
       detail: `${financialState.billsDueToday} bill${financialState.billsDueToday === 1 ? "" : "s"} due today with ${formatCurrency(financialState.billsPressure)} in bill pressure.`,
       href: "/bills",
+      priority: "High",
+    };
+  }
+
+  if (financialState.accountDeficit > 0) {
+    return {
+      title: "Cover the account deficit",
+      detail: `${formatCurrency(financialState.accountDeficit)} is below zero across your tracked accounts.`,
+      href: "/money",
+      priority: "Critical",
+    };
+  }
+
+  if (financialState.unreconciledCash > 0) {
+    return {
+      title: "Reconcile unaccounted cash",
+      detail: `Confirm where ${formatCurrency(financialState.unreconciledCash)} of shortfall spending came from.`,
+      href: "/transactions",
       priority: "High",
     };
   }

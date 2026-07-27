@@ -473,6 +473,10 @@ export default function Spreadsheet({
                     const transferOnlyDisabled = config.key === "transactions"
                       && column.key === "transferDestination"
                       && transactionType(row) !== "transfer";
+                    const shortfallOnlyDisabled = config.key === "transactions"
+                      && column.key === "shortfallSource"
+                      && transactionType(row) !== "expense";
+                    const selectDisabled = transferOnlyDisabled || shortfallOnlyDisabled;
                     return (
                       <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key)}>
                         <select
@@ -481,16 +485,26 @@ export default function Spreadsheet({
                           data-row-id={row.id}
                           data-column-key={column.key}
                           value={value}
-                          disabled={transferOnlyDisabled}
+                          disabled={selectDisabled}
                           aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
-                          aria-description={transferOnlyDisabled ? "Available when transaction type is Transfer." : undefined}
+                          aria-description={transferOnlyDisabled
+                            ? "Available when transaction type is Transfer."
+                            : shortfallOnlyDisabled
+                              ? "Available when transaction type is Expense."
+                              : undefined}
                           onPointerDown={() => beginPointerEdit(row.id, column.key)}
                           onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value, rowIndex, columnIndex)}
                           onChange={(event) => updateCell(row.id, column.key, event.target.value)}
                           onBlur={() => setEditingCell(null)}
                           onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
                         >
-                          <option value="">{transferOnlyDisabled ? "Transfer transactions only" : `Select ${column.label.toLowerCase()}`}</option>
+                          <option value="">{
+                            selectDisabled
+                              ? transferOnlyDisabled ? "Transfer transactions only" : "Expense transactions only"
+                              : config.key === "transactions" && column.key === "shortfallSource"
+                                ? "Default: account goes negative"
+                                : `Select ${column.label.toLowerCase()}`
+                          }</option>
                           {hasLegacyValue && <option value={value}>{value}</option>}
                           {columnSelectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                         </select>

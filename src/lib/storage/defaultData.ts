@@ -54,6 +54,7 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
       { key: "date", label: "Date", type: "date" },
       { key: "account", label: "From Account / Vault" },
       { key: "transferDestination", label: "Transfer To" },
+      { key: "shortfallSource", label: "If Short" },
       { key: "notes", label: "Notes" },
     ],
   },

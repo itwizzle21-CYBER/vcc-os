@@ -2749,6 +2749,16 @@ td textarea[readonly] {
   color: var(--muted);
 }
 
+.money-account-grid article.negative {
+  border-color: color-mix(in srgb, #ff6666 58%, var(--border));
+  background: color-mix(in srgb, #ff6666 9%, var(--surface-2));
+}
+
+.money-account-grid article.negative b,
+.money-account-grid article.negative small {
+  color: #ff7b7b;
+}
+
 .money-simple-inputs .spreadsheet-toolbar {
   position: relative;
   top: auto;
@@ -3304,8 +3314,14 @@ td textarea[readonly] {
 
 .receipt-meta-grid {
   display: grid;
-  grid-template-columns: minmax(12rem, 1.35fr) minmax(9rem, 0.7fr) minmax(13rem, 1fr);
+  grid-template-columns: minmax(12rem, 1.2fr) minmax(9rem, 0.7fr) minmax(12rem, 1fr) minmax(11rem, 0.9fr);
   gap: 0.7rem;
+}
+
+@media (max-width: 1100px) and (min-width: 821px) {
+  .receipt-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .receipt-meta-grid label,
@@ -9095,6 +9111,10 @@ body {
   margin-top: 0.45rem;
 }
 
+.dashboard-account-dropdown > dl > .negative dd {
+  color: #ff8c8c;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dashboard-module-open,
   .dashboard-module-card a.dashboard-module-title,
@@ -10279,18 +10299,19 @@ body {
   }
 
   .reference-shell.transactions-shell .transactions-page th:nth-child(1) { width: 3%; }
-  .reference-shell.transactions-shell .transactions-page th:nth-child(2) { width: 11%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(2) { width: 9%; }
   .reference-shell.transactions-shell .transactions-page th:nth-child(3) { width: 6%; }
-  .reference-shell.transactions-shell .transactions-page th:nth-child(4) { width: 8%; }
-  .reference-shell.transactions-shell .transactions-page th:nth-child(5) { width: 8%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(4) { width: 7%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(5) { width: 7%; }
   .reference-shell.transactions-shell .transactions-page th:nth-child(6) { width: 4%; }
-  .reference-shell.transactions-shell .transactions-page th:nth-child(7) { width: 7%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(7) { width: 6%; }
   .reference-shell.transactions-shell .transactions-page th:nth-child(8) { width: 6%; }
   .reference-shell.transactions-shell .transactions-page th:nth-child(9) { width: 7%; }
-  .reference-shell.transactions-shell .transactions-page th:nth-child(10) { width: 9%; }
-  .reference-shell.transactions-shell .transactions-page th:nth-child(11) { width: 10%; }
-  .reference-shell.transactions-shell .transactions-page th:nth-child(12) { width: 10%; }
-  .reference-shell.transactions-shell .transactions-page th:nth-child(13) { width: 11%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(10) { width: 8%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(11) { width: 9%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(12) { width: 8%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(13) { width: 9%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(14) { width: 11%; }
 }
 
 /* Reflow transaction rows before the columns become too narrow. */

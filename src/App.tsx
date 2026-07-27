@@ -49,7 +49,7 @@ import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { migrateLegacyReceiptTaxRows } from "./lib/engine/receiptTransactionEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
-import { applySavingsTransfer, syncTransactionEndpointLabels, syncTransactionTransfers, transactionEndpointOptions } from "./lib/engine/savingsTransferEngine";
+import { applySavingsTransfer, syncTransactionEndpointLabels, syncTransactionTransfers, transactionEndpointOptions, type TransactionShortfallSource } from "./lib/engine/savingsTransferEngine";
 import { depositAccountOptions, eligibleDepositAccounts, type DepositAccountOption } from "./lib/engine/paycheckPlannerEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, normalizeAppData, resetAllData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
@@ -327,7 +327,9 @@ function MoneyPage({
     { label: "Spendable / Safe", value: spendableSafe },
     { label: "Protected Savings", value: financialState.protectedSavings },
     { label: "Available Savings", value: financialState.availableSavings },
+    { label: "Account Deficit", value: financialState.accountDeficit, tone: "bad" as const },
     { label: "Borrowed Money", value: financialState.borrowedMoney, tone: "warn" as const },
+    { label: "Unaccounted Cash", value: financialState.unreconciledCash, tone: "warn" as const },
   ];
 
   return (
@@ -385,10 +387,10 @@ function MoneyAccountOverview({ accounts }: { accounts: DepositAccountOption[] }
       </div>
       <div className="money-account-grid">
         {accounts.map((account) => (
-          <article key={account.id} className={account.isNew ? "available" : "connected"}>
+          <article key={account.id} className={`${account.isNew ? "available" : "connected"} ${account.balance < 0 ? "negative" : ""}`}>
             <div>
               <strong>{account.label}</strong>
-              <small>{account.isNew ? "Ready for first transaction" : "Linked and updating"}</small>
+              <small>{account.balance < 0 ? "Overdrawn · included in totals" : account.isNew ? "Ready for first transaction" : "Linked and updating"}</small>
             </div>
             <b>{formatCurrency(account.balance)}</b>
           </article>
@@ -651,7 +653,15 @@ function TransactionsPage({
   const transactionEndpoints = useMemo(() => transactionEndpointOptions(data), [data]);
   const transactionSelectOptions = useMemo(() => {
     const options = transactionEndpoints.map(({ value, label }) => ({ value, label }));
-    return { account: options, transferDestination: options };
+    return {
+      account: options,
+      transferDestination: options,
+      shortfallSource: [
+        { value: "overdraft", label: "Let account go negative" },
+        { value: "borrowed", label: "Borrowed money" },
+        { value: "unreconciled", label: "Unaccounted cash" },
+      ],
+    };
   }, [transactionEndpoints]);
   const accountFilterOptions = useMemo(() => {
     const uniqueAccounts = new Map<string, string>();
@@ -743,6 +753,7 @@ function TransactionsPage({
           <strong className="expense">-{formatCurrency(expenseTotal)}</strong>
           <em>{formatCurrency(transferTotal)} transfers</em>
           <em>Week impact {formatCurrency(financialState.transactionWeekNet)}</em>
+          <em>Shortfall spending {formatCurrency(financialState.shortfallSpending)}</em>
           <em>{categoryFilter === "all" ? "All categories" : categoryFilter}</em>
           <em>{accountFilter === "all" ? "All accounts" : accountFilter}</em>
         </div>
@@ -1459,6 +1470,7 @@ function ReceiptEntry({
   const [merchant, setMerchant] = useState("");
   const [date, setDate] = useState(todayIso());
   const [account, setAccount] = useState("");
+  const [shortfallSource, setShortfallSource] = useState<TransactionShortfallSource>("overdraft");
   const [tax, setTax] = useState("");
   const [lines, setLines] = useState<ReceiptLineDraft[]>(() => [createReceiptLine()]);
   const [message, setMessage] = useState("");
@@ -1529,6 +1541,7 @@ function ReceiptEntry({
           date,
           account,
           transferDestination: "",
+          shortfallSource,
           receiptId,
           receiptSubtotal: subtotal.toFixed(2),
           receiptTax: taxAmount ? taxAmount.toFixed(2) : "",
@@ -1587,6 +1600,14 @@ function ReceiptEntry({
           <select value={account} onChange={(event) => setAccount(event.target.value)}>
             <option value="">Choose account</option>
             {accounts.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>If account is short</span>
+          <select value={shortfallSource} onChange={(event) => setShortfallSource(event.target.value as TransactionShortfallSource)}>
+            <option value="overdraft">Let account go negative</option>
+            <option value="borrowed">Borrowed money</option>
+            <option value="unreconciled">Unaccounted cash</option>
           </select>
         </label>
       </div>
@@ -2965,10 +2986,12 @@ function summaryForSection(section: SectionKey, financialState: ReturnType<typeo
       { label: "Week Net Impact", value: financialState.transactionWeekNet, tone: financialState.transactionWeekNet < 0 ? "bad" as const : "good" as const },
       { label: "Protected Savings", value: financialState.protectedSavings },
       { label: "Available Savings", value: financialState.availableSavings },
+      { label: "Account Deficit", value: financialState.accountDeficit, tone: "bad" as const },
       { label: "Weekly Income", value: financialState.weeklyIncome },
       { label: "Monthly Income", value: financialState.monthlyIncome },
       { label: "Received Income", value: financialState.receivedIncome },
       { label: "Borrowed Money", value: financialState.borrowedMoney, tone: "warn" as const },
+      { label: "Unaccounted Cash", value: financialState.unreconciledCash, tone: "warn" as const },
     ],
     bills: [
       { label: "Bills Due Today", value: String(financialState.billsDueToday) },
@@ -2986,6 +3009,9 @@ function summaryForSection(section: SectionKey, financialState: ReturnType<typeo
       { label: "Week Impact", value: financialState.transactionWeekNet, tone: financialState.transactionWeekNet < 0 ? "bad" as const : "good" as const },
       { label: "Weekly Spending", value: financialState.weeklySpending },
       { label: "Monthly Spending", value: financialState.monthlySpending },
+      { label: "Shortfall Spending", value: financialState.shortfallSpending, tone: "warn" as const },
+      { label: "Account Deficit", value: financialState.accountDeficit, tone: "bad" as const },
+      { label: "Unaccounted Cash", value: financialState.unreconciledCash, tone: "warn" as const },
       { label: "Weekly Income", value: financialState.weeklyIncome },
       { label: "Monthly Income", value: financialState.monthlyIncome },
       { label: "Largest Expense", value: financialState.largestExpense },
@@ -3097,6 +3123,7 @@ function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
       date: cells.date || "",
       account: cells.account || "",
       transferDestination: cells.transferDestination || "",
+      shortfallSource: cells.shortfallSource || "",
       notes: cells.notes || "",
     },
   };

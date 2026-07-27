@@ -210,6 +210,9 @@ export interface FinancialState {
   protectedSavings: number;
   availableSavings: number;
   borrowedMoney: number;
+  accountDeficit: number;
+  unreconciledCash: number;
+  shortfallSpending: number;
   weeklyIncome: number;
   monthlyIncome: number;
   receivedIncome: number;

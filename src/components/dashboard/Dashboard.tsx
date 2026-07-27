@@ -64,7 +64,9 @@ export default function Dashboard({
         ["Cash", formatExactCurrency(financialState.cashOnHand)],
         ["Weekly Income", formatExactCurrency(financialState.weeklyIncome)],
         ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
+        ["Account Deficit", formatExactCurrency(financialState.accountDeficit)],
         ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
+        ["Unaccounted Cash", formatExactCurrency(financialState.unreconciledCash)],
       ],
       accounts,
     },
@@ -79,6 +81,7 @@ export default function Dashboard({
         ["Week Impact", formatExactCurrency(financialState.transactionWeekNet)],
         ["Weekly Spending", formatDashboardSpending(financialState.weeklySpending)],
         ["Monthly Spending", formatDashboardSpending(financialState.monthlySpending)],
+        ["Shortfall Spending", formatDashboardSpending(financialState.shortfallSpending)],
         ["Largest Expense", financialState.largestExpense],
         ["Last Transaction", financialState.lastTransaction],
       ],
@@ -337,9 +340,9 @@ function DashboardModuleCard({
         </summary>
         <dl>
           {accounts.map((account) => (
-            <div key={account.id}>
+            <div key={account.id} className={account.balance < 0 ? "negative" : undefined}>
               <dt>{account.label}</dt>
-              <dd>{formatExactCurrency(account.balance)}</dd>
+              <dd>{formatExactCurrency(account.balance)}{account.balance < 0 ? " overdrawn" : ""}</dd>
             </div>
           ))}
         </dl>

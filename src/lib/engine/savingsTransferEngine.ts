@@ -21,6 +21,9 @@ export interface TransactionEndpointOption {
 }
 
 const TRANSACTION_EDITOR = "transaction-editor";
+const BORROWED_SHORTFALL_ROW_ID = "money-borrowed-transaction-shortfalls";
+
+export type TransactionShortfallSource = "overdraft" | "borrowed" | "unreconciled";
 
 export function transactionEndpointOptions(data: AppData): TransactionEndpointOption[] {
   const moneyOptions = depositAccountOptions(data).map((account) => ({
@@ -94,6 +97,13 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
   const previousTransactions = new Map(data.sections.transactions.map((row) => [row.id, row]));
   const moneyBalances = new Map(endpointOptions.filter((option) => option.kind === "money").map((option) => [option.id, option.balance]));
   const savingsBalances = new Map(endpointOptions.filter((option) => option.kind === "savings").map((option) => [option.id, option.balance]));
+  const borrowedBalances = new Map(
+    data.sections.money
+      .filter(isBorrowedMoneyRow)
+      .map((row) => [row.id, toNumber(row.cells.amount)]),
+  );
+  const materializedBorrowedIds = new Set(borrowedBalances.keys());
+  if (!borrowedBalances.has(BORROWED_SHORTFALL_ROW_ID)) borrowedBalances.set(BORROWED_SHORTFALL_ROW_ID, 0);
   const materializedMoneyIds = new Set(data.sections.money.map((row) => row.id));
 
   for (const row of data.sections.transactions) {
@@ -104,7 +114,12 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
       adjustEndpointBalance(row.cells.transferSourceId, amount, moneyBalances, savingsBalances);
       adjustEndpointBalance(row.cells.transferDestinationId, -amount, moneyBalances, savingsBalances);
     } else {
-      adjustEndpointBalance(row.cells.balanceEndpointId, effect === "income" ? -amount : amount, moneyBalances, savingsBalances);
+      const fundedShortfall = isExternallyFundedShortfall(row) ? Math.abs(toNumber(row.cells.shortfallAmount)) : 0;
+      adjustEndpointBalance(row.cells.balanceEndpointId, effect === "income" ? -amount : amount - fundedShortfall, moneyBalances, savingsBalances);
+      const liabilityId = row.cells.shortfallLiabilityId || BORROWED_SHORTFALL_ROW_ID;
+      if (row.cells.shortfallSource === "borrowed" && fundedShortfall > 0 && materializedBorrowedIds.has(liabilityId)) {
+        adjustBorrowedBalance(liabilityId, -fundedShortfall, borrowedBalances);
+      }
     }
   }
 
@@ -133,7 +148,15 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
       if (!endpoint) throw new Error("Choose a valid account or savings vault.");
       if (!isValidIsoDate(date)) throw new Error("Choose a valid transaction date.");
       const currentBalance = endpointBalance(endpoint, moneyBalances, savingsBalances);
-      if (type === "expense" && amount > currentBalance) throw new Error(`This expense exceeds the ${endpointName(endpoint)} balance.`);
+      const shortfallSource = normalizeShortfallSource(row.cells.shortfallSource);
+      const shortfallAmount = type === "expense"
+        ? Math.max(0, Math.round((amount - Math.max(0, currentBalance)) * 100) / 100)
+        : 0;
+      const externallyFunded = shortfallAmount > 0 && shortfallSource !== "overdraft";
+      if (externallyFunded) adjustEndpointBalance(endpoint.id, shortfallAmount, moneyBalances, savingsBalances);
+      if (shortfallAmount > 0 && shortfallSource === "borrowed") {
+        adjustBorrowedBalance(BORROWED_SHORTFALL_ROW_ID, shortfallAmount, borrowedBalances);
+      }
       adjustEndpointBalance(endpoint.id, type === "income" ? amount : -amount, moneyBalances, savingsBalances);
       if (endpoint.kind === "money") materializedMoneyIds.add(endpoint.id);
       return {
@@ -143,6 +166,9 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
           type,
           amount: currencyValue(type === "income" ? amount : -amount),
           account: endpoint.value,
+          shortfallSource: type === "expense" ? shortfallSource : "",
+          shortfallAmount: shortfallAmount ? currencyValue(shortfallAmount) : "",
+          shortfallLiabilityId: shortfallAmount > 0 && shortfallSource === "borrowed" ? BORROWED_SHORTFALL_ROW_ID : "",
           balanceEndpointId: endpoint.id,
           balanceEffect: type,
           balanceApplied: "yes",
@@ -200,6 +226,7 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
         transferDestination: destination.value,
         transferSourceId: source.id,
         transferDestinationId: destination.id,
+        shortfallSource: "",
         balanceEffect: "transfer",
         balanceApplied: "yes",
         balanceApplication: TRANSACTION_EDITOR,
@@ -211,16 +238,31 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
   const addedMoneyRows = endpointOptions
     .filter((option) => option.kind === "money" && option.isNew && materializedMoneyIds.has(option.id))
     .map((option) => ({ id: option.id, cells: { label: endpointName(option), amount: currencyValue(moneyBalances.get(option.id) || 0), section: "cash", notes: "Added from Transactions" } }));
+  const borrowedShortfallBalance = borrowedBalances.get(BORROWED_SHORTFALL_ROW_ID) || 0;
+  const addedBorrowedRows = materializedBorrowedIds.has(BORROWED_SHORTFALL_ROW_ID) || borrowedShortfallBalance <= 0
+    ? []
+    : [{
+      id: BORROWED_SHORTFALL_ROW_ID,
+      cells: {
+        label: "Borrowed Transaction Shortfalls",
+        amount: currencyValue(borrowedShortfallBalance),
+        section: "borrowed",
+        notes: "Borrowing recorded when a transaction exceeded its selected account balance.",
+      },
+    }];
 
   return {
     ...data,
     sections: {
       ...data.sections,
       money: [
-        ...data.sections.money.map((row) => moneyBalances.has(row.id)
-          ? { ...row, cells: { ...row.cells, amount: currencyValue(moneyBalances.get(row.id) || 0) } }
-          : row),
+        ...data.sections.money.map((row) => {
+          if (moneyBalances.has(row.id)) return { ...row, cells: { ...row.cells, amount: currencyValue(moneyBalances.get(row.id) || 0) } };
+          if (borrowedBalances.has(row.id)) return { ...row, cells: { ...row.cells, amount: currencyValue(borrowedBalances.get(row.id) || 0) } };
+          return row;
+        }),
         ...addedMoneyRows,
+        ...addedBorrowedRows,
       ],
       savings: data.sections.savings.map((row) => savingsBalances.has(row.id)
         ? { ...row, cells: { ...row.cells, balance: currencyValue(savingsBalances.get(row.id) || 0) } }
@@ -299,6 +341,10 @@ function adjustEndpointBalance(id: string | undefined, adjustment: number, money
   if (balances) balances.set(id, Math.round(((balances.get(id) || 0) + adjustment) * 100) / 100);
 }
 
+function adjustBorrowedBalance(id: string, adjustment: number, borrowedBalances: Map<string, number>) {
+  borrowedBalances.set(id, Math.round(((borrowedBalances.get(id) || 0) + adjustment) * 100) / 100);
+}
+
 function stripEditorApplication(row: SpreadsheetRow): SpreadsheetRow {
   const cells = { ...row.cells };
   delete cells.transferValidation;
@@ -309,6 +355,8 @@ function stripEditorApplication(row: SpreadsheetRow): SpreadsheetRow {
   delete cells.transferDestinationId;
   delete cells.balanceEndpointId;
   delete cells.balanceEffect;
+  delete cells.shortfallAmount;
+  delete cells.shortfallLiabilityId;
   return { ...row, cells };
 }
 
@@ -326,8 +374,21 @@ function withTransferValidation(row: SpreadsheetRow, message: string): Spreadshe
 }
 
 function balanceFieldsChanged(previous: SpreadsheetRow, next: SpreadsheetRow): boolean {
-  return ["type", "amount", "date", "account", "transferDestination"]
+  return ["type", "amount", "date", "account", "transferDestination", "shortfallSource"]
     .some((key) => String(previous.cells[key] || "") !== String(next.cells[key] || ""));
+}
+
+function normalizeShortfallSource(value: string | undefined): TransactionShortfallSource {
+  if (value === "borrowed" || value === "unreconciled") return value;
+  return "overdraft";
+}
+
+function isExternallyFundedShortfall(row: SpreadsheetRow): boolean {
+  return row.cells.shortfallSource === "borrowed" || row.cells.shortfallSource === "unreconciled";
+}
+
+function isBorrowedMoneyRow(row: SpreadsheetRow): boolean {
+  return (row.cells.section || "").trim().toLowerCase() === "borrowed";
 }
 
 function endpointName(option: TransactionEndpointOption): string {

@@ -222,6 +222,83 @@ describe("savings transfer engine", () => {
     expect(computeFinancialState(spent).weeklySpending).toBe(25);
   });
 
+  it("keeps an overdraft visible as a negative account balance", () => {
+    const data = createZeroData();
+    const today = new Date();
+    const date = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-");
+    data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "40" } }];
+
+    const next = syncTransactionTransfers(data, [{
+      id: "overdraft-expense",
+      cells: { description: "Emergency purchase", type: "expense", amount: "75", date, account: "Checking", shortfallSource: "overdraft" },
+    }]);
+
+    expect(next.sections.money[0].cells.amount).toBe("-35.00");
+    expect(next.sections.transactions[0].cells).toMatchObject({ shortfallSource: "overdraft", shortfallAmount: "35.00" });
+    expect(computeFinancialState(next)).toMatchObject({
+      totalCash: -35,
+      spendableCash: -35,
+      safeToSpend: -35,
+      accountDeficit: 35,
+      shortfallSpending: 35,
+      weeklySpending: 75,
+    });
+  });
+
+  it("records borrowed transaction shortfalls as liabilities and reverses them when edited or removed", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "40" } }];
+    const expense = {
+      id: "borrowed-expense",
+      cells: { description: "Borrowed purchase", type: "expense", amount: "75", date: "2026-07-22", account: "Checking", shortfallSource: "borrowed" },
+    };
+
+    const applied = syncTransactionTransfers(data, [expense]);
+    expect(applied.sections.money.find((row) => row.id === "checking")?.cells.amount).toBe("0.00");
+    expect(applied.sections.money.find((row) => row.id === "money-borrowed-transaction-shortfalls")?.cells.amount).toBe("35.00");
+    expect(computeFinancialState(applied)).toMatchObject({ totalCash: 0, borrowedMoney: 35, safeToSpend: -35, accountDeficit: 0, shortfallSpending: 35 });
+
+    const rebuilt = syncTransactionTransfers({
+      ...applied,
+      sections: {
+        ...applied.sections,
+        money: applied.sections.money.filter((row) => row.id !== "money-borrowed-transaction-shortfalls"),
+      },
+    }, applied.sections.transactions);
+    expect(rebuilt.sections.money.find((row) => row.id === "money-borrowed-transaction-shortfalls")?.cells.amount).toBe("35.00");
+
+    const edited = syncTransactionTransfers(applied, [{
+      ...applied.sections.transactions[0],
+      cells: { ...applied.sections.transactions[0].cells, amount: "50" },
+    }]);
+    expect(edited.sections.money.find((row) => row.id === "checking")?.cells.amount).toBe("0.00");
+    expect(edited.sections.money.find((row) => row.id === "money-borrowed-transaction-shortfalls")?.cells.amount).toBe("10.00");
+
+    const removed = syncTransactionTransfers(edited, []);
+    expect(removed.sections.money.find((row) => row.id === "checking")?.cells.amount).toBe("40.00");
+    expect(removed.sections.money.find((row) => row.id === "money-borrowed-transaction-shortfalls")?.cells.amount).toBe("0.00");
+  });
+
+  it("tracks unaccounted cash separately without treating it as income", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "cash", cells: { label: "Cash", section: "cash", amount: "10" } }];
+
+    const next = syncTransactionTransfers(data, [{
+      id: "unreconciled-expense",
+      cells: { description: "Untracked cash purchase", type: "expense", amount: "30", date: "2026-07-22", account: "Cash", shortfallSource: "unreconciled" },
+    }]);
+
+    expect(next.sections.money[0].cells.amount).toBe("0.00");
+    expect(computeFinancialState(next)).toMatchObject({
+      totalCash: 0,
+      receivedIncome: 0,
+      borrowedMoney: 0,
+      unreconciledCash: 20,
+      shortfallSpending: 20,
+      safeToSpend: -20,
+    });
+  });
+
   it("applies income and expenses to every selected account or vault", () => {
     const endpointRows = [
       { kind: "money", id: "checking", label: "Checking", balance: 100 },

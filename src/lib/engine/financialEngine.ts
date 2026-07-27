@@ -25,16 +25,16 @@ export function computeFinancialState(data: AppData): FinancialState {
   }));
   const cashRows = moneyRows.filter((item) => item.section === "cash");
   const cashMoney = cashRows
-    .reduce((sum, item) => sum + positive(item.amount), 0);
+    .reduce((sum, item) => sum + item.amount, 0);
   const cashOnHand = cashRows
     .filter((item) => isCashOnHand(item.row))
-    .reduce((sum, item) => sum + positive(item.amount), 0);
+    .reduce((sum, item) => sum + item.amount, 0);
   const protectedMoney = moneyRows
     .filter((item) => item.section === "protectedSavings")
-    .reduce((sum, item) => sum + positive(item.amount), 0);
+    .reduce((sum, item) => sum + item.amount, 0);
   const availableSavingsMoney = moneyRows
     .filter((item) => item.section === "availableSavings")
-    .reduce((sum, item) => sum + positive(item.amount), 0);
+    .reduce((sum, item) => sum + item.amount, 0);
   const borrowedMoney = moneyRows
     .filter((item) => item.section === "borrowed")
     .reduce((sum, item) => sum + positive(item.amount), 0);
@@ -62,6 +62,17 @@ export function computeFinancialState(data: AppData): FinancialState {
   const availableSavings = availableSavingsRows.length > 0
     ? availableSavingsRows.reduce((sum, row) => sum + toNumber(row.cells.balance), 0)
     : availableSavingsMoney;
+  const savingsBalancesForDeficit = savings.length > 0
+    ? savings.map((row) => toNumber(row.cells.balance))
+    : moneyRows.filter((item) => item.section === "protectedSavings" || item.section === "availableSavings").map((item) => item.amount);
+  const accountDeficit = [...cashRows.map((item) => item.amount), ...savingsBalancesForDeficit]
+    .reduce((sum, balance) => sum + Math.abs(Math.min(0, balance)), 0);
+  const unreconciledCash = transactions
+    .filter((row) => row.cells.shortfallSource === "unreconciled")
+    .reduce((sum, row) => sum + positive(toNumber(row.cells.shortfallAmount)), 0);
+  const shortfallSpending = transactions
+    .filter((row) => transactionType(row) === "expense")
+    .reduce((sum, row) => sum + positive(toNumber(row.cells.shortfallAmount)), 0);
   const totalCash = operatingCash + protectedSavings + availableSavings;
   const lockedIncome = data.paycheckPlanner.locked && !data.paycheckPlanner.depositApplied ? toNumber(data.paycheckPlanner.paycheckAmount) : 0;
   const extraIncome = income.reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
@@ -80,7 +91,7 @@ export function computeFinancialState(data: AppData): FinancialState {
   const weeklyIncome = plannedIncome + currentWeekAdditionalTransactionIncome;
   const monthlyIncome = weeklyIncome * 4.33;
   const receivedIncome = data.paycheckHistory.reduce((sum, row) => sum + toNumber(row.income), 0) + transactionIncome;
-  const spendableCash = Math.max(0, cashRows.length > 0 ? operatingCash + plannedIncome + transactionNet - repaymentImpact : operatingCash + transactionNet);
+  const spendableCash = cashRows.length > 0 ? operatingCash + plannedIncome + transactionNet - repaymentImpact : operatingCash + transactionNet;
 
   const today = new Date();
   const billsDueToday = bills.filter((row) => isSameDay(row.cells.dueDate, today) && isOpenBill(row)).length;
@@ -89,7 +100,7 @@ export function computeFinancialState(data: AppData): FinancialState {
   const billsPressure = bills
     .filter((row) => isDueBy(row.cells.dueDate, today, 7) && isOpenBill(row))
     .reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
-  const safeToSpend = Math.max(0, spendableCash - billsPressure - borrowedMoney);
+  const safeToSpend = spendableCash - billsPressure - borrowedMoney - unreconciledCash;
 
   const expenseRows = transactions.filter((row) => transactionType(row) === "expense");
   const weeklySpending = currentWeekTransactions
@@ -153,6 +164,9 @@ export function computeFinancialState(data: AppData): FinancialState {
     protectedSavings,
     availableSavings,
     borrowedMoney,
+    accountDeficit,
+    unreconciledCash,
+    shortfallSpending,
     weeklyIncome,
     monthlyIncome,
     receivedIncome,

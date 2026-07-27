@@ -64,6 +64,20 @@ describe("financial dashboard totals", () => {
     expect(computeFinancialState(data).borrowedMoney).toBe(0);
   });
 
+  it("preserves negative account and vault balances in dashboard totals", () => {
+    const data = createZeroData();
+    data.sections.money = [row("checking", { label: "Checking", section: "cash", amount: "-20" })];
+    data.sections.savings = [row("travel", { name: "Travel", balance: "-5" })];
+
+    expect(computeFinancialState(data)).toMatchObject({
+      totalCash: -25,
+      spendableCash: -20,
+      safeToSpend: -20,
+      availableSavings: -5,
+      accountDeficit: 25,
+    });
+  });
+
   it("adds current-week transaction income to income-page planning without duplicating paycheck history", () => {
     const data = createZeroData();
     const today = new Date();
