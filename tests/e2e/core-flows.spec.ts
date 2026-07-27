@@ -604,6 +604,30 @@ test("keeps the native calendar picker visible in dark mode", async ({ page }) =
   });
 });
 
+test("keeps the transaction page free of horizontal scrolling", async ({ page }) => {
+  for (const viewport of [
+    { width: 1600, height: 900 },
+    { width: 1024, height: 900 },
+    { width: 320, height: 800 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/transactions");
+
+    const widths = await page.evaluate(() => {
+      const tableWrap = document.querySelector<HTMLElement>(".transactions-page .table-wrap");
+      return {
+        viewport: document.documentElement.clientWidth,
+        document: document.documentElement.scrollWidth,
+        tableClient: tableWrap?.clientWidth || 0,
+        tableScroll: tableWrap?.scrollWidth || 0,
+      };
+    });
+
+    expect(widths.document).toBeLessThanOrEqual(widths.viewport);
+    expect(widths.tableScroll).toBeLessThanOrEqual(widths.tableClient);
+  }
+});
+
 test("updates the transaction category from completed U.S. retail descriptions", async ({ page }) => {
   await page.goto("/transactions");
   await page.getByRole("button", { name: "Add Transaction" }).click();

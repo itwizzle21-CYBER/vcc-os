@@ -10230,3 +10230,127 @@ body {
     transition-duration: 1ms;
   }
 }
+
+/* Transactions use the full canvas so every desktop column stays on-screen. */
+.reference-shell.transactions-shell .workspace {
+  width: min(100% - 2rem, 1720px);
+}
+
+@media (min-width: 70.01rem) {
+  .reference-shell.transactions-shell .transactions-page .table-wrap {
+    overflow-x: clip;
+  }
+
+  .reference-shell.transactions-shell .transactions-page table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .reference-shell.transactions-shell .transactions-page th,
+  .reference-shell.transactions-shell .transactions-page td,
+  .reference-shell.transactions-shell .transactions-page td input,
+  .reference-shell.transactions-shell .transactions-page td textarea,
+  .reference-shell.transactions-shell .transactions-page td select {
+    min-width: 0;
+  }
+
+  .reference-shell.transactions-shell .transactions-page th {
+    padding-inline: 0.2rem;
+  }
+
+  .reference-shell.transactions-shell .transactions-page .column-sort-button {
+    gap: 0.2rem;
+    padding-inline: 0.35rem;
+    font-size: clamp(0.63rem, 0.62vw, 0.75rem);
+  }
+
+  .reference-shell.transactions-shell .transactions-page td input,
+  .reference-shell.transactions-shell .transactions-page td textarea,
+  .reference-shell.transactions-shell .transactions-page td select {
+    padding-inline: clamp(0.25rem, 0.45vw, 0.55rem);
+    font-size: clamp(0.68rem, 0.68vw, 0.82rem);
+  }
+
+  .reference-shell.transactions-shell .transactions-page th:nth-child(1) { width: 3%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(2) { width: 12%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(3) { width: 7%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(4) { width: 9%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(5) { width: 9%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(6) { width: 4%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(7) { width: 7%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(8) { width: 8%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(9) { width: 9%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(10) { width: 11%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(11) { width: 10%; }
+  .reference-shell.transactions-shell .transactions-page th:nth-child(12) { width: 11%; }
+}
+
+/* Reflow transaction rows before the columns become too narrow. */
+@media (max-width: 70rem) {
+  .reference-shell.transactions-shell .transactions-page .spreadsheet-panel {
+    max-height: none;
+  }
+
+  .reference-shell.transactions-shell .transactions-page .table-wrap {
+    overflow-x: hidden;
+  }
+
+  .reference-shell.transactions-shell .transactions-page table {
+    min-width: 0;
+  }
+
+  .reference-shell.transactions-shell .transactions-page thead {
+    display: none;
+  }
+
+  .reference-shell.transactions-shell .transactions-page tbody,
+  .reference-shell.transactions-shell .transactions-page tr,
+  .reference-shell.transactions-shell .transactions-page td {
+    display: block;
+    width: 100%;
+  }
+
+  .reference-shell.transactions-shell .transactions-page tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.65rem;
+  }
+
+  .reference-shell.transactions-shell .transactions-page td {
+    display: grid;
+    grid-template-columns: minmax(7rem, 0.35fr) minmax(0, 1fr);
+    gap: 0.65rem;
+    align-items: center;
+    height: auto;
+    border-bottom: 0;
+    padding: 0.25rem 0;
+  }
+
+  .reference-shell.transactions-shell .transactions-page td::before {
+    color: rgba(255, 255, 255, 0.46);
+    content: attr(data-label);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  :root[data-theme="light"] .reference-shell.transactions-shell .transactions-page td::before {
+    color: #475569;
+  }
+
+  .reference-shell.transactions-shell .transactions-page .row-actions {
+    position: static;
+    display: flex;
+    justify-content: flex-end;
+    padding-bottom: 0.35rem;
+  }
+
+  .reference-shell.transactions-shell .transactions-page .row-actions::before {
+    display: none;
+  }
+
+  .reference-shell.transactions-shell .transactions-page td input,
+  .reference-shell.transactions-shell .transactions-page td textarea,
+  .reference-shell.transactions-shell .transactions-page td select {
+    min-width: 0;
+  }
+}

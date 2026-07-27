@@ -104,6 +104,7 @@ export default function AppShell({
     [query, searchIndex, settings.vitaScanEnabled],
   );
   const isDashboard = normalize(currentPath) === "/";
+  const isTransactions = normalize(currentPath) === "/transactions";
   const moreTabActive = !mobileTabPaths.includes(normalize(currentPath));
   const pageTitle = titleForPath(currentPath, settings);
   const pageContentId = `page-content-${normalize(currentPath).replace(/[^a-z0-9]+/gi, "-") || "dashboard"}`;
@@ -306,7 +307,7 @@ export default function AppShell({
 
   return (
     <div
-      className={`app-shell reference-shell theme-${activeTheme} appearance-${settings.appearanceTheme} accent-${settings.accent} density-${settings.density} ${hasWallpaper ? `has-wallpaper wallpaper-${visualSettings.wallpaper}` : "wallpaper-default"} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""}`}
+      className={`app-shell reference-shell theme-${activeTheme} appearance-${settings.appearanceTheme} accent-${settings.accent} density-${settings.density} ${hasWallpaper ? `has-wallpaper wallpaper-${visualSettings.wallpaper}` : "wallpaper-default"} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""} ${isTransactions ? "transactions-shell" : ""}`}
       style={(hasWallpaper ? { "--vcc-wallpaper": `url(${JSON.stringify(wallpaperSource)})`, ...opacityStyle } : undefined) as CSSProperties | undefined}
     >
       <header className="dashboard-top-nav">
