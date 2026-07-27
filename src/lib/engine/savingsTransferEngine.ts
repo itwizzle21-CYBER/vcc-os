@@ -59,6 +59,36 @@ export function transactionEndpointOptions(data: AppData): TransactionEndpointOp
   });
 }
 
+export function syncTransactionEndpointLabels(data: AppData): AppData {
+  const endpointById = new Map(transactionEndpointOptions(data).map((option) => [option.id, option]));
+  const transactions = data.sections.transactions.map((row) => {
+    const sourceId = row.cells.transferSourceId || row.cells.balanceEndpointId || row.cells.depositAccountId;
+    const source = sourceId ? endpointById.get(sourceId) : undefined;
+    const destination = row.cells.transferDestinationId
+      ? endpointById.get(row.cells.transferDestinationId)
+      : undefined;
+    if (!source && !destination) return row;
+    return {
+      ...row,
+      cells: {
+        ...row.cells,
+        account: source?.value || row.cells.account,
+        transferDestination: destination?.value || row.cells.transferDestination,
+      },
+    };
+  });
+  const paycheckHistory = data.paycheckHistory.map((row) => {
+    const endpoint = row.depositAccountId ? endpointById.get(row.depositAccountId) : undefined;
+    return endpoint ? { ...row, depositAccountLabel: endpointName(endpoint) } : row;
+  });
+
+  return {
+    ...data,
+    sections: { ...data.sections, transactions },
+    paycheckHistory,
+  };
+}
+
 export function syncTransactionTransfers(data: AppData, nextTransactions: SpreadsheetRow[]): AppData {
   const endpointOptions = transactionEndpointOptions(data);
   const previousTransactions = new Map(data.sections.transactions.map((row) => [row.id, row]));
@@ -94,7 +124,12 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
       const amount = Math.abs(toNumber(row.cells.amount));
       const date = row.cells.date?.trim();
       if (!accountValue || !amount || !date) return transactionRow;
-      const endpoint = resolveEndpoint(endpointOptions, accountValue, row.cells.balanceEndpointId);
+      const endpoint = resolveEndpoint(
+        endpointOptions,
+        accountValue,
+        row.cells.balanceEndpointId,
+        Boolean(previous && previous.cells.account === row.cells.account),
+      );
       if (!endpoint) throw new Error("Choose a valid account or savings vault.");
       if (!isValidIsoDate(date)) throw new Error("Choose a valid transaction date.");
       const currentBalance = endpointBalance(endpoint, moneyBalances, savingsBalances);
@@ -124,8 +159,18 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
     const date = row.cells.date?.trim();
     if (!sourceValue || !destinationValue || !amount || !date) return cleanRow;
 
-    const source = resolveEndpoint(endpointOptions, sourceValue, row.cells.transferSourceId);
-    const destination = resolveEndpoint(endpointOptions, destinationValue, row.cells.transferDestinationId);
+    const source = resolveEndpoint(
+      endpointOptions,
+      sourceValue,
+      row.cells.transferSourceId,
+      Boolean(previous && previous.cells.account === row.cells.account),
+    );
+    const destination = resolveEndpoint(
+      endpointOptions,
+      destinationValue,
+      row.cells.transferDestinationId,
+      Boolean(previous && previous.cells.transferDestination === row.cells.transferDestination),
+    );
     if (!source) throw new Error("Choose a valid source account or savings vault.");
     if (!destination) throw new Error("Choose a valid destination account or savings vault.");
     if (source.id === destination.id && source.kind === destination.kind) {
@@ -229,7 +274,16 @@ export function applySavingsTransfer(data: AppData, input: SavingsTransferInput)
   };
 }
 
-function resolveEndpoint(options: TransactionEndpointOption[], value: string, id?: string): TransactionEndpointOption | undefined {
+function resolveEndpoint(
+  options: TransactionEndpointOption[],
+  value: string,
+  id?: string,
+  preferId = false,
+): TransactionEndpointOption | undefined {
+  if (preferId && id) {
+    const linked = options.find((option) => option.id === id);
+    if (linked) return linked;
+  }
   const byValue = options.find((option) => normalizeEndpointLabel(option.value) === normalizeEndpointLabel(value));
   if (byValue) return byValue;
   return id ? options.find((option) => option.id === id) : undefined;

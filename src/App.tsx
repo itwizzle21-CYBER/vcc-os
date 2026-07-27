@@ -47,7 +47,7 @@ import { isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engi
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
-import { applySavingsTransfer, syncTransactionTransfers, transactionEndpointOptions } from "./lib/engine/savingsTransferEngine";
+import { applySavingsTransfer, syncTransactionEndpointLabels, syncTransactionTransfers, transactionEndpointOptions } from "./lib/engine/savingsTransferEngine";
 import { depositAccountOptions, eligibleDepositAccounts, type DepositAccountOption } from "./lib/engine/paycheckPlannerEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, normalizeAppData, resetAllData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
@@ -192,7 +192,8 @@ export default function App() {
       });
       return;
     }
-    updateData({ ...data, sections: { ...data.sections, [section]: nextRows } });
+    const nextData = { ...data, sections: { ...data.sections, [section]: nextRows } };
+    updateData(section === "money" || section === "savings" ? syncTransactionEndpointLabels(nextData) : nextData);
   }
 
   function updateSort(section: SectionKey, sortBy: string) {
