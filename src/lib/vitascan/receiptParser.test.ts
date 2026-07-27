@@ -16,6 +16,7 @@ describe("VitaScan receipt parser", () => {
   it("prefers the labeled total and never invents a missing date", () => {
     const receipt = parseReceiptText("Corner Market\nSubtotal $18.00\nTax $1.44\nTotal $19.44");
     expect(receipt.amount).toBe("19.44");
+    expect(receipt.tax).toBe("1.44");
     expect(receipt.date).toBe("");
     expect(receipt.rawText).toContain("Tax $1.44");
   });
@@ -71,6 +72,12 @@ describe("VitaScan receipt parser", () => {
   it("reconstructs a missing total from item lines and tax", () => {
     const receipt = parseReceiptText("LOCAL SHOP\nBREAD $2.00\nMILK $3.00\nTAX $0.40\n07/19/2026");
     expect(receipt.amount).toBe("5.40");
+    expect(receipt.tax).toBe("0.40");
+  });
+
+  it("does not mistake a sales-tax percentage for tax dollars", () => {
+    const receipt = parseReceiptText("LOCAL SHOP\nBREAD $2.00\nMILK $3.00\nSALES TAX 8.25% $0.41\n07/19/2026");
+    expect(receipt).toMatchObject({ amount: "5.41", tax: "0.41" });
   });
 
   it("reads compact two-digit receipt dates", () => {

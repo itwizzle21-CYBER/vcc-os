@@ -145,6 +145,7 @@ export function mergeReceiptCandidates(candidates: OcrCandidate[]): ReceiptDraft
   const best = ranked[0]?.draft || parseReceiptText("");
   const usableMerchant = ranked.find(({ draft }) => draft.merchant.trim() && draft.merchant !== "Receipt")?.draft.merchant;
   const usableAmount = ranked.find(({ draft }) => Number(draft.amount) > 0)?.draft.amount;
+  const usableTax = ranked.find(({ draft }) => Number(draft.tax) > 0)?.draft.tax;
   const usableDate = ranked.find(({ draft }) => draft.date)?.draft.date;
   const usableReference = ranked.find(({ draft }) => draft.reference)?.draft.reference;
   const usableCurrency = ranked.find(({ draft }) => draft.currencyCode)?.draft;
@@ -159,6 +160,7 @@ export function mergeReceiptCandidates(candidates: OcrCandidate[]): ReceiptDraft
     ...best,
     merchant: usableMerchant || best.merchant,
     amount: usableAmount || best.amount,
+    tax: usableTax || best.tax,
     date: usableDate || best.date,
     reference: usableReference || best.reference,
     currencyCode: usableCurrency?.currencyCode || best.currencyCode,

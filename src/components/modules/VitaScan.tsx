@@ -119,6 +119,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
     setMessage("Adding the receipt to VCC Transactions…");
 
     const amount = Math.abs(Number(draft.amount));
+    const salesTax = Math.min(amount, Math.max(0, Number(draft.tax) || 0));
     const id = `vitascan-${crypto.randomUUID()}`;
     const signed = draft.direction === "expense" ? -amount : amount;
     const savedDraft = { ...draft, date: draft.date || new Date().toISOString().slice(0, 10) };
@@ -131,10 +132,15 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
         type: draft.direction,
         category: draft.category,
         quantity: "1",
-        unitCost: amount.toFixed(2),
+        unitCost: (amount - salesTax).toFixed(2),
+        salesTax: salesTax ? salesTax.toFixed(2) : "",
         amount: signed.toFixed(2),
         date: savedDraft.date,
         account: draft.account,
+        receiptId: id,
+        receiptSubtotal: (amount - salesTax).toFixed(2),
+        receiptTax: salesTax ? salesTax.toFixed(2) : "",
+        receiptTotal: amount.toFixed(2),
         notes,
       },
     };
@@ -261,6 +267,10 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
               <label className={!Number(draft.amount) ? "needs-value" : ""}>
                 <span>Total <small>Required</small></span>
                 <div className="money-input"><b>{draft.currencySymbol || "$"}</b><input type="number" inputMode="decimal" min="0.01" step="0.01" value={draft.amount} onChange={(event) => updateDraft("amount", event.target.value)} placeholder="0.00" /></div>
+              </label>
+              <label>
+                <span>Sales tax <small>Optional</small></span>
+                <div className="money-input"><b>{draft.currencySymbol || "$"}</b><input aria-label="Sales tax" type="number" inputMode="decimal" min="0" step="0.01" value={draft.tax} onChange={(event) => updateDraft("tax", event.target.value)} placeholder="Leave blank if none" /></div>
               </label>
               <label><span>Date</span><input type="date" value={draft.date} onChange={(event) => updateDraft("date", event.target.value)} /></label>
               <label><span>Payment method</span><input value={draft.account === "Receipt" ? "" : draft.account} onChange={(event) => updateDraft("account", event.target.value)} placeholder="Cash, Visa, Cash App…" /></label>

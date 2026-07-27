@@ -3,6 +3,7 @@ import { isBlankRow, toNumber } from "../calculations/currency";
 import { normalizeInventoryRow } from "../engine/inventoryEngine";
 import { syncConfirmedReceiptTransactions } from "../engine/carLoanEngine";
 import { displayAccountLabel } from "../engine/paycheckPlannerEngine";
+import { migrateLegacyReceiptTaxRows } from "../engine/receiptTransactionEngine";
 import { createVerifiedCarLoanData } from "./carLoanReference";
 import { createStarterData, createZeroData, sectionConfigs } from "./defaultData";
 
@@ -40,7 +41,7 @@ export function loadAppData(): AppData {
 
 export function saveAppData(data: AppData) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, version: 3 }));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, version: 4 }));
 }
 
 export function loadThemePreference(fallback: ThemeMode): ThemeMode {
@@ -136,6 +137,7 @@ export function normalizeAppData(raw: unknown): AppData {
       },
     };
   });
+  sections.transactions = migrateLegacyReceiptTaxRows(sections.transactions);
   sections.transactions = syncConfirmedReceiptTransactions(sections.transactions, carLoan.receipts);
 
   if (!sections.carPayment.length && carLoan.contract) {
@@ -175,7 +177,7 @@ export function normalizeAppData(raw: unknown): AppData {
   return {
     ...starter,
     ...source,
-    version: 3,
+    version: 4,
     sections,
     carLoan,
     sortBy: { ...starter.sortBy, ...(typeof source.sortBy === "object" ? source.sortBy : {}) },

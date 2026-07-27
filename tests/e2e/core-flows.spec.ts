@@ -436,12 +436,17 @@ test("posts a multi-item manual receipt as itemized transaction rows", async ({ 
   await page.getByLabel("Receipt item 1", { exact: true }).fill("Sparkling water");
   await page.getByLabel("Quantity for receipt item 1", { exact: true }).fill("2");
   await page.getByLabel("Unit price for receipt item 1", { exact: true }).fill("3.50");
-  await expect(page.getByLabel("Line total for receipt item 1", { exact: true })).toHaveText("$7.00");
+  await expect(page.getByLabel("Sales tax for receipt item 1", { exact: true })).toBeEmpty();
+  await expect(page.getByLabel("Item total for receipt item 1", { exact: true })).toHaveText("$7.00");
 
   await page.getByRole("button", { name: "Add another item" }).click();
   await page.getByLabel("Receipt item 2", { exact: true }).fill("Granola bar");
   await page.getByLabel("Unit price for receipt item 2", { exact: true }).fill("1.25");
   await page.getByLabel("Receipt tax").fill("0.50");
+  await expect(page.getByLabel("Sales tax for receipt item 1", { exact: true })).toHaveText("$0.42");
+  await expect(page.getByLabel("Item total for receipt item 1", { exact: true })).toHaveText("$7.42");
+  await expect(page.getByLabel("Sales tax for receipt item 2", { exact: true })).toHaveText("$0.08");
+  await expect(page.getByLabel("Item total for receipt item 2", { exact: true })).toHaveText("$1.33");
   await expect(page.locator(".receipt-grand-total strong")).toHaveText("$8.75");
   await page.getByRole("button", { name: "Post receipt to Transactions" }).click();
 
@@ -455,14 +460,18 @@ test("posts a multi-item manual receipt as itemized transaction rows", async ({ 
       merchant: rows.map((row: { cells: { merchant: string } }) => row.cells.merchant),
       descriptions: rows.map((row: { cells: { description: string } }) => row.cells.description),
       categories: rows.map((row: { cells: { category: string } }) => row.cells.category),
+      salesTax: rows.map((row: { cells: { salesTax: string } }) => row.cells.salesTax),
+      itemTotals: rows.map((row: { cells: { amount: string } }) => row.cells.amount),
       total: rows.reduce((sum: number, row: { cells: { amount: string } }) => sum + Number(row.cells.amount), 0),
       receiptTotal: rows[0]?.cells.receiptTotal,
     };
   });
   expect(posted).toEqual({
-    merchant: ["Corner Market", "Corner Market", "Corner Market"],
-    descriptions: ["Sparkling water", "Granola bar", "Sales tax"],
-    categories: ["Groceries", "Uncategorized", "Taxes"],
+    merchant: ["Corner Market", "Corner Market"],
+    descriptions: ["Sparkling water", "Granola bar"],
+    categories: ["Groceries", "Uncategorized"],
+    salesTax: ["0.42", "0.08"],
+    itemTotals: ["-7.42", "-1.33"],
     total: -8.75,
     receiptTotal: "8.75",
   });

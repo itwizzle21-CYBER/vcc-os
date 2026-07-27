@@ -49,7 +49,8 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
       { key: "merchant", label: "Receipt / Merchant" },
       { key: "quantity", label: "Qty", type: "number" },
       { key: "unitCost", label: "Each", type: "currency" },
-      { key: "amount", label: "Amount", type: "currency" },
+      { key: "salesTax", label: "Sales Tax", type: "currency" },
+      { key: "amount", label: "Total", type: "currency" },
       { key: "date", label: "Date", type: "date" },
       { key: "account", label: "From Account / Vault" },
       { key: "transferDestination", label: "Transfer To" },
@@ -382,7 +383,7 @@ export function createStarterData(): AppData {
 
 export function createZeroData(): AppData {
   return {
-    version: 3,
+    version: 4,
     sections: {
       money: [],
       bills: [],

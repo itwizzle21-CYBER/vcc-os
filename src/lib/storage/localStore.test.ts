@@ -100,4 +100,23 @@ describe("import normalization", () => {
     expect(imported.sections.transactions.find((row) => row.id === "cash-purchase")?.cells).not.toHaveProperty("recurring");
     expect(imported.paycheckHistory[0].depositAccountLabel).toBe("Cash");
   });
+
+  it("migrates receipt tax rows into cent-accurate item totals", () => {
+    const imported = normalizeAppData({
+      version: 3,
+      sections: {
+        transactions: [
+          { id: "receipt-item-1", cells: { receiptId: "receipt-1", description: "Water", type: "expense", amount: "-7.00" } },
+          { id: "receipt-item-2", cells: { receiptId: "receipt-1", description: "Snack", type: "expense", amount: "-1.25" } },
+          { id: "receipt-tax", cells: { receiptId: "receipt-1", description: "Sales tax", type: "expense", amount: "-0.50" } },
+        ],
+      },
+    });
+
+    expect(imported.version).toBe(4);
+    expect(imported.sections.transactions.filter((row) => row.cells.receiptId === "receipt-1").map((row) => row.cells)).toEqual([
+      expect.objectContaining({ description: "Water", salesTax: "0.42", amount: "-7.42", receiptTotal: "8.75" }),
+      expect.objectContaining({ description: "Snack", salesTax: "0.08", amount: "-1.33", receiptTotal: "8.75" }),
+    ]);
+  });
 });

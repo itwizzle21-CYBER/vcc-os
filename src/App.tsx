@@ -42,10 +42,12 @@ import SummaryGrid from "./components/shared/SummaryGrid";
 import CloudSyncControl from "./components/shared/CloudSyncControl";
 import BufferedTextInput from "./components/shared/BufferedTextInput";
 import { formatCurrency, formatDateMDY, isBlankRow, todayIso, toNumber } from "./lib/calculations/currency";
+import { amountToCents, calculateReceiptLineAmounts, centsToAmount } from "./lib/calculations/receiptMath";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
 import { computeFinancialState } from "./lib/engine/financialEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
+import { migrateLegacyReceiptTaxRows } from "./lib/engine/receiptTransactionEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
 import { applySavingsTransfer, syncTransactionEndpointLabels, syncTransactionTransfers, transactionEndpointOptions } from "./lib/engine/savingsTransferEngine";
 import { depositAccountOptions, eligibleDepositAccounts, type DepositAccountOption } from "./lib/engine/paycheckPlannerEngine";
@@ -108,8 +110,13 @@ export default function App() {
   const normalizeAndSetData = useCallback((next: AppData) => {
     const normalized = {
       ...next,
+      version: 4,
       settings: { ...next.settings, theme: themePreferenceRef.current },
-      sections: { ...next.sections, inventory: next.sections.inventory.map(normalizeInventoryRow) },
+      sections: {
+        ...next.sections,
+        inventory: next.sections.inventory.map(normalizeInventoryRow),
+        transactions: migrateLegacyReceiptTaxRows(next.sections.transactions),
+      },
     };
     saveAppData(normalized);
     setData(normalized);
@@ -1461,11 +1468,14 @@ function ReceiptEntry({
     if (!account && accounts.length) setAccount(accounts[0].value);
   }, [account, accounts]);
 
-  const lineTotals = lines.map((line) => Math.max(0, toNumber(line.quantity)) * Math.max(0, toNumber(line.unitPrice)));
-  const subtotal = lineTotals.reduce((sum, amount) => sum + amount, 0);
-  const taxAmount = Math.max(0, toNumber(tax));
-  const total = subtotal + taxAmount;
-  const completeLineCount = lines.filter((line, index) => line.item.trim() && lineTotals[index] > 0).length;
+  const lineAmounts = calculateReceiptLineAmounts(lines, tax);
+  const subtotalCents = lineAmounts.reduce((sum, amounts) => sum + amounts.subtotalCents, 0);
+  const taxCents = amountToCents(tax);
+  const totalCents = subtotalCents + taxCents;
+  const subtotal = centsToAmount(subtotalCents);
+  const taxAmount = centsToAmount(taxCents);
+  const total = centsToAmount(totalCents);
+  const completeLineCount = lines.filter((line, index) => line.item.trim() && lineAmounts[index].subtotalCents > 0).length;
 
   function updateLine(id: string, field: keyof Omit<ReceiptLineDraft, "id">, value: string) {
     setLines((current) => current.map((line) => line.id === id ? { ...line, [field]: value } : line));
@@ -1479,7 +1489,7 @@ function ReceiptEntry({
 
   function postReceipt() {
     const cleanMerchant = merchant.trim();
-    const completeLines = lines.filter((line, index) => line.item.trim() && lineTotals[index] > 0);
+    const completeLines = lines.filter((line, index) => line.item.trim() && lineAmounts[index].subtotalCents > 0);
     if (!cleanMerchant) {
       setMessage("Add the store or merchant name first.");
       return;
@@ -1503,8 +1513,8 @@ function ReceiptEntry({
 
     const receiptId = `receipt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const receiptNote = `${cleanMerchant} receipt · ${completeLines.length} item${completeLines.length === 1 ? "" : "s"} · Total ${formatCurrency(total)}`;
-    const rows: SpreadsheetRow[] = completeLines.map((line) => {
-      const amount = Math.max(0, toNumber(line.quantity)) * Math.max(0, toNumber(line.unitPrice));
+    const rows: SpreadsheetRow[] = completeLines.map((line, index) => {
+      const amounts = lineAmounts[index];
       const draft: SpreadsheetRow = {
         id: `${receiptId}-${line.id}`,
         cells: {
@@ -1514,37 +1524,20 @@ function ReceiptEntry({
           category: "",
           quantity: String(Math.max(0, toNumber(line.quantity))),
           unitCost: Math.max(0, toNumber(line.unitPrice)).toFixed(2),
-          amount: (-amount).toFixed(2),
+          salesTax: amounts.salesTaxCents ? centsToAmount(amounts.salesTaxCents).toFixed(2) : "",
+          amount: (-centsToAmount(amounts.totalCents)).toFixed(2),
           date,
           account,
           transferDestination: "",
           receiptId,
+          receiptSubtotal: subtotal.toFixed(2),
+          receiptTax: taxAmount ? taxAmount.toFixed(2) : "",
           receiptTotal: total.toFixed(2),
           notes: receiptNote,
         },
       };
       return { ...draft, cells: { ...draft.cells, category: identifyTransactionCategory(draft) } };
     });
-    if (taxAmount > 0) {
-      rows.push({
-        id: `${receiptId}-tax`,
-        cells: {
-          description: "Sales tax",
-          merchant: cleanMerchant,
-          type: "expense",
-          category: "Taxes",
-          quantity: "1",
-          unitCost: taxAmount.toFixed(2),
-          amount: (-taxAmount).toFixed(2),
-          date,
-          account,
-          transferDestination: "",
-          receiptId,
-          receiptTotal: total.toFixed(2),
-          notes: receiptNote,
-        },
-      });
-    }
 
     if (!onAddReceipt(rows)) return;
     setMerchant("");
@@ -1600,7 +1593,7 @@ function ReceiptEntry({
 
       <div className="receipt-sheet" role="group" aria-label="Receipt items">
         <div className="receipt-sheet-header" aria-hidden="true">
-          <span>Item</span><span>Qty</span><span>Each</span><span>Line total</span><span />
+          <span>Item</span><span>Qty</span><span>Each</span><span>Sales tax</span><span>Item total</span><span />
         </div>
         {lines.map((line, index) => (
           <div className="receipt-line" key={line.id}>
@@ -1616,7 +1609,10 @@ function ReceiptEntry({
               <span aria-hidden="true">$</span>
               <input aria-label={`Unit price for receipt item ${index + 1}`} inputMode="decimal" value={line.unitPrice} onChange={(event) => updateLine(line.id, "unitPrice", event.target.value)} placeholder="0.00" />
             </label>
-            <output aria-label={`Line total for receipt item ${index + 1}`}>{formatCurrency(lineTotals[index])}</output>
+            <output aria-label={`Sales tax for receipt item ${index + 1}`} className="receipt-line-tax">
+              {lineAmounts[index].salesTaxCents ? formatCurrency(centsToAmount(lineAmounts[index].salesTaxCents)) : ""}
+            </output>
+            <output aria-label={`Item total for receipt item ${index + 1}`}>{formatCurrency(centsToAmount(lineAmounts[index].totalCents))}</output>
             <button type="button" className="receipt-remove-line" aria-label={`Remove receipt item ${index + 1}`} onClick={() => removeLine(line.id)}><Trash2 size={16} /></button>
           </div>
         ))}
@@ -3096,6 +3092,7 @@ function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
       category: cells.category || "",
       quantity: cells.quantity || "",
       unitCost: cells.unitCost || "",
+      salesTax: cells.salesTax || "",
       amount: cells.amount || "",
       date: cells.date || "",
       account: cells.account || "",

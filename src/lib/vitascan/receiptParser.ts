@@ -11,6 +11,7 @@ export type ReceiptLineItem = {
 export type ReceiptDraft = {
   merchant: string;
   amount: string;
+  tax: string;
   date: string;
   direction: "expense" | "income" | "transfer";
   account: string;
@@ -71,10 +72,11 @@ export function parseReceiptText(rawText: string, detectedBarcodes: string[] = [
   const barcodes = unique([...detectedBarcodes.map(normalizeCode), ...extractBarcodes(text)]).filter(Boolean);
   const pluNumbers = extractPluNumbers(lines);
   const items = extractLineItems(lines, barcodes, pluNumbers);
+  const tax = inferReceiptTax(lines);
   const totalCandidates = lines.filter((line) => totalWords.test(line) && !subtotalWords.test(line));
   const totalLine = totalCandidates[totalCandidates.length - 1] || "";
   const totalAmounts = extractAmounts(totalLine, true);
-  const preferredAmount = totalAmounts[totalAmounts.length - 1] ?? inferReceiptAmount(lines, items);
+  const preferredAmount = totalAmounts[totalAmounts.length - 1] ?? inferReceiptAmount(lines, items, tax);
   const date = extractReceiptDate(text, currency.code);
   const income = /\b(received|deposit|paid you|cash in|direct deposit|refund received|crédito recibido)\b/i.test(text);
   const transfer = /\b(transfer(?:red)?|sent to|moved money|wire transfer|virement|überweisung|transferencia)\b/i.test(text);
@@ -87,6 +89,7 @@ export function parseReceiptText(rawText: string, detectedBarcodes: string[] = [
   return {
     merchant: merchant.slice(0, 80),
     amount: preferredAmount ? preferredAmount.toFixed(2) : "",
+    tax: tax ? tax.toFixed(2) : "",
     date,
     direction: income ? "income" : transfer ? "transfer" : "expense",
     account,
@@ -121,6 +124,7 @@ export function formatReceiptNotes(draft: ReceiptDraft): string {
 function formatReceiptIntelligence(draft: ReceiptDraft): string {
   const sections: string[] = [];
   if (draft.currencyCode) sections.push(`Currency: ${draft.currencyCode}`);
+  if (draft.tax) sections.push(`Sales tax: ${draft.tax}`);
   if (draft.items.length) sections.push(`Items:\n${draft.items.map((item) => {
     const quantity = item.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ""}${item.unitPrice ? ` @ ${item.unitPrice.toFixed(2)}` : ""} × ` : "";
     const plu = item.plu ? ` (PLU ${item.plu})` : "";
@@ -149,21 +153,31 @@ function extractAmounts(line: string, allowWhole = false): number[] {
     .filter((value) => Number.isFinite(value) && value > 0 && value < 100000000);
 }
 
-function inferReceiptAmount(lines: string[], items: ReceiptLineItem[]): number | undefined {
+function inferReceiptAmount(lines: string[], items: ReceiptLineItem[], tax: number): number | undefined {
   const dueLines = lines.filter((line) => /\b(amount|due|paid|charged|balance|importe|montant|betrag|pagar|pagado)\b/i.test(line) && !/\b(change|cash back|refund)\b/i.test(line));
   const dueAmounts = dueLines.flatMap((line) => extractAmounts(line, true));
   if (dueAmounts.length) return dueAmounts[dueAmounts.length - 1];
 
   if (items.length) {
     const itemTotal = items.reduce((total, item) => total + item.totalPrice, 0);
-    const taxLines = lines.filter((line) => /\b(tax|vat|iva|gst|hst|impuesto|steuer|tva)\b/i.test(line));
-    const tax = taxLines.flatMap((line) => extractAmounts(line)).reduce((total, value) => total + value, 0);
     if (itemTotal > 0) return itemTotal + tax;
   }
 
   const eligible = lines.filter((line) => !looksLikeDateOrCode(line) && !/\b(change|cash back|phone|tel)\b/i.test(line));
   const amounts = eligible.flatMap((line) => extractAmounts(line));
   return amounts[amounts.length - 1];
+}
+
+function inferReceiptTax(lines: string[]): number {
+  const intelligenceIndex = lines.findIndex((line) => line === "[VitaScan retail intelligence]");
+  const taxSourceLines = intelligenceIndex >= 0 ? lines.slice(intelligenceIndex + 1) : lines;
+  return taxSourceLines
+    .filter((line) => /\b(?:sales\s+tax|tax|vat|iva|gst|hst|impuesto|steuer|tva)\b/i.test(line) && !subtotalWords.test(line))
+    .reduce((total, line) => {
+      const withoutRates = line.replace(/\b\d+(?:[.,]\d+)?\s*%/g, "");
+      const amounts = extractAmounts(withoutRates, true);
+      return total + (amounts[amounts.length - 1] || 0);
+    }, 0);
 }
 
 function looksLikeDateOrCode(line: string): boolean {
