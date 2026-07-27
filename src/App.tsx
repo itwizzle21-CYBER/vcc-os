@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   BellRing,
@@ -651,6 +651,12 @@ function TransactionsPage({
   const [transferMessage, setTransferMessage] = useState("");
   const [transactionHistoryOpen, setTransactionHistoryOpen] = useState(true);
   const transactionEndpoints = useMemo(() => transactionEndpointOptions(data), [data]);
+  const transactionAccountOptions = useMemo(
+    () => transactionEndpoints
+      .filter((option) => option.kind === "money")
+      .map(({ value, label }) => ({ value, label })),
+    [transactionEndpoints],
+  );
   const transactionSelectOptions = useMemo(() => {
     const options = transactionEndpoints.map(({ value, label }) => ({ value, label }));
     return {
@@ -727,14 +733,14 @@ function TransactionsPage({
     }
   }
 
-  function addReceiptRows(rows: SpreadsheetRow[]): boolean {
+  function addTransactionRows(rows: SpreadsheetRow[]): boolean {
     try {
       const next = syncTransactionTransfers(data, [...transactionRows, ...rows]);
       onChange(next);
       setTransferMessage("");
       return true;
     } catch (error) {
-      setTransferMessage(error instanceof Error ? error.message : "The receipt could not be added.");
+      setTransferMessage(error instanceof Error ? error.message : "The transaction could not be added.");
       return false;
     }
   }
@@ -772,10 +778,9 @@ function TransactionsPage({
         </div>
       </section>
 
-      <ReceiptEntry
-        accounts={transactionSelectOptions.account || []}
-        onAddReceipt={addReceiptRows}
-      />
+      <QuickTransactionEntry accounts={transactionAccountOptions} onAddTransaction={(row) => addTransactionRows([row])} />
+
+      <ReceiptEntry accounts={transactionAccountOptions} onAddReceipt={addTransactionRows} />
 
       <section className={`transaction-history-shell ${transactionHistoryOpen ? "" : "is-collapsed"}`} aria-labelledby="transaction-history-title">
         <button
@@ -806,7 +811,7 @@ function TransactionsPage({
               onResetSection={resetSection}
               getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
               selectOptions={transactionSelectOptions}
-              addLabel="Add Transaction"
+              addLabel="Add Advanced Row"
               hideSearch
               toolbarContent={(
                 <div className="transactions-table-filters" aria-label="Transaction filters">
@@ -1458,6 +1463,120 @@ function createReceiptLine(): ReceiptLineDraft {
     quantity: "1",
     unitPrice: "",
   };
+}
+
+function QuickTransactionEntry({
+  accounts,
+  onAddTransaction,
+}: {
+  accounts: Array<{ value: string; label: string }>;
+  onAddTransaction: (row: SpreadsheetRow) => boolean;
+}) {
+  const [type, setType] = useState<"expense" | "income">("expense");
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(todayIso());
+  const [account, setAccount] = useState("");
+  const [shortfallSource, setShortfallSource] = useState<TransactionShortfallSource>("overdraft");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (accounts.length && !accounts.some((option) => option.value === account)) setAccount(accounts[0].value);
+  }, [account, accounts]);
+
+  function submitTransaction(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const cleanDescription = description.trim();
+    const magnitude = Math.abs(toNumber(amount));
+    if (!cleanDescription) {
+      setMessage("Add a description first.");
+      return;
+    }
+    if (!magnitude) {
+      setMessage("Enter an amount greater than $0.");
+      return;
+    }
+    if (!date) {
+      setMessage("Choose the transaction date.");
+      return;
+    }
+    if (!account) {
+      setMessage("Choose the account for this transaction.");
+      return;
+    }
+
+    const draft: SpreadsheetRow = {
+      id: `quick-transaction-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      cells: {
+        description: cleanDescription,
+        type,
+        category: "",
+        amount: (type === "income" ? magnitude : -magnitude).toFixed(2),
+        date,
+        account,
+        transferDestination: "",
+        shortfallSource: type === "expense" ? shortfallSource : "",
+        notes: "Added with Quick Transaction",
+      },
+    };
+    const categorized = { ...draft, cells: { ...draft.cells, category: identifyTransactionCategory(draft) } };
+    if (!onAddTransaction(categorized)) return;
+    setDescription("");
+    setAmount("");
+    setMessage(`${type === "income" ? "Income" : "Expense"} added to ${account}. No transfer was created.`);
+  }
+
+  return (
+    <section className="quick-transaction-panel" aria-labelledby="quick-transaction-title">
+      <div className="quick-transaction-heading">
+        <div>
+          <p className="eyebrow">Quick transaction</p>
+          <h2 id="quick-transaction-title">Add income or an expense</h2>
+        </div>
+        <span>Choose an account here. Transfer To is not required.</span>
+      </div>
+      <form onSubmit={submitTransaction}>
+        <label>
+          <span>Type</span>
+          <select value={type} onChange={(event) => { setType(event.target.value as "expense" | "income"); setMessage(""); }}>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </label>
+        <label className="quick-transaction-description">
+          <span>Description</span>
+          <input value={description} onChange={(event) => { setDescription(event.target.value); setMessage(""); }} placeholder="What was this for?" />
+        </label>
+        <label>
+          <span>Amount</span>
+          <input inputMode="decimal" value={amount} onChange={(event) => { setAmount(event.target.value); setMessage(""); }} placeholder="$0.00" />
+        </label>
+        <label>
+          <span>Date</span>
+          <input className="calendar-input" type="date" value={date} onChange={(event) => { setDate(event.target.value); setMessage(""); }} />
+        </label>
+        <label className="quick-transaction-account">
+          <span>Account</span>
+          <select value={account} onChange={(event) => { setAccount(event.target.value); setMessage(""); }}>
+            <option value="">Choose account</option>
+            {accounts.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        {type === "expense" && (
+          <label>
+            <span>If account is short</span>
+            <select value={shortfallSource} onChange={(event) => { setShortfallSource(event.target.value as TransactionShortfallSource); setMessage(""); }}>
+              <option value="overdraft">Let account go negative</option>
+              <option value="borrowed">Borrowed money</option>
+              <option value="unreconciled">Unaccounted cash</option>
+            </select>
+          </label>
+        )}
+        <button type="submit" className="quick-transaction-submit"><Plus size={16} /> Add {type}</button>
+      </form>
+      <p className="quick-transaction-message" role="status" aria-live="polite">{message}</p>
+    </section>
+  );
 }
 
 function ReceiptEntry({
