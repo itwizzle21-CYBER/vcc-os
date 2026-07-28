@@ -52,7 +52,7 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
       { key: "salesTax", label: "Sales Tax", type: "currency" },
       { key: "amount", label: "Total", type: "currency" },
       { key: "date", label: "Date", type: "date" },
-      { key: "account", label: "Account" },
+      { key: "account", label: "From Account / Vault" },
       { key: "transferDestination", label: "Transfer To" },
       { key: "shortfallSource", label: "If Short" },
       { key: "notes", label: "Notes" },

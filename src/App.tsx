@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   BellRing,
@@ -651,12 +651,6 @@ function TransactionsPage({
   const [transferMessage, setTransferMessage] = useState("");
   const [transactionHistoryOpen, setTransactionHistoryOpen] = useState(true);
   const transactionEndpoints = useMemo(() => transactionEndpointOptions(data), [data]);
-  const transactionAccountOptions = useMemo(
-    () => transactionEndpoints
-      .filter((option) => option.kind === "money")
-      .map(({ value, label }) => ({ value, label })),
-    [transactionEndpoints],
-  );
   const transactionSelectOptions = useMemo(() => {
     const options = transactionEndpoints.map(({ value, label }) => ({ value, label }));
     return {
@@ -733,14 +727,14 @@ function TransactionsPage({
     }
   }
 
-  function addTransactionRows(rows: SpreadsheetRow[]): boolean {
+  function addReceiptRows(rows: SpreadsheetRow[]): boolean {
     try {
       const next = syncTransactionTransfers(data, [...transactionRows, ...rows]);
       onChange(next);
       setTransferMessage("");
       return true;
     } catch (error) {
-      setTransferMessage(error instanceof Error ? error.message : "The transaction could not be added.");
+      setTransferMessage(error instanceof Error ? error.message : "The receipt could not be added.");
       return false;
     }
   }
@@ -778,9 +772,10 @@ function TransactionsPage({
         </div>
       </section>
 
-      <QuickTransactionEntry accounts={transactionAccountOptions} onAddTransaction={(row) => addTransactionRows([row])} />
-
-      <ReceiptEntry accounts={transactionAccountOptions} onAddReceipt={addTransactionRows} />
+      <ReceiptEntry
+        accounts={transactionSelectOptions.account || []}
+        onAddReceipt={addReceiptRows}
+      />
 
       <section className={`transaction-history-shell ${transactionHistoryOpen ? "" : "is-collapsed"}`} aria-labelledby="transaction-history-title">
         <button
@@ -811,7 +806,7 @@ function TransactionsPage({
               onResetSection={resetSection}
               getComputedCell={(row, columnKey) => computedCell("transactions", row, columnKey)}
               selectOptions={transactionSelectOptions}
-              addLabel="Add Advanced Row"
+              addLabel="Add Transaction"
               hideSearch
               toolbarContent={(
                 <div className="transactions-table-filters" aria-label="Transaction filters">
@@ -1465,120 +1460,6 @@ function createReceiptLine(): ReceiptLineDraft {
   };
 }
 
-function QuickTransactionEntry({
-  accounts,
-  onAddTransaction,
-}: {
-  accounts: Array<{ value: string; label: string }>;
-  onAddTransaction: (row: SpreadsheetRow) => boolean;
-}) {
-  const [type, setType] = useState<"expense" | "income">("expense");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(todayIso());
-  const [account, setAccount] = useState("");
-  const [shortfallSource, setShortfallSource] = useState<TransactionShortfallSource>("overdraft");
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    if (accounts.length && !accounts.some((option) => option.value === account)) setAccount(accounts[0].value);
-  }, [account, accounts]);
-
-  function submitTransaction(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const cleanDescription = description.trim();
-    const magnitude = Math.abs(toNumber(amount));
-    if (!cleanDescription) {
-      setMessage("Add a description first.");
-      return;
-    }
-    if (!magnitude) {
-      setMessage("Enter an amount greater than $0.");
-      return;
-    }
-    if (!date) {
-      setMessage("Choose the transaction date.");
-      return;
-    }
-    if (!account) {
-      setMessage("Choose the account for this transaction.");
-      return;
-    }
-
-    const draft: SpreadsheetRow = {
-      id: `quick-transaction-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      cells: {
-        description: cleanDescription,
-        type,
-        category: "",
-        amount: (type === "income" ? magnitude : -magnitude).toFixed(2),
-        date,
-        account,
-        transferDestination: "",
-        shortfallSource: type === "expense" ? shortfallSource : "",
-        notes: "Added with Quick Transaction",
-      },
-    };
-    const categorized = { ...draft, cells: { ...draft.cells, category: identifyTransactionCategory(draft) } };
-    if (!onAddTransaction(categorized)) return;
-    setDescription("");
-    setAmount("");
-    setMessage(`${type === "income" ? "Income" : "Expense"} added to ${account}. No transfer was created.`);
-  }
-
-  return (
-    <section className="quick-transaction-panel" aria-labelledby="quick-transaction-title">
-      <div className="quick-transaction-heading">
-        <div>
-          <p className="eyebrow">Quick transaction</p>
-          <h2 id="quick-transaction-title">Add income or an expense</h2>
-        </div>
-        <span>Choose an account here. Transfer To is not required.</span>
-      </div>
-      <form onSubmit={submitTransaction}>
-        <label>
-          <span>Type</span>
-          <select value={type} onChange={(event) => { setType(event.target.value as "expense" | "income"); setMessage(""); }}>
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-          </select>
-        </label>
-        <label className="quick-transaction-description">
-          <span>Description</span>
-          <input value={description} onChange={(event) => { setDescription(event.target.value); setMessage(""); }} placeholder="What was this for?" />
-        </label>
-        <label>
-          <span>Amount</span>
-          <input inputMode="decimal" value={amount} onChange={(event) => { setAmount(event.target.value); setMessage(""); }} placeholder="$0.00" />
-        </label>
-        <label>
-          <span>Date</span>
-          <input className="calendar-input" type="date" value={date} onChange={(event) => { setDate(event.target.value); setMessage(""); }} />
-        </label>
-        <label className="quick-transaction-account">
-          <span>Account</span>
-          <select value={account} onChange={(event) => { setAccount(event.target.value); setMessage(""); }}>
-            <option value="">Choose account</option>
-            {accounts.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </label>
-        {type === "expense" && (
-          <label>
-            <span>If account is short</span>
-            <select value={shortfallSource} onChange={(event) => { setShortfallSource(event.target.value as TransactionShortfallSource); setMessage(""); }}>
-              <option value="overdraft">Let account go negative</option>
-              <option value="borrowed">Borrowed money</option>
-              <option value="unreconciled">Unaccounted cash</option>
-            </select>
-          </label>
-        )}
-        <button type="submit" className="quick-transaction-submit"><Plus size={16} /> Add {type}</button>
-      </form>
-      <p className="quick-transaction-message" role="status" aria-live="polite">{message}</p>
-    </section>
-  );
-}
-
 function ReceiptEntry({
   accounts,
   onAddReceipt,
@@ -1593,11 +1474,49 @@ function ReceiptEntry({
   const [tax, setTax] = useState("");
   const [lines, setLines] = useState<ReceiptLineDraft[]>(() => [createReceiptLine()]);
   const [message, setMessage] = useState("");
-  const [receiptOpen, setReceiptOpen] = useState(true);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const receiptTriggerRef = useRef<HTMLButtonElement>(null);
+  const receiptDialogRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!account && accounts.length) setAccount(accounts[0].value);
   }, [account, accounts]);
+
+  useEffect(() => {
+    if (!receiptOpen) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : receiptTriggerRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const frame = window.requestAnimationFrame(() => {
+      receiptDialogRef.current?.querySelector<HTMLElement>("[data-receipt-autofocus]")?.focus();
+    });
+    function handleDialogKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setReceiptOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...(receiptDialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector) || [])];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    window.addEventListener("keydown", handleDialogKey);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleDialogKey);
+      previousFocus?.focus();
+    };
+  }, [receiptOpen]);
 
   const lineAmounts = calculateReceiptLineAmounts(lines, tax);
   const subtotalCents = lineAmounts.reduce((sum, amounts) => sum + amounts.subtotalCents, 0);
@@ -1679,36 +1598,41 @@ function ReceiptEntry({
   }
 
   return (
-    <section className="receipt-entry-panel" aria-labelledby="receipt-entry-title">
+    <>
+      <div className="receipt-launcher">
       <button
+        ref={receiptTriggerRef}
         type="button"
-        className="receipt-entry-heading"
-        aria-label={receiptOpen ? "Collapse manual receipt" : "Expand manual receipt"}
+        className="receipt-launch-button"
+        aria-label="Open manual receipt"
+        aria-haspopup="dialog"
         aria-expanded={receiptOpen}
-        aria-controls="receipt-entry-content"
-        onClick={() => setReceiptOpen((open) => !open)}
+        title="Open manual receipt"
+        onClick={() => setReceiptOpen(true)}
       >
-        <span className="receipt-entry-title">
-          <span className="receipt-entry-icon" aria-hidden="true"><ReceiptText size={21} /></span>
-          <span>
-            <span className="eyebrow">Manual receipt</span>
-            <span className="collapsible-section-title" id="receipt-entry-title">Enter one ticket, item by item</span>
-          </span>
-        </span>
-        <span className="receipt-entry-heading-actions">
-          <span className="receipt-entry-description">Like a store receipt, with spreadsheet-style rows and one overall total.</span>
-          <span className="collapsible-section-state">
-            {receiptOpen ? "Hide receipt" : "Show receipt"}
-          </span>
-        </span>
+        <ReceiptText size={19} aria-hidden="true" />
+        <span>Manual receipt</span>
       </button>
+      </div>
 
-      {receiptOpen && (
-      <div id="receipt-entry-content" className="receipt-entry-content">
+      {receiptOpen && createPortal(
+        <div className="receipt-popup-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setReceiptOpen(false);
+        }}>
+          <section ref={receiptDialogRef} className="receipt-popup-dialog" role="dialog" aria-modal="true" aria-labelledby="receipt-entry-title">
+            <header className="receipt-popup-header">
+              <div>
+                <p className="eyebrow">Manual receipt</p>
+                <h2 id="receipt-entry-title">Enter one ticket, item by item</h2>
+                <p>Choose the paying account, add the items, and post one accurate receipt.</p>
+              </div>
+              <button type="button" className="receipt-popup-close" aria-label="Close manual receipt" onClick={() => setReceiptOpen(false)}><X size={18} /></button>
+            </header>
+            <div id="receipt-entry-content" className="receipt-entry-content">
       <div className="receipt-meta-grid">
         <label>
           <span>Store / merchant</span>
-          <input value={merchant} onChange={(event) => { setMerchant(event.target.value); setMessage(""); }} placeholder="Where did you shop?" />
+          <input data-receipt-autofocus value={merchant} onChange={(event) => { setMerchant(event.target.value); setMessage(""); }} placeholder="Where did you shop?" />
         </label>
         <label>
           <span>Purchase date</span>
@@ -1775,9 +1699,12 @@ function ReceiptEntry({
         <p className="receipt-message" role="status" aria-live="polite">{message}</p>
         <button type="button" className="receipt-post-button" onClick={postReceipt}><ReceiptText size={17} /> Post receipt to Transactions</button>
       </div>
-      </div>
+            </div>
+          </section>
+        </div>,
+        document.body,
       )}
-    </section>
+    </>
   );
 }
 
