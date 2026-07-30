@@ -222,12 +222,13 @@ test("hides optional captions and hints for experienced users", async ({ page })
   await expect(page.locator("html")).toHaveAttribute("data-guidance", "minimal");
 
   await page.goto("/transactions");
-  await expect(page.getByRole("button", { name: "Collapse manual receipt" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Collapse transaction history" })).toBeVisible();
-  await expect(page.locator(".receipt-entry-panel .eyebrow")).toBeHidden();
-  await expect(page.locator(".receipt-entry-description")).toBeHidden();
-  await expect(page.locator(".transaction-history-description")).toBeHidden();
-  await expect(page.locator(".transaction-history-heading .collapsible-section-state")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Open manual receipt" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add transaction" })).toBeVisible();
+  await expect(page.locator(".transaction-concept-header .eyebrow")).toBeHidden();
+  await expect(page.locator(".transaction-concept-header h2")).toBeVisible();
+  await page.getByRole("button", { name: "Open manual receipt" }).click();
+  await expect(page.locator(".receipt-popup-header .eyebrow")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Post receipt to Transactions" })).toBeVisible();
 });
 
 test("has no measurable accessibility failures on the dashboard", async ({ page }) => {
@@ -274,6 +275,108 @@ test("loads every application page without runtime or heading-structure failures
   }
 
   expect(errors).toEqual([]);
+});
+
+test("keeps all 30 selectable layouts collision-free from mobile through desktop", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.includes("mobile"), "This test supplies its own responsive viewport matrix.");
+  test.setTimeout(120_000);
+
+  const pages = [
+    { label: "Dashboard", path: "/" },
+    { label: "Money Snapshot", path: "/money" },
+    { label: "Bills", path: "/bills" },
+    { label: "Inventory", path: "/inventory" },
+    { label: "Transactions", path: "/transactions" },
+    { label: "Reports", path: "/reports" },
+  ];
+  const views = [
+    { id: 1, name: "Focused Stack", description: "A calm, linear view with details revealed only when needed." },
+    { id: 2, name: "Lens", description: "A side-by-side view centered on accounts, status, or categories." },
+    { id: 3, name: "Timeline", description: "Activity-led sections that make sequence and progress easy to read." },
+    { id: 4, name: "Command Strip", description: "Key totals first, followed by one focused working area." },
+    { id: 5, name: "Review Queue", description: "Exceptions and next decisions first, with recent history beside them." },
+  ];
+  const viewports = [
+    { width: 320, height: 844 },
+    { width: 600, height: 900 },
+    { width: 900, height: 900 },
+    { width: 1400, height: 900 },
+  ];
+
+  for (const targetPage of pages) {
+    for (const view of views) {
+      await page.goto("/settings#settings-layout-views");
+      const pageCard = page.getByRole("region", { name: targetPage.label, exact: true });
+      const radio = pageCard.getByRole("radio", {
+        name: `${view.id}. ${view.name} ${view.description}`,
+        exact: true,
+      });
+      await radio.click();
+      await expect(radio).toHaveAttribute("aria-checked", "true");
+
+      await page.goto(targetPage.path);
+      await expect(page.locator("[data-layout-view]")).toHaveAttribute("data-layout-view", String(view.id));
+
+      for (const viewport of viewports) {
+        await page.setViewportSize(viewport);
+        const layout = await page.evaluate(() => {
+          const root = document.querySelector<HTMLElement>("[data-layout-view]");
+          const visible = root ? [...root.querySelectorAll<HTMLElement>("*")].filter((element) => {
+            const style = getComputedStyle(element);
+            const rect = element.getBoundingClientRect();
+            return style.display !== "none"
+              && style.visibility !== "hidden"
+              && !element.closest(".visually-hidden")
+              && rect.width > 8
+              && rect.height > 8;
+          }) : [];
+          const parents = [root, ...visible.filter((element) => {
+            const style = getComputedStyle(element);
+            return (style.display === "grid" || style.display === "flex")
+              && element.children.length > 1
+              && element.children.length <= 12;
+          })].filter((element): element is HTMLElement => Boolean(element)).slice(0, 200);
+          const overlaps: string[] = [];
+
+          for (const parent of parents) {
+            const children = [...parent.children].filter((child): child is HTMLElement => {
+              if (!(child instanceof HTMLElement)) return false;
+              const style = getComputedStyle(child);
+              const rect = child.getBoundingClientRect();
+              return style.display !== "none"
+                && style.visibility !== "hidden"
+                && style.position !== "absolute"
+                && style.position !== "fixed"
+                && rect.width > 8
+                && rect.height > 8;
+            });
+            for (let leftIndex = 0; leftIndex < children.length; leftIndex += 1) {
+              for (let rightIndex = leftIndex + 1; rightIndex < children.length; rightIndex += 1) {
+                const left = children[leftIndex].getBoundingClientRect();
+                const right = children[rightIndex].getBoundingClientRect();
+                const overlapWidth = Math.min(left.right, right.right) - Math.max(left.left, right.left);
+                const overlapHeight = Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top);
+                if (overlapWidth > 3 && overlapHeight > 3 && overlapWidth * overlapHeight > 64) {
+                  overlaps.push(`${String(parent.className)}: ${String(children[leftIndex].className)} / ${String(children[rightIndex].className)}`);
+                }
+              }
+            }
+          }
+
+          return {
+            documentWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+            viewportWidth: window.innerWidth,
+            overlaps,
+            mainHeadings: document.querySelectorAll("main h1").length,
+          };
+        });
+
+        expect(layout.documentWidth, `${targetPage.label} layout ${view.id} at ${viewport.width}px`).toBeLessThanOrEqual(layout.viewportWidth);
+        expect(layout.overlaps, `${targetPage.label} layout ${view.id} at ${viewport.width}px`).toEqual([]);
+        expect(layout.mainHeadings).toBe(1);
+      }
+    }
+  }
 });
 
 test("keeps rejected duplicate inventory edits and blank currency cells consistent", async ({ page }) => {
@@ -331,7 +434,11 @@ test("VitaScan saves to this VCC workspace and keeps light-theme actions readabl
   await expect(viewTransactions).toHaveAttribute("href", "/transactions");
   await viewTransactions.click();
   await expect(page).toHaveURL(/127\.0\.0\.1:4173\/transactions$/);
-  await expect(page.locator('textarea[aria-label^="Description, Transaction History row"]').last()).toHaveValue("NORTH MARKET");
+  await expect(page.getByText("NORTH MARKET", { exact: true }).first()).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return data.sections.transactions.some((row: { cells: { description?: string } }) => row.cells.description === "NORTH MARKET");
+  })).toBe(true);
 });
 
 test("exercises major navigation, filter, report, and car-loan controls", async ({ page }, testInfo) => {
@@ -353,36 +460,28 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   await expect(page.locator(".search-results").getByRole("link", { name: /Goals/ }).first()).toBeVisible();
 
   await page.goto("/transactions");
-  const transactionControl = page.locator(".transactions-command-panel");
-  await expect(transactionControl.getByRole("heading", { name: "Know exactly when the money was spent" })).toBeVisible();
-  await expect(transactionControl.locator(".spending-period-group")).toHaveCount(2);
-  await expect(transactionControl.getByRole("textbox", { name: "Search transactions" })).toHaveCount(0);
-  await expect(transactionControl.getByRole("combobox", { name: "Transaction category" })).toHaveCount(0);
-  await expect(transactionControl.getByRole("combobox", { name: "Transaction account" })).toHaveCount(0);
-  await expect(page.locator(".spending-period-panel")).toHaveCount(0);
-  const transactionToolbar = page.locator(".transactions-page .spreadsheet-toolbar");
-  const tableFilters = transactionToolbar.locator(".transactions-table-filters");
-  await expect(tableFilters.getByRole("textbox", { name: "Search transactions" })).toBeVisible();
-  await expect(tableFilters.getByRole("combobox", { name: "Transaction category" })).toBeVisible();
-  await expect(tableFilters.getByRole("combobox", { name: "Transaction type" })).toBeVisible();
-  const accountFilter = tableFilters.getByRole("combobox", { name: "Transaction account" });
-  await expect(accountFilter).toBeVisible();
-  await expect(tableFilters.getByRole("combobox", { name: "Transaction date range" })).toBeVisible();
-  expect((await transactionToolbar.boundingBox())?.height).toBeLessThanOrEqual(64);
-  await expect(page.getByRole("columnheader", { name: /Recurring/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /activity/ }).first()).toBeVisible();
+  const transactionToolbar = page.locator(".transaction-concept-toolbar");
+  await expect(transactionToolbar.getByRole("textbox", { name: "Search transactions" })).toBeVisible();
+  await expect(transactionToolbar.getByRole("button", { name: "Filters" })).toBeVisible();
+  await expect(transactionToolbar.locator(".transaction-type-tabs button")).toHaveCount(4);
   await expect(page.locator('[data-column-key="recurring"]')).toHaveCount(0);
-  const incomeAmount = page.locator(".transaction-amount-income .transaction-amount-display").first();
-  const expenseAmount = page.locator(".transaction-amount-expense .transaction-amount-display").first();
+  const incomeAmount = page.locator(".transaction-row-amount.income strong").first();
+  const expenseAmount = page.locator(".transaction-row-amount.expense strong").first();
   await expect(incomeAmount).toHaveText("+$1,200.00");
   await expect(expenseAmount).toHaveText("-$72.15");
-  expect(await incomeAmount.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(8, 122, 79)");
-  expect(await expenseAmount.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(197, 40, 40)");
+  expect(await incomeAmount.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(86, 214, 138)");
+  expect(await expenseAmount.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(255, 107, 107)");
+  await transactionToolbar.getByRole("button", { name: "Filters" }).click();
+  await expect(transactionToolbar.getByLabel("Category")).toBeVisible();
+  const accountFilter = transactionToolbar.getByLabel("Account or vault");
   await accountFilter.selectOption("Cash App");
-  await expect(page.locator("table tbody tr")).toHaveCount(1);
-  await expect(page.locator('select[data-column-key="account"]')).toHaveValue("Cash App");
+  await expect(page.locator(".transaction-simple-row")).toHaveCount(1);
+  await expect(page.locator(".transaction-row-account")).toHaveText("Cash App");
   await accountFilter.selectOption("all");
-  await transactionControl.getByRole("button", { name: /^Last month/ }).click();
-  await expect(page.getByRole("combobox", { name: "Transaction date range" })).toHaveValue("lastmonth");
+  await transactionToolbar.getByRole("button", { name: "Transfers" }).click();
+  await expect(page.locator(".transaction-simple-row")).toHaveCount(1);
+  await expect(page.locator(".transaction-row-account")).toContainText("Emergency Fund");
 
   await page.goto("/reports");
   await page.getByRole("button", { name: "Monthly" }).click();
@@ -407,23 +506,30 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
 
 test("moves transaction transfers between linked accounts and savings vaults in either direction", async ({ page }) => {
   await page.goto("/transactions");
-  await page.getByRole("button", { name: "Add Transaction" }).click();
-  const row = page.locator("table tbody tr").last();
-
-  await row.locator('select[data-column-key="type"]').selectOption("transfer");
-  await row.locator('input[data-column-key="amount"]').fill("50");
-  await row.locator('input[data-column-key="amount"]').press("Tab");
-  await row.locator('input[data-column-key="date"]').fill("2026-07-22");
-  await row.locator('select[data-column-key="account"]').selectOption("Chime Checking");
-  await row.locator('select[data-column-key="transferDestination"]').selectOption("Emergency Fund");
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  let editor = page.locator(".transaction-detail-editor");
+  await editor.getByLabel("Type").selectOption("transfer");
+  await editor.getByLabel("Description").fill("Move money to emergency fund");
+  await editor.getByLabel("Amount").fill("50");
+  await editor.getByLabel("Date").fill("2026-07-22");
+  await editor.getByLabel("From").selectOption("Chime Checking");
+  await editor.getByLabel("To").selectOption("Emergency Fund");
+  await editor.getByRole("button", { name: "Save changes" }).click();
 
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
     return [data.sections.money.find((item: { id: string }) => item.id === "money-cash-1").cells.amount, data.sections.savings.find((item: { id: string }) => item.id === "sav-emergency").cells.balance];
   })).toEqual(["2790.32", "12850.00"]);
 
-  await row.locator('select[data-column-key="account"]').selectOption("Emergency Fund");
-  await row.locator('select[data-column-key="transferDestination"]').selectOption("Chime Checking");
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  editor = page.locator(".transaction-detail-editor");
+  await editor.getByLabel("Type").selectOption("transfer");
+  await editor.getByLabel("Description").fill("Return money to checking");
+  await editor.getByLabel("Amount").fill("100");
+  await editor.getByLabel("Date").fill("2026-07-22");
+  await editor.getByLabel("From").selectOption("Emergency Fund");
+  await editor.getByLabel("To").selectOption("Chime Checking");
+  await editor.getByRole("button", { name: "Save changes" }).click();
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
     return [data.sections.money.find((item: { id: string }) => item.id === "money-cash-1").cells.amount, data.sections.savings.find((item: { id: string }) => item.id === "sav-emergency").cells.balance];
@@ -432,6 +538,7 @@ test("moves transaction transfers between linked accounts and savings vaults in 
 
 test("posts a multi-item manual receipt as itemized transaction rows", async ({ page }) => {
   await page.goto("/transactions");
+  await page.getByRole("button", { name: "Open manual receipt" }).click();
   await page.getByPlaceholder("Where did you shop?").fill("Corner Market");
   await page.getByLabel("Receipt item 1", { exact: true }).fill("Sparkling water");
   await page.getByLabel("Quantity for receipt item 1", { exact: true }).fill("2");
@@ -477,42 +584,26 @@ test("posts a multi-item manual receipt as itemized transaction rows", async ({ 
   });
 });
 
-test("collapses manual receipt and transaction history without arrow icons", async ({ page }) => {
+test("keeps a manual receipt draft when its popup is closed and reopened", async ({ page }) => {
   await page.goto("/transactions");
-  const receiptToggle = page.getByRole("button", { name: "Collapse manual receipt" });
-  const historyToggle = page.getByRole("button", { name: "Collapse transaction history" });
-
-  await expect(receiptToggle).toHaveAttribute("aria-expanded", "true");
-  await expect(historyToggle).toHaveAttribute("aria-expanded", "true");
-  await expect(receiptToggle.locator("svg.lucide-chevron-down, svg.lucide-chevron-up")).toHaveCount(0);
-  await expect(historyToggle.locator("svg.lucide-chevron-down, svg.lucide-chevron-up")).toHaveCount(0);
-
+  const receiptTrigger = page.getByRole("button", { name: "Open manual receipt" });
+  await expect(receiptTrigger).toHaveAttribute("aria-expanded", "false");
+  await receiptTrigger.click();
+  await expect(page.getByRole("dialog", { name: "Enter one ticket, item by item" })).toBeVisible();
   await page.getByPlaceholder("Where did you shop?").fill("Saved while folded");
-  await receiptToggle.click();
+  await page.getByRole("button", { name: "Close manual receipt" }).click();
   await expect(page.getByPlaceholder("Where did you shop?")).toHaveCount(0);
-  const showReceipt = page.getByRole("button", { name: "Expand manual receipt" });
-  await expect(showReceipt).toHaveAttribute("aria-expanded", "false");
-  await showReceipt.click();
+  await expect(receiptTrigger).toBeFocused();
+  await receiptTrigger.click();
   await expect(page.getByPlaceholder("Where did you shop?")).toHaveValue("Saved while folded");
-
-  await historyToggle.click();
-  await expect(page.locator(".transaction-history-shell table")).toHaveCount(0);
-  const showHistory = page.getByRole("button", { name: "Expand transaction history" });
-  await expect(showHistory).toHaveAttribute("aria-expanded", "false");
-  await expect(showHistory.locator("svg.lucide-chevron-down, svg.lucide-chevron-up")).toHaveCount(0);
-  await showHistory.click();
-  const historyShell = page.locator(".transaction-history-shell");
-  const historySpreadsheet = historyShell.locator(".spreadsheet-panel");
-  await expect(historyShell.locator("table")).toHaveCount(1);
-  await expect(historyShell).toHaveCSS("border-top-width", "1px");
-  await expect(historySpreadsheet).toHaveCSS("border-top-width", "0px");
 });
 
 test("applies cash income to Money Snapshot and keeps dropdown choices readable", async ({ page }) => {
   await page.goto("/transactions");
-  await page.getByRole("button", { name: "Add Transaction" }).click();
-  const row = page.locator("table tbody tr").last();
-  const accountSelect = row.locator('select[data-column-key="account"]');
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  const editor = page.locator(".transaction-detail-editor");
+  await editor.getByLabel("Type").selectOption("income");
+  const accountSelect = editor.getByLabel("Account");
   const cashOptionStyles = await accountSelect.locator('option[value="Cash"]').evaluate((option) => {
     const style = getComputedStyle(option);
     return { color: style.color, background: style.backgroundColor };
@@ -529,11 +620,11 @@ test("applies cash income to Money Snapshot and keeps dropdown choices readable"
     const now = new Date();
     return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
   });
-  await row.locator('select[data-column-key="type"]').selectOption("income");
-  await row.locator('input[data-column-key="amount"]').fill("125");
-  await row.locator('input[data-column-key="amount"]').press("Tab");
-  await row.locator('input[data-column-key="date"]').fill(date);
+  await editor.getByLabel("Description").fill("Cash income");
+  await editor.getByLabel("Amount").fill("125");
+  await editor.getByLabel("Date").fill(date);
   await accountSelect.selectOption("Cash");
+  await editor.getByRole("button", { name: "Save changes" }).click();
 
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -553,8 +644,8 @@ test("applies cash income to Money Snapshot and keeps dropdown choices readable"
 });
 
 test("keeps spreadsheet cells ready for immediate desktop typing and keyboard navigation", async ({ page }) => {
-  await page.goto("/transactions");
-  const description = page.locator('textarea[data-column-key="description"]').first();
+  await page.goto("/bills");
+  const description = page.locator('textarea[data-column-key="name"]').first();
   const descriptionCell = description.locator("..");
 
   await description.focus();
@@ -565,7 +656,7 @@ test("keeps spreadsheet cells ready for immediate desktop typing and keyboard na
   await expect(descriptionCell).toHaveClass(/cell-editing/);
 
   await page.keyboard.press("ArrowRight");
-  const type = page.locator('select[data-column-key="type"]').first();
+  const type = page.locator('textarea[data-column-key="category"]').first();
   await expect(type).toBeFocused();
   await expect(type.locator("..")).toHaveClass(/cell-selected/);
   await page.keyboard.press("ArrowLeft");
@@ -574,7 +665,7 @@ test("keeps spreadsheet cells ready for immediate desktop typing and keyboard na
   await page.keyboard.press("Delete");
   await expect(description).toHaveValue("");
   await expect(descriptionCell).toHaveClass(/cell-selected/);
-  await expect(page.locator(".spreadsheet-panel [role=status]")).toContainText("Description cleared");
+  await expect(page.locator(".spreadsheet-panel [role=status]")).toContainText("Bill cleared");
 
   await description.click();
   await expect(descriptionCell).toHaveClass(/cell-editing/);
@@ -583,8 +674,8 @@ test("keeps spreadsheet cells ready for immediate desktop typing and keyboard na
   await expect(descriptionCell).not.toHaveClass(/cell-editing/);
   await expect(description).toHaveValue("Edited paycheck");
 
-  await page.getByRole("button", { name: "Add Transaction" }).click();
-  const newDescription = page.locator('textarea[data-column-key="description"]').last();
+  await page.getByRole("button", { name: "Add Bill" }).click();
+  const newDescription = page.locator('textarea[data-column-key="name"]').last();
   await expect(newDescription).toBeFocused();
   await expect(newDescription.locator("..")).toHaveClass(/cell-editing/);
   await page.keyboard.type("Coffee");
@@ -594,7 +685,8 @@ test("keeps spreadsheet cells ready for immediate desktop typing and keyboard na
 test("keeps the native calendar picker visible in dark mode", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("vcc-os:theme-preference", "dark"));
   await page.goto("/transactions");
-  const dateInput = page.locator('input[type="date"]').first();
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  const dateInput = page.locator(".transaction-detail-editor").getByLabel("Date");
 
   const styles = await dateInput.evaluate((input) => {
     const inputStyle = getComputedStyle(input);
@@ -639,17 +731,16 @@ test("keeps the transaction page free of horizontal scrolling", async ({ page })
 
 test("updates the transaction category from completed U.S. retail descriptions", async ({ page }) => {
   await page.goto("/transactions");
-  await page.getByRole("button", { name: "Add Transaction" }).click();
-  const row = page.locator("table tbody tr").last();
-  const description = row.locator('textarea[data-column-key="description"]');
-  const category = row.locator('textarea[data-column-key="category"]');
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  const editor = page.locator(".transaction-detail-editor");
+  await editor.getByLabel("Description").fill("KROGER #0456");
+  await editor.getByLabel("Amount").fill("62.40");
+  await editor.getByText("Account", { exact: true }).locator("..").locator("select").selectOption("Cash App");
+  await editor.getByRole("button", { name: "Save changes" }).click();
 
-  await description.fill("KROGER #0456");
-  await expect(category).toHaveValue("Groceries");
-
-  await row.locator('select[data-column-key="account"]').selectOption("Cash App");
-  await description.fill("WALMART PHARMACY PRESCRIPTION");
-  await expect(category).toHaveValue("Healthcare");
+  await page.getByRole("button", { name: /KROGER #0456/ }).click();
+  await page.getByRole("button", { name: "More accounting details" }).click();
+  await expect(page.locator(".transaction-detail-editor").getByLabel("Category")).toHaveValue("Groceries");
 });
 
 test("keeps the closed mobile drawer inert and restores focus after use", async ({ page }, testInfo) => {

@@ -426,6 +426,7 @@ function MoneyTimeline({
   const attentionRows = allRows.filter((row) => row.cells.category === "Uncategorized" || toNumber(row.cells.shortfallAmount) > 0);
   const negativeAccounts = accounts.filter((account) => account.balance < 0);
   const buckets = timelineBuckets(rows);
+  const editingRowIsVisible = editingRow ? rows.some((row) => row.id === editingRow.id) : false;
   return (
     <section className="transaction-concept transaction-money-timeline" aria-labelledby="money-timeline-title">
       <header className="transaction-concept-header">
@@ -437,6 +438,11 @@ function MoneyTimeline({
       {toolbar}
       <div className="transaction-timeline-workspace">
         <div className="transaction-timeline-list">
+          {editingRow && !editingRowIsVisible && (
+            <div className="transaction-inline-editor transaction-inline-editor-new">
+              <TransactionEditor row={editingRow} accounts={accounts} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} compact />
+            </div>
+          )}
           {buckets.map((bucket) => (
             <section key={bucket.label} className="transaction-timeline-group" aria-labelledby={`timeline-${slug(bucket.label)}`}>
               <h3 id={`timeline-${slug(bucket.label)}`}>{bucket.label}</h3>
