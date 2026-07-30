@@ -525,27 +525,42 @@
     gap: 1rem;
   }
 
-  .money-page.layout-view-5 > .planner-panel,
-  .bills-page.layout-view-5 > .bills-due-display,
-  .inventory-page.layout-view-5 > .buy-next-panel,
+  .money-page.layout-view-5 > .planner-panel {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: stretch;
+  }
+
+  .inventory-page.layout-view-5 > .buy-next-panel {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .bills-page.layout-view-5 > .bills-due-display {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .bills-page.layout-view-5 > .bills-insight-grid {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: stretch;
+  }
+
   .reports-page.layout-view-5 > .reports-grid {
     grid-column: 1;
-    grid-row: 1 / span 3;
+    grid-row: 4;
   }
 
   .money-page.layout-view-5 > .money-hero-panel,
-  .money-page.layout-view-5 > .money-account-panel,
   .bills-page.layout-view-5 > .summary-grid,
   .bills-page.layout-view-5 > .bills-command-panel,
-  .bills-page.layout-view-5 > .bills-insight-grid,
   .inventory-page.layout-view-5 > .summary-grid,
-  .inventory-page.layout-view-5 > .inventory-command-panel,
-  .reports-page.layout-view-5 > .reports-command-panel,
-  .reports-page.layout-view-5 > .summary-grid,
-  .reports-page.layout-view-5 > .report-insight-strip {
+  .inventory-page.layout-view-5 > .inventory-command-panel {
     grid-column: 2;
   }
 
+  .money-page.layout-view-5 > .money-account-panel,
   .money-page.layout-view-5 > .money-simple-inputs,
   .money-page.layout-view-5 > .money-history-panel,
   .bills-page.layout-view-5 > .spreadsheet-panel,
@@ -556,20 +571,44 @@
 
   .base44-dashboard.layout-view-5 .dashboard-page-content {
     display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.8fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
     align-items: start;
   }
 
   .base44-dashboard.layout-view-5 .dashboard-intelligence-grid {
     grid-column: 1;
-    grid-row: 1 / span 2;
-    grid-template-columns: 1fr;
+    grid-row: 1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .base44-dashboard.layout-view-5 .mission-banner,
+  .base44-dashboard.layout-view-5 .mission-banner {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
   .base44-dashboard.layout-view-5 .dashboard-module-grid {
-    grid-column: 2;
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .reports-page.layout-view-5 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reports-page.layout-view-5 > .report-insight-strip {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .reports-page.layout-view-5 > .summary-grid {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .reports-page.layout-view-5 > .reports-command-panel {
+    grid-column: 1;
+    grid-row: 3;
   }
 }
 
@@ -9164,8 +9203,6 @@ td input:focus {
 }
 
 .reference-shell .money-page > .summary-grid,
-.reference-shell .bills-page > .summary-grid,
-.reference-shell .inventory-page > .summary-grid,
 .reference-shell .transactions-page > .summary-grid {
   display: none;
 }
@@ -9297,7 +9334,6 @@ td input:focus {
   font-size: 0.9rem;
 }
 
-.reference-shell .bills-insight-grid,
 .reference-shell .transactions-insight-grid {
   display: none;
 }
@@ -11845,7 +11881,7 @@ body {
 }
 
 .reports-page.layout-view-5 > .reports-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(32rem, 100%), 1fr));
 }
 
 .reports-page.layout-view-5 .report-card-wide {
