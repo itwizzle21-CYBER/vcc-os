@@ -526,8 +526,8 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   const expenseAmount = page.locator(".transaction-row-amount.expense strong").first();
   await expect(incomeAmount).toHaveText("+$1,200.00");
   await expect(expenseAmount).toHaveText("-$72.15");
-  expect(await incomeAmount.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(86, 214, 138)");
-  expect(await expenseAmount.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(255, 107, 107)");
+  expect(await incomeAmount.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(6, 118, 71)");
+  expect(await expenseAmount.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(180, 35, 24)");
   await transactionToolbar.getByRole("button", { name: "Filters" }).click();
   await expect(transactionToolbar.getByLabel("Category")).toBeVisible();
   const accountFilter = transactionToolbar.getByLabel("Account or vault");

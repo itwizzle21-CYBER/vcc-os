@@ -16,6 +16,7 @@
   --muted: #9aa6b2;
   --accent: #4f8cff;
   --accent-soft: rgba(79, 140, 255, 0.14);
+  --accent-ink: var(--accent);
   --good: #56d68a;
   --warn: #f4b860;
   --bad: #ff6b6b;
@@ -30,7 +31,7 @@
   --theme-letter-spacing: 0;
   --theme-overlay: rgba(8, 11, 18, 0.86);
   --theme-overlay-strong: rgba(10, 14, 23, 0.98);
-  --theme-on-accent: #ffffff;
+  --theme-on-accent: #101828;
   --theme-grid-line: rgba(255, 255, 255, 0.035);
 }
 
@@ -1397,10 +1398,14 @@
   --border: #cbd5e1;
   --text: #101828;
   --muted: #526177;
+  --accent-ink: #1d4ed8;
+  --good: #067647;
+  --warn: #7a4a00;
+  --bad: #b42318;
   --shadow-raised: 0 16px 38px rgba(15, 23, 42, 0.09);
   --theme-overlay: rgba(255, 255, 255, 0.94);
   --theme-overlay-strong: rgba(255, 255, 255, 0.985);
-  --theme-on-accent: #ffffff;
+  --theme-on-accent: #101828;
   --theme-grid-line: rgba(23, 32, 42, 0.055);
 }
 
@@ -1507,6 +1512,11 @@
 :root[data-accent="gold"] { --accent: #e6b450; --accent-soft: rgba(230, 180, 80, 0.16); }
 :root[data-accent="purple"] { --accent: #9d7cff; --accent-soft: rgba(157, 124, 255, 0.15); }
 :root[data-accent="red"] { --accent: #ff6b6b; --accent-soft: rgba(255, 107, 107, 0.14); }
+
+:root[data-theme="light"][data-accent="green"] { --accent-ink: #067647; }
+:root[data-theme="light"][data-accent="gold"] { --accent-ink: #7a4a00; }
+:root[data-theme="light"][data-accent="purple"] { --accent-ink: #5b21b6; }
+:root[data-theme="light"][data-accent="red"] { --accent-ink: #b42318; }
 :root[data-density="comfortable"] { --cell-pad: 0.85rem; }
 :root[data-density="compact"] { --cell-pad: 0.62rem; }
 :root[data-density="ultra"] { --cell-pad: 0.45rem; }
@@ -11904,4 +11914,59 @@ body {
 .chart-slide-controls button,
 .report-chart-caption {
   overflow-wrap: anywhere;
+}
+
+/* Light-mode contrast guardrails. These rules stay last so the shared daylight
+   system wins over the legacy dark dashboard and control treatments. */
+:root[data-theme="light"] .reference-shell .dashboard-module-title strong,
+:root[data-theme="light"] .reference-shell .dashboard-module-card dd,
+:root[data-theme="light"] .reference-shell .dashboard-card-progress strong,
+:root[data-theme="light"] .reference-shell .dashboard-account-dropdown summary {
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-card-progress span,
+:root[data-theme="light"] .reference-shell .dashboard-card-progress small,
+:root[data-theme="light"] .reference-shell .dashboard-account-dropdown summary small {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-card-progress {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-card-progress i {
+  background: color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-account-dropdown {
+  border-top-color: var(--border);
+}
+
+:root[data-theme="light"] .reference-shell .money-account-heading > span,
+:root[data-theme="light"] .reference-shell .money-history-heading > span,
+:root[data-theme="light"] .reference-shell .toolbar-controls button:first-of-type,
+:root[data-theme="light"] .reference-shell .transaction-type-tabs button.active {
+  color: var(--accent-ink);
+}
+
+:root[data-theme="light"] .reference-shell .planner-form button:not(.ghost-button),
+:root[data-theme="light"] .reference-shell .transaction-review-confirm {
+  color: var(--theme-on-accent);
+}
+
+.reference-shell .planner-form button:not(.ghost-button),
+.reference-shell .transaction-review-confirm {
+  color: var(--theme-on-accent);
+}
+
+:root[data-theme="light"] .reference-shell .savings-inline-stats strong,
+:root[data-theme="light"] .reference-shell .mission-row.complete strong {
+  color: var(--good);
+}
+
+:root[data-theme="light"] .reference-shell .goals-inline-stats strong,
+:root[data-theme="light"] .reference-shell .settings-kicker {
+  color: var(--accent-ink);
 }
