@@ -442,6 +442,14 @@ export function createZeroData(): AppData {
       welcomeTransition: "rise",
       vitaScanEnabled: true,
       vccPetEnabled: false,
+      layoutViews: {
+        dashboard: 1,
+        money: 2,
+        bills: 3,
+        inventory: 4,
+        transactions: 3,
+        reports: 4,
+      },
     },
   };
 }

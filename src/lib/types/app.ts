@@ -15,6 +15,9 @@ export type AccentColor = "blue" | "green" | "gold" | "purple" | "red";
 export type Density = "comfortable" | "compact" | "ultra";
 export type SurfaceStyle = "glass" | "neumorphic" | "minimal";
 export type WallpaperChoice = "default" | "modern" | "anime" | "animation" | "upload";
+export type LayoutView = 1 | 2 | 3 | 4 | 5;
+export type LayoutViewPage = "dashboard" | "money" | "bills" | "inventory" | "transactions" | "reports";
+export type LayoutViews = Record<LayoutViewPage, LayoutView>;
 
 export interface TableColumn {
   key: string;
@@ -82,6 +85,7 @@ export interface UserSettings {
   welcomeTransition: "rise" | "fade" | "focus" | "sweep";
   vitaScanEnabled: boolean;
   vccPetEnabled: boolean;
+  layoutViews: LayoutViews;
 }
 
 export interface ActivityEvent {

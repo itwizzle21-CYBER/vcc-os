@@ -173,6 +173,15 @@ export function normalizeAppData(raw: unknown): AppData {
     || sourceSettings.appearanceTheme === "contrast"
     ? sourceSettings.appearanceTheme
     : legacyTheme === "slate" ? "executive" : "signature";
+  const sourceLayoutViews = sourceSettings.layoutViews && typeof sourceSettings.layoutViews === "object"
+    ? sourceSettings.layoutViews
+    : {};
+  const layoutViews = Object.fromEntries(
+    Object.entries(starter.settings.layoutViews).map(([page, fallback]) => {
+      const candidate = Number((sourceLayoutViews as Record<string, unknown>)[page]);
+      return [page, candidate >= 1 && candidate <= 5 ? candidate : fallback];
+    }),
+  ) as AppData["settings"]["layoutViews"];
 
   return {
     ...starter,
@@ -185,7 +194,7 @@ export function normalizeAppData(raw: unknown): AppData {
     paycheckHistory: (Array.isArray(source.paycheckHistory) ? source.paycheckHistory : starter.paycheckHistory)
       .map((row) => ({ ...row, depositAccountLabel: displayAccountLabel(row.depositAccountLabel) })),
     activity: Array.isArray(source.activity) ? source.activity : starter.activity,
-    settings: { ...starter.settings, ...sourceSettings, theme, appearanceTheme },
+    settings: { ...starter.settings, ...sourceSettings, theme, appearanceTheme, layoutViews },
   } as AppData;
 }
 

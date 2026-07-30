@@ -7,6 +7,7 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
+  Columns3,
   Database,
   Download,
   HardDrive,
@@ -31,6 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import AppShell from "./components/layout/AppShell";
+import { LayoutViewSettings, layoutViewClass } from "./components/layout/LayoutViews";
 import NotFound from "./components/layout/NotFound";
 import WelcomeTransition from "./components/layout/WelcomeTransition";
 import Dashboard from "./components/dashboard/Dashboard";
@@ -41,6 +43,7 @@ import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import CloudSyncControl from "./components/shared/CloudSyncControl";
 import BufferedTextInput from "./components/shared/BufferedTextInput";
+import TransactionHistoryConcepts, { type TransactionLayoutVariant } from "./components/transactions/TransactionHistoryConcepts";
 import { formatCurrency, formatDateMDY, isBlankRow, todayIso, toNumber } from "./lib/calculations/currency";
 import { amountToCents, calculateReceiptLineAmounts, centsToAmount } from "./lib/calculations/receiptMath";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
@@ -58,34 +61,9 @@ import type { AppData, SectionKey, SpreadsheetRow, ThemeMode, UserSettings } fro
 import { useVccCloudSync } from "./lib/cloud/useVccCloudSync";
 
 const worldwideTransactionCategories = [
-  "Income",
-  "Housing",
-  "Utilities",
-  "Groceries",
-  "Restaurants",
-  "Transportation",
-  "Fuel",
-  "Travel",
-  "Healthcare",
-  "Insurance",
-  "Debt Payments",
-  "Savings",
-  "Investments",
-  "Education",
-  "Childcare",
-  "Pets",
-  "Subscriptions",
-  "Entertainment",
-  "Shopping",
-  "Personal Care",
-  "Tobacco",
-  "Taxes",
-  "Fees",
-  "Gifts & Donations",
-  "Business",
-  "Transfers",
-  "Other",
-  "Uncategorized",
+  "Income", "Housing", "Utilities", "Groceries", "Restaurants", "Transportation", "Fuel", "Travel", "Healthcare", "Insurance",
+  "Debt Payments", "Savings", "Investments", "Education", "Childcare", "Pets", "Subscriptions", "Entertainment", "Shopping",
+  "Personal Care", "Tobacco", "Taxes", "Fees", "Gifts & Donations", "Business", "Transfers", "Other", "Uncategorized",
 ];
 
 type WallpaperPreviewSettings = Pick<UserSettings, "wallpaper" | "customWallpaper" | "backgroundOpacity" | "cardOpacity">;
@@ -228,13 +206,13 @@ export default function App() {
     <>
     {path === "/" && <WelcomeTransition settings={data.settings} />}
     <AppShell currentPath={path} settings={data.settings} activeTheme={activeTheme} wallpaperPreview={wallpaperPreview} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
-      {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} activity={data.activity} accounts={depositAccountOptions(data)} />}
+      {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} activity={data.activity} accounts={depositAccountOptions(data)} layoutView={data.settings.layoutViews.dashboard} />}
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
       )}
       {path === "/bills" && <BillsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
-      {path === "/transactions" && <TransactionsPage data={data} financialState={financialState} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
+      {path === "/transactions" && <TransactionsConceptPage data={data} onChange={updateData} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/car-payment" && <CarLoanWorkspace data={data} financialState={financialState} onChange={updateData} />}
       {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
@@ -333,7 +311,7 @@ function MoneyPage({
   ];
 
   return (
-    <div className="money-page">
+    <div className={`money-page ${layoutViewClass(data.settings.layoutViews.money)}`} data-layout-view={data.settings.layoutViews.money}>
       <section className="money-hero-panel">
         <div>
           <p className="eyebrow">Money Snapshot</p>
@@ -516,7 +494,7 @@ function BillsPage({
   }
 
   return (
-    <div className="bills-page module-page">
+    <div className={`bills-page module-page ${layoutViewClass(data.settings.layoutViews.bills)}`} data-layout-view={data.settings.layoutViews.bills}>
       <SummaryGrid items={summaryForSection("bills", financialState)} />
       <section className="bills-command-panel">
         <div>
@@ -630,7 +608,8 @@ function BillsPage({
   );
 }
 
-function TransactionsPage({
+// Legacy spreadsheet surface retained for rollback compatibility; live routing uses Layout Views.
+export function TransactionsPage({
   data,
   financialState,
   updateSort,
@@ -879,6 +858,80 @@ function TransactionsPage({
         </article>
       </section>
 
+    </div>
+  );
+}
+
+function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: (next: AppData) => void }) {
+  const [message, setMessage] = useState("");
+  const transactionEndpoints = useMemo(() => transactionEndpointOptions(data), [data]);
+  const transactionRows = data.sections.transactions.map(normalizeTransactionRow).filter((row) => !isBlankRow(row.cells));
+  const incomeTotal = transactionRows
+    .filter((row) => transactionType(row) === "income")
+    .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+  const expenseTotal = transactionRows
+    .filter((row) => transactionType(row) === "expense")
+    .reduce((sum, row) => sum + Math.abs(signedTransactionAmount(row)), 0);
+  const transferTotal = transactionRows
+    .filter((row) => transactionType(row) === "transfer")
+    .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
+  const layoutVariant: TransactionLayoutVariant = data.settings.layoutViews.transactions;
+
+  function saveTransactionRow(row: SpreadsheetRow): boolean {
+    const normalizedRow = normalizeTransactionRow(row);
+    const nextRows = transactionRows.some((existing) => existing.id === row.id)
+      ? transactionRows.map((existing) => existing.id === row.id ? normalizedRow : existing)
+      : [...transactionRows, normalizedRow];
+    try {
+      const next = syncTransactionTransfers(data, nextRows);
+      const validation = next.sections.transactions.find((transaction) => transaction.id === row.id)?.cells.transferValidation || "";
+      if (validation) {
+        setMessage(validation);
+        return false;
+      }
+      onChange(next);
+      setMessage("Transaction saved and account balances updated.");
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The transaction could not be saved.");
+      return false;
+    }
+  }
+
+  function deleteTransactionRow(rowId: string) {
+    try {
+      onChange(syncTransactionTransfers(data, transactionRows.filter((row) => row.id !== rowId)));
+      setMessage("Transaction deleted and account balances updated.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The transaction could not be deleted.");
+    }
+  }
+
+  function addReceiptRows(rows: SpreadsheetRow[]): boolean {
+    try {
+      onChange(syncTransactionTransfers(data, [...transactionRows, ...rows]));
+      setMessage("");
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The receipt could not be added.");
+      return false;
+    }
+  }
+
+  return (
+    <div className={`transactions-page module-page transaction-concept-shell ${layoutViewClass(layoutVariant)}`} data-layout-view={layoutVariant}>
+      <TransactionHistoryConcepts
+        variant={layoutVariant}
+        rows={transactionRows}
+        accounts={transactionEndpoints}
+        incomeTotal={incomeTotal}
+        expenseTotal={expenseTotal}
+        transferTotal={transferTotal}
+        message={message}
+        receiptAction={<ReceiptEntry accounts={transactionEndpoints.map(({ value, label }) => ({ value, label }))} onAddReceipt={addReceiptRows} />}
+        onSave={saveTransactionRow}
+        onDelete={deleteTransactionRow}
+      />
     </div>
   );
 }
@@ -1759,7 +1812,7 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
   }
 
   return (
-    <div className="inventory-page module-page">
+    <div className={`inventory-page module-page ${layoutViewClass(props.data.settings.layoutViews.inventory)}`} data-layout-view={props.data.settings.layoutViews.inventory}>
       <SummaryGrid items={summaryForSection("inventory", props.financialState)} />
       <section className="inventory-command-panel">
         <div className="inventory-tabs" role="tablist" aria-label="Inventory status filter">
@@ -1863,7 +1916,7 @@ function ReportsPage({
   ];
 
   return (
-    <div className="reports-page">
+    <div className={`reports-page ${layoutViewClass(data.settings.layoutViews.reports)}`} data-layout-view={data.settings.layoutViews.reports}>
       <section className="reports-command-panel">
         <div>
           <p className="eyebrow">Reports</p>
@@ -2268,6 +2321,13 @@ function SettingsPage({
             <SettingFeatureRow title="Local-first mode" description="Keep this VCC workspace and its data on this device." checked={data.settings.localMode} onChange={(localMode) => onChange({ ...data, settings: { ...data.settings, localMode } })} />
           </SettingsSection>
 
+          <SettingsSection id="settings-layout-views" icon={Columns3} title="Layout Views" description="Choose one of five focused layouts for each major workspace." open={openSection === "settings-layout-views"}>
+            <LayoutViewSettings
+              value={data.settings.layoutViews}
+              onChange={(layoutViews) => onChange({ ...data, settings: { ...data.settings, layoutViews } })}
+            />
+          </SettingsSection>
+
           <SettingsSection id="settings-appearance" icon={Palette} title="Appearance" description="Choose a focused visual system that feels right for daily use." open={openSection === "settings-appearance"}>
             <div className="settings-welcome-panel">
               <div className="settings-welcome-heading">
@@ -2498,6 +2558,7 @@ function SettingsPage({
 
 const settingsNavigation: Array<{ href: string; label: string; icon: LucideIcon }> = [
   { href: "#settings-profile", label: "Workspace & privacy", icon: UserRound },
+  { href: "#settings-layout-views", label: "Layout Views", icon: Columns3 },
   { href: "#settings-appearance", label: "Appearance", icon: SlidersHorizontal },
   { href: "#settings-intelligence", label: "Intelligence", icon: BrainCircuit },
   { href: "#settings-notifications", label: "Notifications", icon: BellRing },

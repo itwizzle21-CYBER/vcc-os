@@ -18,13 +18,15 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import type { DepositAccountOption } from "../../lib/engine/paycheckPlannerEngine";
-import type { ActivityEvent, DecisionState, FinancialState } from "../../lib/types/app";
+import type { ActivityEvent, DecisionState, FinancialState, LayoutView } from "../../lib/types/app";
+import { layoutViewClass } from "../layout/LayoutViews";
 
 interface DashboardProps {
   financialState: FinancialState;
   decisionState: DecisionState;
   activity: ActivityEvent[];
   accounts: DepositAccountOption[];
+  layoutView: LayoutView;
 }
 
 interface DashboardModuleCardProps {
@@ -48,6 +50,7 @@ export default function Dashboard({
   decisionState,
   activity,
   accounts,
+  layoutView,
 }: DashboardProps) {
   const [pageOpen, setPageOpen] = useState(true);
   const missionIcon = iconForMission(decisionState.todayMission.href);
@@ -164,7 +167,7 @@ export default function Dashboard({
   ];
 
   return (
-    <div className="base44-dashboard">
+    <div className={`base44-dashboard ${layoutViewClass(layoutView)}`} data-layout-view={layoutView}>
       <h1 className="sr-only">VCC-OS Dashboard</h1>
       <button
         className="dashboard-status-line dashboard-collapse-heading"

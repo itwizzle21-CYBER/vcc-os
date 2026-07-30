@@ -70,6 +70,39 @@ describe("import normalization", () => {
     expect(imported.sections.inventory).toEqual([]);
     expect(imported.sections.transactions).toEqual(expect.any(Array));
     expect(imported.carLoan.receipts).toEqual(expect.any(Array));
+    expect(imported.settings.layoutViews).toEqual({
+      dashboard: 1,
+      money: 2,
+      bills: 3,
+      inventory: 4,
+      transactions: 3,
+      reports: 4,
+    });
+  });
+
+  it("preserves valid layout views and repairs invalid selections", () => {
+    const imported = normalizeAppData({
+      sections: {},
+      settings: {
+        layoutViews: {
+          dashboard: 5,
+          money: 0,
+          bills: 9,
+          inventory: 2,
+          transactions: 4,
+          reports: 1,
+        },
+      },
+    });
+
+    expect(imported.settings.layoutViews).toEqual({
+      dashboard: 5,
+      money: 2,
+      bills: 3,
+      inventory: 2,
+      transactions: 4,
+      reports: 1,
+    });
   });
 
   it("renames legacy cash labels and removes recurring transaction fields", () => {
