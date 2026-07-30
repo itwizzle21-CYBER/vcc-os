@@ -1131,9 +1131,9 @@
 }
 
 .transaction-account-rail {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
   gap: 0.45rem;
-  overflow-x: auto;
   border-bottom: 1px solid var(--border);
   padding: 0.75rem;
 }
@@ -1144,11 +1144,11 @@
 
 .transaction-account-rail > button {
   display: flex;
-  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
-  min-width: 9.5rem;
   border: 1px solid var(--border);
   border-radius: 0.72rem;
   background: var(--surface-2);
@@ -11802,4 +11802,70 @@ body {
   .reference-shell.transactions-shell .transactions-page td select {
     min-width: 0;
   }
+}
+
+/* Layout views can place these panels in either a full-width row or a narrow lens.
+   Keep their inner content intrinsic so a valid outer grid never produces collisions. */
+.layout-view input:not([type="checkbox"]):not([type="radio"]),
+.layout-view select,
+.layout-view textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.reference-shell .summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
+}
+
+.reference-shell .money-hero-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
+}
+
+.report-insight-strip {
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+}
+
+.reference-shell .bills-filter-row,
+.reference-shell .inventory-filter-row {
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+}
+
+.reports-command-panel {
+  flex-wrap: wrap;
+}
+
+.reports-command-panel > * {
+  min-width: 0;
+}
+
+.reports-period-tabs {
+  flex: 1 1 20rem;
+  max-width: 100%;
+}
+
+.reports-page.layout-view-5 > .reports-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+}
+
+.reports-page.layout-view-5 .report-card-wide {
+  grid-column: 1 / -1;
+}
+
+.report-card > *,
+.report-card .panel-heading > div,
+.chart-slide-controls,
+.chart-slide-controls > div,
+.chart-slide-controls button {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.report-card .panel-heading {
+  flex-wrap: wrap;
+}
+
+.chart-slide-controls button,
+.report-chart-caption {
+  overflow-wrap: anywhere;
 }

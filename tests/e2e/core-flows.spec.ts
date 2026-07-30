@@ -302,6 +302,7 @@ test("keeps all 30 selectable layouts collision-free from mobile through desktop
     { width: 900, height: 900 },
     { width: 1400, height: 900 },
   ];
+  const failures: string[] = [];
 
   for (const targetPage of pages) {
     for (const view of views) {
@@ -337,8 +338,11 @@ test("keeps all 30 selectable layouts collision-free from mobile through desktop
               && element.children.length <= 12;
           })].filter((element): element is HTMLElement => Boolean(element)).slice(0, 200);
           const overlaps: string[] = [];
+          const structuralEscapes: string[] = [];
+          const contentEscapes: string[] = [];
 
           for (const parent of parents) {
+            const parentRect = parent.getBoundingClientRect();
             const children = [...parent.children].filter((child): child is HTMLElement => {
               if (!(child instanceof HTMLElement)) return false;
               const style = getComputedStyle(child);
@@ -350,6 +354,14 @@ test("keeps all 30 selectable layouts collision-free from mobile through desktop
                 && rect.width > 8
                 && rect.height > 8;
             });
+            for (const child of children) {
+              const childRect = child.getBoundingClientRect();
+              if (parentRect.left - childRect.left > 3 || childRect.right - parentRect.right > 3) {
+                structuralEscapes.push(
+                  `${String(child.className || child.tagName)} outside ${String(parent.className || parent.tagName)}`,
+                );
+              }
+            }
             for (let leftIndex = 0; leftIndex < children.length; leftIndex += 1) {
               for (let rightIndex = leftIndex + 1; rightIndex < children.length; rightIndex += 1) {
                 const left = children[leftIndex].getBoundingClientRect();
@@ -363,20 +375,64 @@ test("keeps all 30 selectable layouts collision-free from mobile through desktop
             }
           }
 
+          const boundedContent = root ? [...root.querySelectorAll<HTMLElement>(
+            "small, strong, b, p, h2, h3, dd, dt, input, select, textarea, button",
+          )].filter((element) => {
+            const style = getComputedStyle(element);
+            const rect = element.getBoundingClientRect();
+            return style.display !== "none"
+              && style.visibility !== "hidden"
+              && style.position !== "absolute"
+              && style.position !== "fixed"
+              && !element.closest(".visually-hidden")
+              && rect.width > 4
+              && rect.height > 4;
+          }) : [];
+
+          for (const element of boundedContent) {
+            const parent = element.parentElement;
+            if (!parent || !root?.contains(parent)) continue;
+            const elementRect = element.getBoundingClientRect();
+            const parentRect = parent.getBoundingClientRect();
+            const escapesLeft = parentRect.left - elementRect.left;
+            const escapesRight = elementRect.right - parentRect.right;
+            if (escapesLeft > 3 || escapesRight > 3) {
+              contentEscapes.push(
+                `${element.tagName.toLowerCase()}.${String(element.className)} outside ${parent.tagName.toLowerCase()}.${String(parent.className)}`,
+              );
+            }
+          }
+
           return {
             documentWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
             viewportWidth: window.innerWidth,
             overlaps,
+            structuralEscapes: [...new Set(structuralEscapes)].slice(0, 30),
+            contentEscapes: [...new Set(contentEscapes)].slice(0, 30),
             mainHeadings: document.querySelectorAll("main h1").length,
           };
         });
 
-        expect(layout.documentWidth, `${targetPage.label} layout ${view.id} at ${viewport.width}px`).toBeLessThanOrEqual(layout.viewportWidth);
-        expect(layout.overlaps, `${targetPage.label} layout ${view.id} at ${viewport.width}px`).toEqual([]);
-        expect(layout.mainHeadings).toBe(1);
+        if (layout.documentWidth > layout.viewportWidth) {
+          failures.push(`${targetPage.label} layout ${view.id} at ${viewport.width}px: document is ${layout.documentWidth - layout.viewportWidth}px too wide`);
+        }
+        if (layout.overlaps.length) {
+          failures.push(`${targetPage.label} layout ${view.id} at ${viewport.width}px overlaps: ${layout.overlaps.join(", ")}`);
+        }
+        if (layout.structuralEscapes.length) {
+          failures.push(`${targetPage.label} layout ${view.id} at ${viewport.width}px structural overflow: ${layout.structuralEscapes.join(", ")}`);
+        }
+        if (layout.contentEscapes.length) {
+          failures.push(`${targetPage.label} layout ${view.id} at ${viewport.width}px nested overflow: ${layout.contentEscapes.join(", ")}`);
+        }
+        if (layout.mainHeadings !== 1) {
+          failures.push(`${targetPage.label} layout ${view.id} at ${viewport.width}px has ${layout.mainHeadings} main headings`);
+        }
       }
     }
   }
+
+  expect(failures).toEqual([]);
 });
 
 test("keeps rejected duplicate inventory edits and blank currency cells consistent", async ({ page }) => {
