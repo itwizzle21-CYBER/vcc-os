@@ -4309,7 +4309,7 @@ td textarea[readonly] {
 
 .bills-due-display {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(16rem, 0.8fr) minmax(12rem, 0.7fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
   gap: 1rem;
   align-items: center;
 }
@@ -11969,4 +11969,43 @@ body {
 :root[data-theme="light"] .reference-shell .goals-inline-stats strong,
 :root[data-theme="light"] .reference-shell .settings-kicker {
   color: var(--accent-ink);
+}
+
+/* Wide-screen layout guardrails. Lens layouts use narrow context rails, so their
+   hero content must reflow inside the rail instead of retaining full-width type. */
+@media (min-width: 68em) {
+  .base44-dashboard.layout-view-2 .dashboard-page-content {
+    grid-template-columns: minmax(20rem, 0.9fr) minmax(0, 1.9fr);
+  }
+
+  .base44-dashboard.layout-view-2 .mission-banner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .base44-dashboard.layout-view-2 .mission-banner > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .base44-dashboard.layout-view-2 .mission-banner-body {
+    align-items: flex-start;
+  }
+
+  .base44-dashboard.layout-view-2 .mission-banner h2 {
+    font-size: clamp(1.4rem, 2vw, 1.8rem);
+    line-height: 1.08;
+    overflow-wrap: normal;
+  }
+
+  .base44-dashboard.layout-view-2 .mission-priority {
+    grid-column: 1;
+    min-width: 0;
+    justify-self: start;
+  }
+
+  .base44-dashboard.layout-view-2 .mission-banner > svg {
+    grid-column: 2;
+    justify-self: end;
+  }
 }

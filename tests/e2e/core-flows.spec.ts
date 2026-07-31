@@ -435,6 +435,46 @@ test("keeps all 30 selectable layouts collision-free from mobile through desktop
   expect(failures).toEqual([]);
 });
 
+test("keeps wide-screen context rails readable", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.includes("mobile"), "This test targets full-screen desktop composition.");
+
+  const chooseLayout = async (section: string, option: string) => {
+    await page.goto("/settings#settings-layout-views");
+    const pageCard = page.getByRole("region", { name: section, exact: true });
+    await pageCard.getByRole("radio", { name: option, exact: true }).click();
+  };
+
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await chooseLayout(
+    "Dashboard",
+    "2. Lens A side-by-side view centered on accounts, status, or categories.",
+  );
+  await page.goto("/");
+
+  const dashboardMeasure = await page.locator(".mission-banner h2").evaluate((heading) => {
+    const rect = heading.getBoundingClientRect();
+    const lineHeight = Number.parseFloat(getComputedStyle(heading).lineHeight);
+    return { lines: rect.height / lineHeight, width: rect.width };
+  });
+  expect(dashboardMeasure.width).toBeGreaterThan(220);
+  expect(dashboardMeasure.lines).toBeLessThanOrEqual(3);
+
+  await chooseLayout(
+    "Bills",
+    "4. Command Strip Key totals first, followed by one focused working area.",
+  );
+  await page.goto("/bills");
+
+  const billsMeasure = await page.locator(".bills-due-primary h2").evaluate((heading) => {
+    const rect = heading.getBoundingClientRect();
+    const lineHeight = Number.parseFloat(getComputedStyle(heading).lineHeight);
+    return { lines: rect.height / lineHeight, width: rect.width };
+  });
+  expect(billsMeasure.width).toBeGreaterThan(200);
+  expect(billsMeasure.lines).toBeLessThanOrEqual(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test("keeps rejected duplicate inventory edits and blank currency cells consistent", async ({ page }) => {
   await page.goto("/inventory");
   await page.getByRole("button", { name: "Add Item" }).click();
