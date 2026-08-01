@@ -50,6 +50,7 @@ export interface PaycheckHistoryRow {
   depositAccountId?: string;
   depositAccountLabel?: string;
   borrowedRepayments?: Array<{ rowId: string; label: string; amount: number }>;
+  depositAppliedAmount?: string;
   payDate: string;
   income: string;
   spotMe: string;

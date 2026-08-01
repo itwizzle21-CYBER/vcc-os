@@ -58,6 +58,7 @@ import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, normalizeAppData, resetAllData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
 import { applyVisualSettings, getSystemTheme } from "./lib/theme/themePreference";
 import type { AppData, SectionKey, SpreadsheetRow, ThemeMode, UserSettings } from "./lib/types/app";
+import { enforceChimeBalanceFloor } from "./lib/engine/chimeAccountingEngine";
 import { useVccCloudSync } from "./lib/cloud/useVccCloudSync";
 
 const worldwideTransactionCategories = [
@@ -163,7 +164,7 @@ export default function App() {
   }
 
   function updateRows(section: SectionKey, rows: SpreadsheetRow[]) {
-    const nextRows = section === "money" ? autoFillMoneyWeek(rows, data) : rows;
+    const nextRows = section === "money" ? enforceChimeBalanceFloor(autoFillMoneyWeek(rows, data)) : rows;
     if (section === "bills") {
       const syncedTransactions = syncBillPaymentTransactions(data.sections.bills, nextRows, data.sections.transactions);
       const { transactions, carPayment } = applyBillPaymentsToCarLoan(

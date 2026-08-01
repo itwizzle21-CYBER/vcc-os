@@ -1,5 +1,6 @@
 import { isValidIsoDate, toNumber } from "../calculations/currency";
 import type { AppData, PaycheckHistoryRow, SpreadsheetRow } from "../types/app";
+import { automaticSpotMeRepayment, isChimeAccount } from "./chimeAccountingEngine";
 
 export interface DepositAccountOption {
   id: string;
@@ -49,20 +50,33 @@ export function lockPaycheckWeek(data: AppData): AppData {
   const existingDepositAccount = eligibleDepositAccounts(data).find((row) => row.id === planner.depositAccountId);
   const suggestedDepositAccount = suggestedAccounts.find((account) => account.id === planner.depositAccountId);
   const depositAccount = existingDepositAccount || (suggestedDepositAccount ? createMoneyAccount(suggestedDepositAccount.id, suggestedDepositAccount.label) : undefined);
+  const existing = data.paycheckHistory.find((row) => row.payDate === planner.payDate);
   const income = toNumber(planner.paycheckAmount);
-  const spotMeRepayment = toNumber(planner.spotMeRepayment);
+  const requestedSpotMeRepayment = toNumber(planner.spotMeRepayment);
   const myPayRepayment = toNumber(planner.myPayRepayment);
+  const accountBeforeExistingDeposit = existingDepositAccount && existing?.depositAccountId === existingDepositAccount.id
+    ? {
+      ...existingDepositAccount,
+      cells: {
+        ...existingDepositAccount.cells,
+        amount: currencyValue(toNumber(existingDepositAccount.cells.amount) - toNumber(existing.depositAppliedAmount ?? existing.remaining)),
+      },
+    }
+    : existingDepositAccount;
+  const embeddedSpotMeRepayment = automaticSpotMeRepayment(accountBeforeExistingDeposit || depositAccount, income);
+  const spotMeIsEmbedded = isChimeAccount(depositAccount) && embeddedSpotMeRepayment > 0;
+  const spotMeRepayment = spotMeIsEmbedded ? embeddedSpotMeRepayment : requestedSpotMeRepayment;
   const repayments = spotMeRepayment + myPayRepayment;
   const remaining = Math.round((income - repayments) * 100) / 100;
+  const depositAppliedAmount = Math.round((income - myPayRepayment - (spotMeIsEmbedded ? 0 : spotMeRepayment)) * 100) / 100;
 
   if (!incomeSource) throw new Error("Add the source of this income before locking the week.");
   if (!depositAccount) throw new Error("Choose the card or account receiving this paycheck.");
   if (!isValidIsoDate(planner.payDate)) throw new Error("Choose a valid paycheck date before locking the week.");
   if (income <= 0) throw new Error("Enter a paycheck amount greater than $0.");
-  if (spotMeRepayment < 0 || myPayRepayment < 0) throw new Error("Repayment amounts cannot be negative.");
+  if (requestedSpotMeRepayment < 0 || myPayRepayment < 0) throw new Error("Repayment amounts cannot be negative.");
   if (remaining < 0) throw new Error("Repayments cannot exceed the paycheck amount.");
 
-  const existing = data.paycheckHistory.find((row) => row.payDate === planner.payDate);
   const historyId = existing?.id || `paycheck-${planner.payDate}-${Date.now()}`;
   const restoredMoney = data.sections.money.map((row) => {
     const previousRepayment = existing?.borrowedRepayments
@@ -72,16 +86,21 @@ export function lockPaycheckWeek(data: AppData): AppData {
       ? { ...row, cells: { ...row.cells, amount: currencyValue(toNumber(row.cells.amount) + previousRepayment) } }
       : row;
   });
-  const borrowedRepayments = allocateBorrowedRepayments(restoredMoney, spotMeRepayment, myPayRepayment);
+  const borrowedRepayments = allocateBorrowedRepayments(
+    restoredMoney,
+    spotMeIsEmbedded ? 0 : spotMeRepayment,
+    myPayRepayment,
+  );
   const historyRow: PaycheckHistoryRow = {
     id: historyId,
     incomeSource,
     depositAccountId: depositAccount.id,
     depositAccountLabel: depositAccount.cells.label,
     borrowedRepayments,
+    depositAppliedAmount: currencyValue(depositAppliedAmount),
     payDate: planner.payDate,
     income: planner.paycheckAmount,
-    spotMe: planner.spotMeRepayment,
+    spotMe: currencyValue(spotMeRepayment),
     myPay: planner.myPayRepayment,
     remaining: currencyValue(remaining),
     weekStart: planner.weekStart,
@@ -91,9 +110,9 @@ export function lockPaycheckWeek(data: AppData): AppData {
 
   const accountAdjustments = new Map<string, number>();
   if (existing?.depositAccountId) {
-    accountAdjustments.set(existing.depositAccountId, -toNumber(existing.remaining));
+    accountAdjustments.set(existing.depositAccountId, -toNumber(existing.depositAppliedAmount ?? existing.remaining));
   }
-  accountAdjustments.set(depositAccount.id, (accountAdjustments.get(depositAccount.id) || 0) + remaining);
+  accountAdjustments.set(depositAccount.id, (accountAdjustments.get(depositAccount.id) || 0) + depositAppliedAmount);
   borrowedRepayments.forEach((repayment) => {
     accountAdjustments.set(repayment.rowId, (accountAdjustments.get(repayment.rowId) || 0) - repayment.amount);
   });
@@ -137,13 +156,26 @@ function paycheckTransaction(history: PaycheckHistoryRow, depositAccount: Spread
       date: history.payDate,
       account: depositAccount.cells.label || "Money Snapshot account",
       notes: repaymentTotal > 0
-        ? `${currencyValue(repaymentTotal)} in SpotMe/MyPay repayments; ${currencyValue(toNumber(history.remaining))} deposited and applied to the account balance.`
-        : `${currencyValue(toNumber(history.remaining))} deposited and applied to the account balance.`,
+        ? `$${currencyValue(toNumber(history.spotMe))} repaid to SpotMe first and $${currencyValue(toNumber(history.myPay))} repaid to MyPay; $${currencyValue(toNumber(history.remaining))} remained available.`
+        : `$${currencyValue(toNumber(history.remaining))} deposited and applied to the account balance.`,
       paycheckHistoryId: history.id,
       depositAccountId: depositAccount.id,
       balanceApplied: "yes",
     },
   };
+}
+
+export function paycheckBreakdown(data: AppData): { spotMeRepayment: number; myPayRepayment: number; remaining: number; spotMeAutomatic: boolean } {
+  const planner = data.paycheckPlanner;
+  const existingAccount = eligibleDepositAccounts(data).find((row) => row.id === planner.depositAccountId);
+  const suggestedAccount = suggestedAccounts.find((row) => row.id === planner.depositAccountId);
+  const account = existingAccount || (suggestedAccount ? createMoneyAccount(suggestedAccount.id, suggestedAccount.label) : undefined);
+  const income = toNumber(planner.paycheckAmount);
+  const automaticRepayment = automaticSpotMeRepayment(account, income);
+  const spotMeAutomatic = isChimeAccount(account) && automaticRepayment > 0;
+  const spotMeRepayment = spotMeAutomatic ? automaticRepayment : toNumber(planner.spotMeRepayment);
+  const myPayRepayment = toNumber(planner.myPayRepayment);
+  return { spotMeRepayment, myPayRepayment, remaining: income - spotMeRepayment - myPayRepayment, spotMeAutomatic };
 }
 
 function currencyValue(value: number): string {

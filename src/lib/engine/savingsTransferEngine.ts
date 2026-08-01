@@ -2,6 +2,7 @@ import { isValidIsoDate, toNumber } from "../calculations/currency";
 import { depositAccountOptions, eligibleDepositAccounts } from "./paycheckPlannerEngine";
 import { transactionType } from "./transactionEngine";
 import type { AppData, SpreadsheetRow } from "../types/app";
+import { assertChimeBalanceAllowed, isChimeAccount } from "./chimeAccountingEngine";
 
 export interface SavingsTransferInput {
   sourceId: string;
@@ -22,6 +23,7 @@ export interface TransactionEndpointOption {
 
 const TRANSACTION_EDITOR = "transaction-editor";
 const BORROWED_SHORTFALL_ROW_ID = "money-borrowed-transaction-shortfalls";
+const MYPAY_ADVANCE_ROW_ID = "money-borrowed-mypay-advances";
 
 export type TransactionShortfallSource = "overdraft" | "borrowed" | "unreconciled";
 
@@ -104,6 +106,9 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
   );
   const materializedBorrowedIds = new Set(borrowedBalances.keys());
   if (!borrowedBalances.has(BORROWED_SHORTFALL_ROW_ID)) borrowedBalances.set(BORROWED_SHORTFALL_ROW_ID, 0);
+  const existingMyPayRow = data.sections.money.find((row) => isBorrowedMoneyRow(row) && /my\s?pay/i.test(`${row.cells.label || ""} ${row.cells.notes || ""}`));
+  const myPayLiabilityId = existingMyPayRow?.id || MYPAY_ADVANCE_ROW_ID;
+  if (!borrowedBalances.has(myPayLiabilityId)) borrowedBalances.set(myPayLiabilityId, 0);
   const materializedMoneyIds = new Set(data.sections.money.map((row) => row.id));
 
   for (const row of data.sections.transactions) {
@@ -119,6 +124,10 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
       const liabilityId = row.cells.shortfallLiabilityId || BORROWED_SHORTFALL_ROW_ID;
       if (row.cells.shortfallSource === "borrowed" && fundedShortfall > 0 && materializedBorrowedIds.has(liabilityId)) {
         adjustBorrowedBalance(liabilityId, -fundedShortfall, borrowedBalances);
+      }
+      const previousMyPayAdvance = Math.abs(toNumber(row.cells.myPayAdvanceAmount));
+      if (previousMyPayAdvance > 0) {
+        adjustBorrowedBalance(row.cells.myPayLiabilityId || myPayLiabilityId, -previousMyPayAdvance, borrowedBalances);
       }
     }
   }
@@ -152,6 +161,10 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
       const shortfallAmount = type === "expense"
         ? Math.max(0, Math.round((amount - Math.max(0, currentBalance)) * 100) / 100)
         : 0;
+      if (type === "expense" && endpoint.kind === "money") {
+        const account = data.sections.money.find((candidate) => candidate.id === endpoint.id);
+        assertChimeBalanceAllowed(account, currentBalance - amount);
+      }
       const externallyFunded = shortfallAmount > 0 && shortfallSource !== "overdraft";
       if (externallyFunded) adjustEndpointBalance(endpoint.id, shortfallAmount, moneyBalances, savingsBalances);
       if (shortfallAmount > 0 && shortfallSource === "borrowed") {
@@ -159,6 +172,11 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
       }
       adjustEndpointBalance(endpoint.id, type === "income" ? amount : -amount, moneyBalances, savingsBalances);
       if (endpoint.kind === "money") materializedMoneyIds.add(endpoint.id);
+      const spotMeRepaid = type === "income" && endpoint.kind === "money" && isChimeAccount(data.sections.money.find((candidate) => candidate.id === endpoint.id))
+        ? Math.min(amount, Math.max(0, -currentBalance))
+        : 0;
+      const isMyPayAdvance = type === "income" && /my\s?pay/i.test(`${row.cells.description || ""} ${row.cells.category || ""} ${row.cells.notes || ""}`);
+      if (isMyPayAdvance) adjustBorrowedBalance(myPayLiabilityId, amount, borrowedBalances);
       return {
         ...transactionRow,
         cells: {
@@ -173,6 +191,13 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
           balanceEffect: type,
           balanceApplied: "yes",
           balanceApplication: TRANSACTION_EDITOR,
+          spotMeRepaid: spotMeRepaid ? currencyValue(spotMeRepaid) : "",
+          myPayAdvanceAmount: isMyPayAdvance ? currencyValue(amount) : "",
+          myPayLiabilityId: isMyPayAdvance ? myPayLiabilityId : "",
+          incomeClassification: isMyPayAdvance ? "borrowed_advance" : "earned",
+          notes: isMyPayAdvance && spotMeRepaid > 0
+            ? `$${currencyValue(spotMeRepaid)} automatically repaid SpotMe first; $${currencyValue(amount - spotMeRepaid)} was added to available Chime checking.`
+            : transactionRow.cells.notes,
         },
       };
     }
@@ -250,6 +275,18 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
         notes: "Borrowing recorded when a transaction exceeded its selected account balance.",
       },
     }];
+  const myPayAdvanceBalance = borrowedBalances.get(myPayLiabilityId) || 0;
+  const addedMyPayRows = existingMyPayRow || myPayAdvanceBalance <= 0
+    ? []
+    : [{
+      id: myPayLiabilityId,
+      cells: {
+        label: "MyPay Advances",
+        amount: currencyValue(myPayAdvanceBalance),
+        section: "borrowed",
+        notes: "Automatically tracked when a MyPay advance is added to checking.",
+      },
+    }];
 
   return {
     ...data,
@@ -263,6 +300,7 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
         }),
         ...addedMoneyRows,
         ...addedBorrowedRows,
+        ...addedMyPayRows,
       ],
       savings: data.sections.savings.map((row) => savingsBalances.has(row.id)
         ? { ...row, cells: { ...row.cells, balance: currencyValue(savingsBalances.get(row.id) || 0) } }
@@ -357,6 +395,10 @@ function stripEditorApplication(row: SpreadsheetRow): SpreadsheetRow {
   delete cells.balanceEffect;
   delete cells.shortfallAmount;
   delete cells.shortfallLiabilityId;
+  delete cells.spotMeRepaid;
+  delete cells.myPayAdvanceAmount;
+  delete cells.myPayLiabilityId;
+  delete cells.incomeClassification;
   return { ...row, cells };
 }
 

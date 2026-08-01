@@ -77,12 +77,12 @@ export function computeFinancialState(data: AppData): FinancialState {
   const lockedIncome = data.paycheckPlanner.locked && !data.paycheckPlanner.depositApplied ? toNumber(data.paycheckPlanner.paycheckAmount) : 0;
   const extraIncome = income.reduce((sum, row) => sum + positive(toNumber(row.cells.amount)), 0);
   const transactionIncome = transactions
-    .filter((row) => transactionType(row) === "income" && !row.cells.paycheckHistoryId)
+    .filter((row) => transactionType(row) === "income" && !row.cells.paycheckHistoryId && row.cells.incomeClassification !== "borrowed_advance")
     .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const payWeek = activePayWeek(data);
   const currentWeekTransactions = transactions.filter((row) => isWithinDateRange(row.cells.date, payWeek.start, payWeek.end));
   const currentWeekAdditionalTransactionIncome = currentWeekTransactions
-    .filter((row) => transactionType(row) === "income" && !row.cells.paycheckHistoryId)
+    .filter((row) => transactionType(row) === "income" && !row.cells.paycheckHistoryId && row.cells.incomeClassification !== "borrowed_advance")
     .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
   const transactionNet = currentWeekTransactions
     .filter((row) => !isBalanceAppliedTransaction(row))

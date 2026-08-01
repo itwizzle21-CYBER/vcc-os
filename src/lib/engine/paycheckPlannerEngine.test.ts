@@ -161,6 +161,37 @@ describe("connected paycheck planner", () => {
     expect(second.paycheckHistory[0].borrowedRepayments).toEqual([{ rowId: "spotme", label: "SpotMe", amount: 100 }]);
   });
 
+  it("uses a negative Chime balance as SpotMe and does not deduct its repayment twice", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      { id: "chime", cells: { label: "Chime Checking", section: "cash", amount: "-40" } },
+      { id: "mypay", cells: { label: "MyPay", section: "borrowed", amount: "25" } },
+    ];
+    data.paycheckPlanner = {
+      incomeSource: "Work",
+      depositAccountId: "chime",
+      paycheckAmount: "100",
+      payDate: "2026-07-22",
+      weekStart: "2026-07-19",
+      weekEnd: "2026-07-25",
+      spotMeRepayment: "40",
+      myPayRepayment: "25",
+      depositApplied: false,
+      locked: false,
+    };
+
+    const next = lockPaycheckWeek(data);
+
+    expect(next.sections.money.find((row) => row.id === "chime")?.cells.amount).toBe("35.00");
+    expect(next.sections.money.find((row) => row.id === "mypay")?.cells.amount).toBe("0.00");
+    expect(next.paycheckHistory[0]).toMatchObject({ spotMe: "40.00", myPay: "25", remaining: "35.00", depositAppliedAmount: "75.00" });
+
+    next.paycheckPlanner = { ...next.paycheckPlanner, locked: false };
+    const relocked = lockPaycheckWeek(next);
+    expect(relocked.sections.money.find((row) => row.id === "chime")?.cells.amount).toBe("35.00");
+    expect(relocked.sections.money.find((row) => row.id === "mypay")?.cells.amount).toBe("0.00");
+  });
+
   it("rejects negative repayments and impossible paycheck dates", () => {
     const data = createZeroData();
     data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "0" } }];

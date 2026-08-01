@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatCurrency, formatDateMDY, toNumber, weekBounds } from "../../lib/calculations/currency";
-import { depositAccountOptions, lockPaycheckWeek } from "../../lib/engine/paycheckPlannerEngine";
+import { depositAccountOptions, lockPaycheckWeek, paycheckBreakdown } from "../../lib/engine/paycheckPlannerEngine";
 import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner } from "../../lib/types/app";
 import BufferedTextInput from "../shared/BufferedTextInput";
 
@@ -18,7 +18,8 @@ export default function PaycheckPlanner({
   const planner = data.paycheckPlanner;
   const depositAccounts = depositAccountOptions(data);
   const linkageMissing = !planner.incomeSource.trim() || !planner.depositAccountId;
-  const remaining = toNumber(planner.paycheckAmount) - toNumber(planner.spotMeRepayment) - toNumber(planner.myPayRepayment);
+  const breakdown = paycheckBreakdown(data);
+  const remaining = breakdown.remaining;
 
   function updatePlanner(updates: Partial<Planner>) {
     setPlannerMessage("");
@@ -53,7 +54,7 @@ export default function PaycheckPlanner({
         <PlannerInput label="Pay Date" type="date" value={planner.payDate} disabled={planner.locked} onChange={(value) => updatePlanner({ payDate: value })} />
         <PlannerInput label="Week Start" type="date" value={planner.weekStart} disabled={planner.locked} onChange={(value) => updatePlanner({ weekStart: value })} />
         <PlannerInput label="Week End" type="date" value={planner.weekEnd} disabled={planner.locked} onChange={(value) => updatePlanner({ weekEnd: value })} />
-        <PlannerInput label="SpotMe Repayment" value={planner.spotMeRepayment} disabled={planner.locked} onChange={(value) => updatePlanner({ spotMeRepayment: value })} />
+        <PlannerInput label={breakdown.spotMeAutomatic ? "SpotMe Auto-Repayment" : "SpotMe Repayment"} value={breakdown.spotMeAutomatic ? breakdown.spotMeRepayment.toFixed(2) : planner.spotMeRepayment} disabled={planner.locked || breakdown.spotMeAutomatic} onChange={(value) => updatePlanner({ spotMeRepayment: value })} />
         <PlannerInput label="MyPay Repayment" value={planner.myPayRepayment} disabled={planner.locked} onChange={(value) => updatePlanner({ myPayRepayment: value })} />
         <div className="planner-result">
           <span>Remaining After Repayment</span>

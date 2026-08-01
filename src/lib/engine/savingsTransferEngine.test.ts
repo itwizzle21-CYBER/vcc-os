@@ -245,6 +245,32 @@ describe("savings transfer engine", () => {
     });
   });
 
+  it("caps Chime SpotMe at negative $40 and applies a MyPay advance to SpotMe first", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "chime", cells: { label: "Chime Checking", section: "cash", amount: "0" } }];
+
+    expect(() => syncTransactionTransfers(data, [{
+      id: "too-far",
+      cells: { description: "Purchase", type: "expense", amount: "40.01", date: "2026-07-22", account: "Chime Checking", shortfallSource: "overdraft" },
+    }])).toThrow("-$40.00");
+
+    data.sections.money[0].cells.amount = "-40";
+    const next = syncTransactionTransfers(data, [{
+      id: "mypay-advance",
+      cells: { description: "MyPay advance", type: "income", amount: "100", date: "2026-07-22", account: "Chime Checking" },
+    }]);
+
+    expect(next.sections.money[0].cells.amount).toBe("60.00");
+    expect(next.sections.transactions[0].cells).toMatchObject({ spotMeRepaid: "40.00" });
+    expect(next.sections.transactions[0].cells.notes).toContain("$40.00 automatically repaid SpotMe first");
+    expect(next.sections.money.find((row) => row.id === "money-borrowed-mypay-advances")?.cells.amount).toBe("100.00");
+    expect(computeFinancialState(next)).toMatchObject({ receivedIncome: 0, borrowedMoney: 100, totalCash: 60, safeToSpend: -40 });
+
+    const removed = syncTransactionTransfers(next, []);
+    expect(removed.sections.money.find((row) => row.id === "chime")?.cells.amount).toBe("-40.00");
+    expect(removed.sections.money.find((row) => row.id === "money-borrowed-mypay-advances")?.cells.amount).toBe("0.00");
+  });
+
   it("records borrowed transaction shortfalls as liabilities and reverses them when edited or removed", () => {
     const data = createZeroData();
     data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "40" } }];
