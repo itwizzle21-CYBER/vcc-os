@@ -6,17 +6,21 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   CreditCard,
   ListChecks,
+  Pause,
   PiggyBank,
+  Play,
   ReceiptText,
   Target,
   TrendingDown,
   Wallet,
   Zap,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { DepositAccountOption } from "../../lib/engine/paycheckPlannerEngine";
 import type { ActivityEvent, DecisionState, FinancialState, LayoutView } from "../../lib/types/app";
 import { layoutViewClass } from "../layout/LayoutViews";
@@ -37,6 +41,7 @@ interface DashboardModuleCardProps {
   value: string;
   detail: string;
   metrics: Array<[string, string]>;
+  slides?: DashboardMoneySlide[];
   accounts?: DepositAccountOption[];
   progress?: {
     label: string;
@@ -70,6 +75,33 @@ export default function Dashboard({
         ["Account Deficit", formatExactCurrency(financialState.accountDeficit)],
         ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
         ["Unaccounted Cash", formatExactCurrency(financialState.unreconciledCash)],
+      ],
+      slides: [
+        {
+          label: "Total Cash",
+          value: formatExactCurrency(financialState.totalCash),
+          detail: "Across cash accounts",
+        },
+        {
+          label: "Spendable / Safe",
+          value: formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend)),
+          detail: "Available for this week",
+        },
+        {
+          label: "Weekly Income",
+          value: formatExactCurrency(financialState.weeklyIncome),
+          detail: "Money in this week",
+        },
+        {
+          label: "Weekly Outflow",
+          value: formatDashboardOutflow(financialState.weeklySpending),
+          detail: "Money spent this week",
+        },
+        {
+          label: "Savings",
+          value: formatExactCurrency(financialState.protectedSavings + financialState.availableSavings),
+          detail: "Protected and available",
+        },
       ],
       accounts,
     },
@@ -291,7 +323,28 @@ function DashboardModuleCard({
   metrics,
   progress,
   accounts,
+  slides,
 }: DashboardModuleCardProps) {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const hasSlideshow = Boolean(slides && slides.length > 1);
+  const headline = slides?.[activeSlide] ?? { label: title, value, detail };
+
+  useEffect(() => {
+    if (!hasSlideshow || !isPlaying || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const interval = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % (slides?.length ?? 1));
+    }, 6000);
+
+    return () => window.clearInterval(interval);
+  }, [activeSlide, hasSlideshow, isPlaying, slides?.length]);
+
+  const selectSlide = (index: number) => {
+    if (!slides?.length) return;
+    setActiveSlide((index + slides.length) % slides.length);
+  };
+
   const content = (
     <>
       <div className="dashboard-module-head">
@@ -300,15 +353,40 @@ function DashboardModuleCard({
           ? <a className="dashboard-module-open" href={href} aria-label={`Open ${title}`}><ArrowRight size={17} aria-hidden="true" /></a>
           : <ArrowRight size={17} aria-hidden="true" />}
       </div>
-      {accounts ? <a className="dashboard-module-title" href={href}>
-        <small>{title}</small>
-        <strong>{value}</strong>
-        <em>{detail}</em>
+      {accounts ? <a className="dashboard-module-title dashboard-money-slide" href={href}>
+        <small>{title} · {headline.label}</small>
+        <strong>{headline.value}</strong>
+        <em>{headline.detail}</em>
       </a> : <div className="dashboard-module-title">
         <small>{title}</small>
         <strong>{value}</strong>
         <em>{detail}</em>
       </div>}
+      {hasSlideshow && slides && (
+        <div className="dashboard-money-slideshow-controls" aria-label="Money Snapshot slideshow controls">
+          <button type="button" onClick={() => selectSlide(activeSlide - 1)} aria-label="Show previous money view">
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <div role="group" aria-label={`Money view ${activeSlide + 1} of ${slides.length}`}>
+            {slides.map((slide, index) => (
+              <button
+                key={slide.label}
+                type="button"
+                className={index === activeSlide ? "active" : undefined}
+                onClick={() => selectSlide(index)}
+                aria-label={`Show ${slide.label}`}
+                aria-pressed={index === activeSlide}
+              />
+            ))}
+          </div>
+          <button type="button" onClick={() => setIsPlaying((playing) => !playing)} aria-label={`${isPlaying ? "Pause" : "Play"} Money Snapshot slideshow`}>
+            {isPlaying ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
+          </button>
+          <button type="button" onClick={() => selectSlide(activeSlide + 1)} aria-label="Show next money view">
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
       {progress && (
         <div className="dashboard-card-progress" aria-label={`${progress.label}: ${Math.round(progress.value)}%`}>
           <div>
@@ -354,6 +432,12 @@ function DashboardModuleCard({
   );
 }
 
+interface DashboardMoneySlide {
+  label: string;
+  value: string;
+  detail: string;
+}
+
 function iconForMission(href: DecisionState["todayMission"]["href"]) {
   if (href === "/bills") return <ReceiptText size={29} />;
   if (href === "/inventory") return <Boxes size={29} />;
@@ -376,6 +460,10 @@ function formatWholeCurrency(value: number) {
 export function formatDashboardSpending(value: number) {
   const magnitude = Math.abs(Number.isFinite(value) ? value : 0);
   return formatWholeCurrency(magnitude > 0 ? -magnitude : 0);
+}
+
+export function formatDashboardOutflow(value: number) {
+  return formatWholeCurrency(Math.abs(Number.isFinite(value) ? value : 0));
 }
 
 function formatExactCurrency(value: number) {

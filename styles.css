@@ -10704,6 +10704,64 @@ body {
   align-content: start;
 }
 
+.dashboard-money-slide {
+  min-height: 4.25rem;
+}
+
+.dashboard-money-slideshow-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.dashboard-money-slideshow-controls > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.dashboard-money-slideshow-controls button {
+  display: grid;
+  width: 1.9rem;
+  height: 1.9rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #aeb2ba;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.dashboard-money-slideshow-controls > div button {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 0;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dashboard-money-slideshow-controls > div button.active {
+  width: 1.15rem;
+  background: #5ea2ff;
+}
+
+.dashboard-money-slideshow-controls button:hover {
+  border-color: rgba(94, 162, 255, 0.55);
+  background: rgba(94, 162, 255, 0.12);
+  color: #ffffff;
+}
+
+.dashboard-money-slideshow-controls button:active {
+  transform: scale(0.94);
+}
+
+.dashboard-money-slideshow-controls button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .dashboard-account-dropdown {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 0.65rem;
@@ -10761,7 +10819,8 @@ body {
   .dashboard-module-open,
   .dashboard-module-card a.dashboard-module-title,
   .dashboard-account-dropdown summary,
-  .dashboard-account-dropdown summary svg {
+  .dashboard-account-dropdown summary svg,
+  .dashboard-money-slideshow-controls button {
     transition: none;
   }
 }
@@ -12117,6 +12176,21 @@ body {
 
 :root[data-theme="light"] .reference-shell .dashboard-account-dropdown {
   border-top-color: var(--border);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-money-slideshow-controls button {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-money-slideshow-controls > div button {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--muted) 32%, transparent);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-money-slideshow-controls > div button.active {
+  background: var(--accent);
 }
 
 :root[data-theme="light"] .reference-shell .money-account-heading > span,
