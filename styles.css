@@ -4307,6 +4307,181 @@ td textarea[readonly] {
   color: var(--bad);
 }
 
+.bills-recurring-panel {
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.7fr) minmax(0, 1.3fr);
+  gap: 1rem;
+  align-items: center;
+}
+
+.bills-recurring-panel h2 {
+  margin: 0;
+}
+
+.bills-recurring-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.bills-recurring-list button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0.7rem 0.8rem;
+  text-align: left;
+}
+
+.bills-recurring-list button span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.bills-recurring-list small {
+  color: var(--muted);
+}
+
+.bills-recurring-list em {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 850;
+}
+
+.recurring-bill-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 8, 16, 0.72);
+  backdrop-filter: blur(8px);
+  padding: 1rem;
+}
+
+.recurring-bill-dialog {
+  display: grid;
+  gap: 1rem;
+  width: min(34rem, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+  padding: 1rem;
+}
+
+.recurring-bill-dialog header,
+.recurring-bill-dialog footer {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.recurring-bill-dialog header {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.recurring-bill-dialog header h2,
+.recurring-bill-dialog header p {
+  margin: 0;
+}
+
+.recurring-bill-dialog header p:last-child,
+.recurring-bill-preview {
+  margin-top: 0.3rem;
+  color: var(--muted);
+}
+
+.recurring-bill-dialog header > button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.recurring-bill-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.recurring-bill-fields label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.recurring-bill-fields span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.recurring-bill-fields input,
+.recurring-bill-fields select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0 0.75rem;
+}
+
+.recurring-bill-dialog footer {
+  justify-content: flex-end;
+}
+
+.recurring-bill-dialog footer span {
+  flex: 1;
+}
+
+.recurring-bill-dialog footer button {
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0 0.85rem;
+  font-weight: 850;
+}
+
+.recurring-bill-dialog footer .primary-button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.recurring-bill-dialog footer .recurring-stop-button {
+  border-color: color-mix(in srgb, var(--bad) 50%, var(--border));
+  color: var(--bad);
+}
+
+@media (max-width: 720px) {
+  .bills-recurring-panel,
+  .recurring-bill-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .recurring-bill-dialog footer {
+    flex-wrap: wrap;
+  }
+
+  .recurring-bill-dialog footer span {
+    display: none;
+  }
+}
+
 .bills-due-display {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));

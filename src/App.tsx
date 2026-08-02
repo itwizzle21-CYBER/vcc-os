@@ -59,6 +59,7 @@ import { loadAppData, normalizeAppData, resetAllData, resetSection, saveAppData,
 import { applyVisualSettings, getSystemTheme } from "./lib/theme/themePreference";
 import type { AppData, SectionKey, SpreadsheetRow, ThemeMode, UserSettings } from "./lib/types/app";
 import { enforceChimeBalanceFloor } from "./lib/engine/chimeAccountingEngine";
+import { configureRecurringBill, disableRecurringBill, frequencyLabel, recurringSeriesRoots, syncRecurringBillOccurrences, type RecurringBillFrequency } from "./lib/engine/recurringBillEngine";
 import { useVccCloudSync } from "./lib/cloud/useVccCloudSync";
 
 const worldwideTransactionCategories = [
@@ -166,7 +167,8 @@ export default function App() {
   function updateRows(section: SectionKey, rows: SpreadsheetRow[]) {
     const nextRows = section === "money" ? enforceChimeBalanceFloor(autoFillMoneyWeek(rows, data)) : rows;
     if (section === "bills") {
-      const syncedTransactions = syncBillPaymentTransactions(data.sections.bills, nextRows, data.sections.transactions);
+      const recurringRows = syncRecurringBillOccurrences(nextRows);
+      const syncedTransactions = syncBillPaymentTransactions(data.sections.bills, recurringRows, data.sections.transactions);
       const { transactions, carPayment } = applyBillPaymentsToCarLoan(
         data.sections.transactions,
         syncedTransactions,
@@ -174,7 +176,7 @@ export default function App() {
       );
       updateData({
         ...data,
-        sections: { ...data.sections, bills: nextRows, transactions, carPayment },
+        sections: { ...data.sections, bills: recurringRows, transactions, carPayment },
       });
       return;
     }
@@ -458,6 +460,7 @@ function BillsPage({
 }) {
   const [billSearch, setBillSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [recurringBillId, setRecurringBillId] = useState("");
   const billRows = data.sections.bills.map(normalizeBillRow);
   const filledBillRows = billRows.filter((row) => !isBlankRow(row.cells));
   const visibleBillRows = billRows.filter((row) => {
@@ -482,6 +485,7 @@ function BillsPage({
     unpaid: filledBillRows.filter((row) => billStatus(row) === "unpaid").length,
     paid: filledBillRows.filter((row) => billStatus(row) === "paid").length,
     autopay: filledBillRows.filter((row) => isAffirmative(row.cells.autopay)).length,
+    recurring: recurringSeriesRoots(filledBillRows).length,
     priority: rankedBills.filter((bill) => ["overdue", "late"].includes(bill.status) || bill.score >= 75).length,
   };
 
@@ -491,8 +495,31 @@ function BillsPage({
     const preservedRows = billRows.filter((row) => !visibleBillIds.has(row.id) || nextVisibleIds.has(row.id));
     const mergedRows = preservedRows.map((row) => normalizedNextRows.find((next) => next.id === row.id) || row);
     const addedRows = normalizedNextRows.filter((row) => !billRows.some((existing) => existing.id === row.id));
-    updateRows(section, [...mergedRows, ...addedRows]);
+    let nextBillRows = [...mergedRows, ...addedRows];
+    for (const nextRow of normalizedNextRows) {
+      const previousRow = billRows.find((row) => row.id === nextRow.id);
+      const becameRecurring = isAffirmative(nextRow.cells.recurring) && !isAffirmative(previousRow?.cells.recurring);
+      const stoppedRecurring = !isAffirmative(nextRow.cells.recurring) && isAffirmative(previousRow?.cells.recurring);
+      if (becameRecurring) setRecurringBillId(nextRow.cells.recurrenceSeriesId || nextRow.id);
+      if (stoppedRecurring) nextBillRows = disableRecurringBill(nextBillRows, nextRow.id);
+    }
+    updateRows(section, nextBillRows);
   }
+
+  function saveRecurringBill(rowId: string, details: { frequency: RecurringBillFrequency; dueDate: string }) {
+    updateRows("bills", configureRecurringBill(billRows, rowId, details));
+    setRecurringBillId("");
+  }
+
+  function stopRecurringBill(rowId: string) {
+    updateRows("bills", disableRecurringBill(billRows, rowId));
+    setRecurringBillId("");
+  }
+
+  const recurringRoots = recurringSeriesRoots(filledBillRows);
+  const recurringDialogBill = recurringBillId
+    ? billRows.find((row) => row.id === recurringBillId || row.cells.recurrenceSeriesId === recurringBillId && row.cells.recurrenceGenerated !== "yes")
+    : undefined;
 
   return (
     <div className={`bills-page module-page ${layoutViewClass(data.settings.layoutViews.bills)}`} data-layout-view={data.settings.layoutViews.bills}>
@@ -532,8 +559,26 @@ function BillsPage({
           <strong>{formatCurrency(billStats.amount)} total</strong>
           <strong className={billStats.overdue > 0 ? "bad" : ""}>{billStats.overdue} overdue</strong>
           <em>{billStats.autopay} autopay</em>
+          <em>{billStats.recurring} recurring</em>
         </div>
       </section>
+
+      {recurringRoots.length > 0 && (
+        <section className="bills-recurring-panel panel" aria-labelledby="recurring-schedules-title">
+          <div>
+            <p className="eyebrow">Recurring Schedules</p>
+            <h2 id="recurring-schedules-title">Upcoming bills stay in your main list</h2>
+          </div>
+          <div className="bills-recurring-list">
+            {recurringRoots.map((row) => (
+              <button type="button" key={row.id} onClick={() => setRecurringBillId(row.id)}>
+                <span><strong>{row.cells.name || "Recurring bill"}</strong><small>{frequencyLabel(row.cells.recurrenceFrequency)} · next due {formatDateMDY(row.cells.dueDate)}</small></span>
+                <em>Manage</em>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="bills-due-display panel" aria-label="Decision Engine bill order">
         <div className="bills-due-primary">
@@ -604,8 +649,101 @@ function BillsPage({
         onResetSection={resetSection}
         getComputedCell={(row, columnKey) => computedCell("bills", row, columnKey)}
         addLabel="Add Bill"
+        selectOptions={{ recurring: [{ value: "Yes", label: "Yes" }, { value: "No", label: "No" }] }}
       />
+      {recurringDialogBill && (
+        <RecurringBillDialog
+          key={`${recurringDialogBill.id}-${recurringDialogBill.cells.recurrenceFrequency}-${recurringDialogBill.cells.dueDate}`}
+          bill={recurringDialogBill}
+          onClose={() => {
+            if (!recurringDialogBill.cells.recurrenceFrequency) stopRecurringBill(recurringDialogBill.id);
+            else setRecurringBillId("");
+          }}
+          onSave={(details) => saveRecurringBill(recurringDialogBill.id, details)}
+          onStop={() => stopRecurringBill(recurringDialogBill.id)}
+        />
+      )}
     </div>
+  );
+}
+
+function RecurringBillDialog({
+  bill,
+  onClose,
+  onSave,
+  onStop,
+}: {
+  bill: SpreadsheetRow;
+  onClose: () => void;
+  onSave: (details: { frequency: RecurringBillFrequency; dueDate: string }) => void;
+  onStop: () => void;
+}) {
+  const [frequency, setFrequency] = useState<RecurringBillFrequency>((bill.cells.recurrenceFrequency as RecurringBillFrequency) || "monthly");
+  const [dueDate, setDueDate] = useState(bill.cells.dueDate || todayIso());
+  const [message, setMessage] = useState("");
+  const dialogRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    dialogRef.current?.querySelector<HTMLElement>("input, select, button")?.focus();
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  function save() {
+    if (!dueDate) {
+      setMessage("Choose the next due date.");
+      return;
+    }
+    try {
+      onSave({ frequency, dueDate });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The recurring schedule could not be saved.");
+    }
+  }
+
+  return createPortal(
+    <div className="recurring-bill-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section ref={dialogRef} className="recurring-bill-dialog" role="dialog" aria-modal="true" aria-labelledby="recurring-bill-title" aria-describedby="recurring-bill-description">
+        <header>
+          <div>
+            <p className="eyebrow">Recurring Bill</p>
+            <h2 id="recurring-bill-title">{bill.cells.name || "Bill schedule"}</h2>
+            <p id="recurring-bill-description">Set when this bill should return to the main Bills list.</p>
+          </div>
+          <button type="button" aria-label="Close recurring bill details" onClick={onClose}><X size={18} /></button>
+        </header>
+        <div className="recurring-bill-fields">
+          <label>
+            <span>Repeats</span>
+            <select aria-label="Recurring frequency" value={frequency} onChange={(event) => setFrequency(event.target.value as RecurringBillFrequency)}>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Every 3 months</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </label>
+          <label>
+            <span>Next due date</span>
+            <input aria-label="Recurring next due date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+          </label>
+        </div>
+        <p className="recurring-bill-preview">Each occurrence stays editable. Update its amount, category, autopay, or notes in the Bills list; the next bill will begin with your latest values.</p>
+        {message && <p className="planner-message" role="alert">{message}</p>}
+        <footer>
+          {bill.cells.recurrenceFrequency && <button type="button" className="recurring-stop-button" onClick={onStop}>Stop recurring</button>}
+          <span />
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="button" className="primary-button" onClick={save}>Save schedule</button>
+        </footer>
+      </section>
+    </div>,
+    document.body,
   );
 }
 
@@ -3205,6 +3343,7 @@ function normalizeBillRow(row: SpreadsheetRow): SpreadsheetRow {
       dueDate,
       amount: row.cells.amount || "",
       status: row.cells.status || "",
+      recurring: row.cells.recurring || row.cells.is_recurring || "No",
       autopay: row.cells.autopay || row.cells.is_autopay || "",
       priority: row.cells.priority || "",
       notes: row.cells.notes || "",

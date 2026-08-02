@@ -24,6 +24,7 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
       { key: "dueDate", label: "Due Date", type: "date" },
       { key: "amount", label: "Amount", type: "currency" },
       { key: "status", label: "Status" },
+      { key: "recurring", label: "Recurring" },
       { key: "autopay", label: "Autopay" },
       { key: "notes", label: "Notes" },
     ],
