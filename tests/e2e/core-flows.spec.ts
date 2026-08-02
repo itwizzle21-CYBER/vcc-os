@@ -32,7 +32,8 @@ test("dashboard exposes trustworthy decisions, metrics, and module routes", asyn
 
   await expect(page.getByRole("heading", { name: "VCC-OS Dashboard" })).toBeAttached();
   await expect(page.getByText("Recommended next move", { exact: true })).toBeVisible();
-  await expect(page.getByRole("progressbar")).toHaveCount(3);
+  await expect(page.getByRole("heading", { name: "System Priority Stack" })).toBeVisible();
+  expect(await page.locator(".dashboard-mission-stack").getByRole("progressbar").count()).toBeGreaterThanOrEqual(4);
   const moneyCard = page.locator(".dashboard-money-card");
   await expect(moneyCard).toHaveCount(1);
   await expect(moneyCard.getByRole("link", { name: "Open Money Snapshot" })).toHaveAttribute("href", "/money");
@@ -493,6 +494,28 @@ test("keeps rejected duplicate inventory edits and blank currency cells consiste
     return saved.sections.inventory.at(-1).cells.cost;
   });
   expect(savedCost).toBe("");
+
+  const milkQuantity = page.getByLabel("Qty, Inventory row 1");
+  await milkQuantity.fill("-3");
+  await milkQuantity.press("Tab");
+  await expect(milkQuantity).toHaveValue("0");
+  const savedQuantity = await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return saved.sections.inventory.find((row: { id: string }) => row.id === "inv-milk")?.cells.qty;
+  });
+  expect(savedQuantity).toBe("0");
+});
+
+test("shows the same overall decision engine priority on the Bills page", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
+  const dashboardPriority = await page.locator(".mission-banner h2").innerText();
+
+  await page.goto("/bills");
+  const systemDecision = page.getByRole("region", { name: "Overall system decision" });
+  await expect(systemDecision).toBeVisible();
+  await expect(systemDecision.getByRole("heading", { name: dashboardPriority })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Decision Engine bill order" })).toBeVisible();
 });
 
 test("traps focus in the background picker and restores it on close", async ({ page }) => {

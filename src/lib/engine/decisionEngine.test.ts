@@ -32,4 +32,29 @@ describe("decision engine mission lifecycle", () => {
     expect(decision.priorityAlerts.some((alert) => alert.title === "Bill due today")).toBe(true);
     expect(decision.recommendedMove).toContain("today’s bills");
   });
+
+  it("ranks the dashboard stack across the overall system", () => {
+    const data = createZeroData();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayLocal = [yesterday.getFullYear(), String(yesterday.getMonth() + 1).padStart(2, "0"), String(yesterday.getDate()).padStart(2, "0")].join("-");
+    data.sections.bills = [{ id: "late", cells: { name: "Rent", amount: "900", dueDate: yesterdayLocal, status: "unpaid" } }];
+    data.sections.money = [{ id: "overdrawn", cells: { label: "Checking", section: "cash", amount: "-25" } }];
+    data.sections.inventory = [{ id: "food", cells: { item: "Rice", qty: "0", minNeeded: "2", cost: "5" } }];
+    data.sections.debt = [{ id: "card", cells: { name: "Credit card", balance: "500", minimum: "25" } }];
+
+    const decision = computeDecisionEngine(computeFinancialState(data), data);
+
+    expect(decision.missionStack.map((mission) => mission.id)).toEqual(expect.arrayContaining([
+      "stabilize-overdue-bills",
+      "cover-account-deficit",
+      "restock-buy-next",
+      "maintain-debt-progress",
+    ]));
+    expect(decision.missionStack[0]).toMatchObject({
+      title: decision.todayMission.title,
+      priority: "Critical",
+      href: "/bills",
+    });
+  });
 });

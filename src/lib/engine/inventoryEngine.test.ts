@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categorizeItem, normalizeInventoryRow } from "./inventoryEngine";
+import { categorizeItem, clampInventoryQuantity, normalizeInventoryRow } from "./inventoryEngine";
 
 describe("inventory engine", () => {
   it("categorizes common retail inventory items", () => {
@@ -28,5 +28,20 @@ describe("inventory engine", () => {
 
     expect(row.cells.category).toBe("Laundry");
     expect(row.cells.alert).toBe("Low");
+  });
+
+  it("never allows inventory quantities or minimums below zero", () => {
+    expect(clampInventoryQuantity("-3")).toBe("0");
+    expect(clampInventoryQuantity("2.5")).toBe("2.5");
+    expect(clampInventoryQuantity("")).toBe("");
+
+    const row = normalizeInventoryRow({
+      id: "inv-negative",
+      cells: { item: "Rice", qty: "-4", minNeeded: "-1", cost: "$5.00" },
+    });
+
+    expect(row.cells.qty).toBe("0");
+    expect(row.cells.minNeeded).toBe("0");
+    expect(row.cells.alert).toBe("Stocked");
   });
 });

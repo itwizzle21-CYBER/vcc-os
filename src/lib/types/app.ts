@@ -279,6 +279,6 @@ export interface DecisionState {
     target: string;
     progress: number;
     completed: boolean;
-    priority: "High" | "Medium" | "Low";
+    priority: "Critical" | "High" | "Medium" | "Low";
   }>;
 }

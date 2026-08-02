@@ -263,11 +263,14 @@ export default function Dashboard({
         <ArrowRight size={25} aria-hidden="true" />
       </a>
 
-      <section className="dashboard-intelligence-grid" aria-label="Decision Engine priority output">
+      <section className="dashboard-intelligence-grid" aria-label="Overall system priority output">
         <article className="base-panel dashboard-intelligence-panel">
           <div className="dashboard-intelligence-heading">
             <span><ListChecks size={18} /></span>
-            <h2>Mission Stack</h2>
+            <div>
+              <h2>System Priority Stack</h2>
+              <small>Ranked across the full VCC system</small>
+            </div>
           </div>
           <div className="dashboard-mission-stack">
             {decisionState.missionStack.map((mission) => (

@@ -19,12 +19,6 @@ export interface RankedBillRow {
 
 export function computeDecisionEngine(financialState: FinancialState, data: AppData, recentlyCompletedMissionIds: string[] = []): DecisionState {
   const spendableSafe = mergedSpendable(financialState);
-  const spendableTarget = Math.max(1, financialState.billsPressure);
-  const spendableProgress = financialState.billsPressure > 0
-    ? Math.max(0, Math.min(100, (spendableSafe / spendableTarget) * 100))
-    : 100;
-  const borrowedProgress = financialState.borrowedMoney > 0 ? 0 : 100;
-  const inventoryProgress = financialState.buyNextCount > 0 ? 0 : 100;
   const alerts: DecisionState["priorityAlerts"] = [];
   if (financialState.accountDeficit > 0) {
     alerts.push({
@@ -77,42 +71,7 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
   }
 
   const recommendedMove = chooseRecommendedMove(financialState);
-  const borrowedMissionId = "clear-borrowed-money";
-  const showBorrowedMission = financialState.borrowedMoney > 0 || recentlyCompletedMissionIds.includes(borrowedMissionId);
-  const missionStack: DecisionState["missionStack"] = [
-    {
-      id: "protect-spendable-safe",
-      title: "Protect Spendable / Safe",
-      detail: `Keep spendable cash above ${formatCurrency(financialState.billsPressure)} until bills clear.`,
-      href: "/money",
-      target: financialState.billsPressure > 0 ? `${formatCurrency(spendableSafe)} / ${formatCurrency(spendableTarget)}` : "No bill pressure",
-      progress: spendableProgress,
-      completed: spendableProgress >= 100,
-      priority: financialState.billsPressure > 0 ? "High" : "Medium",
-    },
-    ...(showBorrowedMission ? [{
-      id: borrowedMissionId,
-      title: "Clear borrowed money",
-      detail: financialState.borrowedMoney > 0
-        ? `SpotMe/MyPay/advances currently reduce the cash plan by ${formatCurrency(financialState.borrowedMoney)}.`
-        : "SpotMe/MyPay and recorded advances have been repaid.",
-      href: "/money" as const,
-      target: financialState.borrowedMoney > 0 ? `${formatCurrency(financialState.borrowedMoney)} left` : "Cleared",
-      progress: borrowedProgress,
-      completed: financialState.borrowedMoney <= 0,
-      priority: financialState.borrowedMoney > 0 ? "High" as const : "Low" as const,
-    }] : []),
-    {
-      id: "restock-buy-next",
-      title: "Restock Buy Next",
-      detail: `${financialState.buyNextCount} inventory row${financialState.buyNextCount === 1 ? "" : "s"} are below minimum.`,
-      href: "/inventory",
-      target: financialState.buyNextCount > 0 ? `${financialState.buyNextCount} remaining` : "All stocked",
-      progress: inventoryProgress,
-      completed: financialState.buyNextCount <= 0,
-      priority: financialState.buyNextCount > 0 ? "Medium" : "Low",
-    },
-  ];
+  const missionStack = buildSystemPriorityStack(financialState, recentlyCompletedMissionIds);
 
   return {
     todayBriefing: data.paycheckPlanner.locked
@@ -123,6 +82,168 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
     priorityAlerts: alerts.slice(0, 4),
     missionStack,
   };
+}
+
+type SystemMission = DecisionState["missionStack"][number] & { rank: number };
+
+function buildSystemPriorityStack(financialState: FinancialState, recentlyCompletedMissionIds: string[]): DecisionState["missionStack"] {
+  const spendableSafe = mergedSpendable(financialState);
+  const spendableTarget = Math.max(1, financialState.billsPressure);
+  const spendableProgress = financialState.billsPressure > 0
+    ? Math.max(0, Math.min(100, (spendableSafe / spendableTarget) * 100))
+    : 100;
+  const missions: SystemMission[] = [];
+
+  if (financialState.overdueBills > 0) {
+    missions.push({
+      id: "stabilize-overdue-bills",
+      title: "Stabilize overdue bills",
+      detail: `${financialState.overdueBills} overdue bill${financialState.overdueBills === 1 ? "" : "s"} need a decision before new spending.`,
+      href: "/bills",
+      target: `${financialState.overdueBills} overdue · ${formatCurrency(financialState.billsPressure)} pressure`,
+      progress: 0,
+      completed: false,
+      priority: "Critical",
+      rank: 100,
+    });
+  } else if (financialState.billsDueToday > 0) {
+    missions.push({
+      id: "clear-todays-bills",
+      title: "Clear today's bills",
+      detail: `${financialState.billsDueToday} bill${financialState.billsDueToday === 1 ? " is" : "s are"} due today.`,
+      href: "/bills",
+      target: `${formatCurrency(financialState.billsPressure)} bill pressure`,
+      progress: 0,
+      completed: false,
+      priority: "High",
+      rank: 95,
+    });
+  }
+
+  if (financialState.accountDeficit > 0) {
+    missions.push({
+      id: "cover-account-deficit",
+      title: "Cover the account deficit",
+      detail: `${formatCurrency(financialState.accountDeficit)} is below zero across tracked accounts.`,
+      href: "/money",
+      target: `${formatCurrency(financialState.accountDeficit)} to cover`,
+      progress: 0,
+      completed: false,
+      priority: "Critical",
+      rank: 90,
+    });
+  }
+
+  if (financialState.unreconciledCash > 0) {
+    missions.push({
+      id: "reconcile-unaccounted-cash",
+      title: "Reconcile unaccounted cash",
+      detail: "Confirm the funding source so every system total uses verified cash.",
+      href: "/transactions",
+      target: `${formatCurrency(financialState.unreconciledCash)} unresolved`,
+      progress: 0,
+      completed: false,
+      priority: "High",
+      rank: 85,
+    });
+  }
+
+  const borrowedMissionId = "clear-borrowed-money";
+  if (financialState.borrowedMoney > 0 || recentlyCompletedMissionIds.includes(borrowedMissionId)) {
+    const completed = financialState.borrowedMoney <= 0;
+    missions.push({
+      id: borrowedMissionId,
+      title: "Clear borrowed money",
+      detail: completed
+        ? "SpotMe/MyPay and recorded advances have been repaid."
+        : `SpotMe/MyPay/advances currently reduce the cash plan by ${formatCurrency(financialState.borrowedMoney)}.`,
+      href: "/money",
+      target: completed ? "Cleared" : `${formatCurrency(financialState.borrowedMoney)} left`,
+      progress: completed ? 100 : 0,
+      completed,
+      priority: completed ? "Low" : "High",
+      rank: completed ? 5 : 80,
+    });
+  }
+
+  const billReserveActive = financialState.billsPressure > spendableSafe * 0.5 && financialState.billsPressure > 0;
+  if (!financialState.overdueBills && !financialState.billsDueToday && billReserveActive) {
+    missions.push({
+      id: "protect-bill-cash",
+      title: "Protect cash for bills",
+      detail: `Keep bill money reserved until ${formatCurrency(financialState.billsPressure)} in current pressure clears.`,
+      href: "/bills",
+      target: `${formatCurrency(spendableSafe)} safe / ${formatCurrency(spendableTarget)} pressure`,
+      progress: spendableProgress,
+      completed: false,
+      priority: "High",
+      rank: 75,
+    });
+  }
+
+  if (financialState.buyNextCount > 0) {
+    missions.push({
+      id: "restock-buy-next",
+      title: financialState.criticalItems > 0 ? "Restock critical inventory" : "Restock low inventory",
+      detail: `${financialState.buyNextCount} inventory row${financialState.buyNextCount === 1 ? " is" : "s are"} below minimum.`,
+      href: "/inventory",
+      target: `${financialState.buyNextCount} remaining · ${formatCurrency(financialState.estimatedRefillCost)} estimated`,
+      progress: 0,
+      completed: false,
+      priority: "Medium",
+      rank: financialState.criticalItems > 0 ? 60 : 55,
+    });
+  }
+
+  if (financialState.totalDebt > 0 && financialState.minimumPayments > 0) {
+    missions.push({
+      id: "maintain-debt-progress",
+      title: "Keep debt progress moving",
+      detail: `${financialState.nextPayoff} is the next payoff target from the current debt plan.`,
+      href: "/debt",
+      target: `${formatCurrency(financialState.minimumPayments)} minimum payments`,
+      progress: financialState.debtFreePercent,
+      completed: false,
+      priority: "Medium",
+      rank: 45,
+    });
+  }
+
+  if (financialState.goalCompletionPercent < 100 && financialState.closestGoal !== "None") {
+    missions.push({
+      id: "advance-closest-goal",
+      title: "Advance the closest goal",
+      detail: `${financialState.closestGoal} is the nearest goal signal from the current data.`,
+      href: "/goals",
+      target: `${Math.round(financialState.goalCompletionPercent)}% overall completion`,
+      progress: financialState.goalCompletionPercent,
+      completed: false,
+      priority: "Low",
+      rank: 25,
+    });
+  }
+
+  if (missions.length === 0) {
+    missions.push({
+      id: "hold-week-steady",
+      title: "Hold the week steady",
+      detail: "No urgent exception is outranking the current cash plan.",
+      href: "/money",
+      target: `${formatCurrency(spendableSafe)} Spendable / Safe`,
+      progress: 100,
+      completed: true,
+      priority: "Low",
+      rank: 10,
+    });
+  }
+
+  return missions
+    .sort((a, b) => Number(a.completed) - Number(b.completed) || b.rank - a.rank)
+    .slice(0, 6)
+    .map(({ rank, ...mission }) => {
+      void rank;
+      return mission;
+    });
 }
 
 export function rankBillRows(rows: SpreadsheetRow[], today = new Date()): RankedBillRow[] {

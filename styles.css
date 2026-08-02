@@ -4469,8 +4469,13 @@ td textarea[readonly] {
 
 @media (max-width: 720px) {
   .bills-recurring-panel,
-  .recurring-bill-fields {
+  .recurring-bill-fields,
+  .bills-system-decision {
     grid-template-columns: 1fr;
+  }
+
+  .bills-system-decision > a {
+    grid-column: 1;
   }
 
   .recurring-bill-dialog footer {
@@ -4487,6 +4492,59 @@ td textarea[readonly] {
   grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
   gap: 1rem;
   align-items: center;
+}
+
+.bills-system-decision {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: start;
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 74%, var(--surface)), var(--surface));
+}
+
+.bills-system-decision-icon {
+  display: grid;
+  place-items: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-radius: 0.8rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.bills-system-decision > div {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.bills-system-decision h2,
+.bills-system-decision p {
+  margin: 0;
+}
+
+.bills-system-decision > div > p:not(.eyebrow) {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.bills-system-decision > div > strong {
+  margin-top: 0.25rem;
+  color: var(--text);
+}
+
+.bills-system-decision > a {
+  grid-column: 2;
+  width: fit-content;
+  color: var(--accent);
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.bills-system-decision > a:hover {
+  text-decoration: underline;
 }
 
 .bills-due-primary {
@@ -7856,6 +7914,17 @@ td textarea[readonly] {
 .dashboard-intelligence-panel .priority-low {
   background: color-mix(in srgb, var(--dashboard-stack-success) 13%, transparent);
   color: var(--dashboard-stack-success);
+}
+
+.dashboard-intelligence-heading > div {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.dashboard-intelligence-heading > div > small {
+  color: var(--dashboard-stack-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .dashboard-alert-row {

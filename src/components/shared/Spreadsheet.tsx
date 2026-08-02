@@ -602,6 +602,7 @@ export default function Spreadsheet({
                     <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key)}>
                       <BufferedTextInput
                         type={inputType}
+                        min={config.key === "inventory" && (column.key === "qty" || column.key === "minNeeded") ? 0 : undefined}
                         className={column.type === "date" ? "calendar-input" : undefined}
                         data-row-index={rowIndex}
                         data-column-index={columnIndex}

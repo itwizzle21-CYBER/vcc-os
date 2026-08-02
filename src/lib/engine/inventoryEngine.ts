@@ -74,10 +74,16 @@ export function getInventoryAlert(qtyText: string, minText: string): "Clear" | "
   return "Stocked";
 }
 
+export function clampInventoryQuantity(value: string | undefined): string {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  return toNumber(trimmed) < 0 ? "0" : trimmed;
+}
+
 export function normalizeInventoryRow(row: SpreadsheetRow): SpreadsheetRow {
   const item = row.cells.item || row.cells.name || "";
-  const qty = row.cells.qty || row.cells.quantity || "";
-  const minNeeded = row.cells.minNeeded || row.cells.min || row.cells.minimum || "";
+  const qty = clampInventoryQuantity(row.cells.qty || row.cells.quantity);
+  const minNeeded = clampInventoryQuantity(row.cells.minNeeded || row.cells.min || row.cells.minimum);
   const cost = row.cells.cost || row.cells.estimatedCost || "";
   return {
     id: row.id,

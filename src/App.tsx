@@ -213,7 +213,7 @@ export default function App() {
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
       )}
-      {path === "/bills" && <BillsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/bills" && <BillsPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/transactions" && <TransactionsConceptPage data={data} onChange={updateData} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
@@ -448,12 +448,14 @@ function MoneyPaycheckHistory({
 function BillsPage({
   data,
   financialState,
+  decisionState,
   updateRows,
   updateSort,
   resetSection,
 }: {
   data: AppData;
   financialState: ReturnType<typeof computeFinancialState>;
+  decisionState: ReturnType<typeof computeDecisionEngine>;
   updateRows: (section: SectionKey, rows: SpreadsheetRow[]) => void;
   updateSort: (section: SectionKey, sortBy: string) => void;
   resetSection: (section: SectionKey) => void;
@@ -561,6 +563,22 @@ function BillsPage({
           <em>{billStats.autopay} autopay</em>
           <em>{billStats.recurring} recurring</em>
         </div>
+      </section>
+
+      <section className="bills-system-decision panel" aria-label="Overall system decision">
+        <span className="bills-system-decision-icon" aria-hidden="true"><BrainCircuit size={22} /></span>
+        <div>
+          <p className="eyebrow">Overall System Priority</p>
+          <h2>{decisionState.todayMission.title}</h2>
+          <p>{decisionState.todayMission.detail}</p>
+          <strong>{decisionState.recommendedMove}</strong>
+        </div>
+        <span className={`mission-priority priority-${decisionState.todayMission.priority.toLowerCase()}`}>
+          {decisionState.todayMission.priority}
+        </span>
+        {decisionState.todayMission.href !== "/bills" && (
+          <a href={decisionState.todayMission.href}>Open system priority</a>
+        )}
       </section>
 
       {recurringRoots.length > 0 && (
