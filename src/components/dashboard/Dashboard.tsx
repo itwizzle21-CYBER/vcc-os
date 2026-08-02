@@ -469,7 +469,7 @@ interface DashboardMoneySlide {
   metrics: Array<[string, string]>;
 }
 
-const DASHBOARD_MONEY_SLIDE_DURATION_MS = 10_000;
+const DASHBOARD_MONEY_SLIDE_DURATION_MS = 7_000;
 
 function iconForMission(href: DecisionState["todayMission"]["href"]) {
   if (href === "/bills") return <ReceiptText size={29} />;
