@@ -81,26 +81,56 @@ export default function Dashboard({
           label: "Total Cash",
           value: formatExactCurrency(financialState.totalCash),
           detail: "Across cash accounts",
+          metrics: [
+            ["Cash on Hand", formatExactCurrency(financialState.cashOnHand)],
+            ["Spendable / Safe", formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend))],
+            ["Account Deficit", formatExactCurrency(financialState.accountDeficit)],
+            ["Accounts", String(accounts.length)],
+          ],
         },
         {
           label: "Spendable / Safe",
           value: formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend)),
           detail: "Available for this week",
+          metrics: [
+            ["Total Cash", formatExactCurrency(financialState.totalCash)],
+            ["Bills Pressure", formatExactCurrency(financialState.billsPressure)],
+            ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
+            ["Unaccounted Cash", formatExactCurrency(financialState.unreconciledCash)],
+          ],
         },
         {
           label: "Weekly Income",
           value: formatExactCurrency(financialState.weeklyIncome),
           detail: "Money in this week",
+          metrics: [
+            ["Monthly Income", formatExactCurrency(financialState.monthlyIncome)],
+            ["Received Income", formatExactCurrency(financialState.receivedIncome)],
+            ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
+            ["Weekly Outflow", formatDashboardOutflow(financialState.weeklySpending)],
+          ],
         },
         {
           label: "Weekly Outflow",
           value: formatDashboardOutflow(financialState.weeklySpending),
           detail: "Money spent this week",
+          metrics: [
+            ["Monthly Outflow", formatDashboardOutflow(financialState.monthlySpending)],
+            ["Shortfall Spending", formatDashboardOutflow(financialState.shortfallSpending)],
+            ["Largest Expense", financialState.largestExpense],
+            ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
+          ],
         },
         {
           label: "Savings",
           value: formatExactCurrency(financialState.protectedSavings + financialState.availableSavings),
           detail: "Protected and available",
+          metrics: [
+            ["Protected Savings", formatExactCurrency(financialState.protectedSavings)],
+            ["Available Savings", formatExactCurrency(financialState.availableSavings)],
+            ["Emergency Fund", formatExactCurrency(financialState.emergencyFund)],
+            ["Goal Savings", formatExactCurrency(financialState.goalSavings)],
+          ],
         },
       ],
       accounts,
@@ -328,14 +358,14 @@ function DashboardModuleCard({
   const [activeSlide, setActiveSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const hasSlideshow = Boolean(slides && slides.length > 1);
-  const headline = slides?.[activeSlide] ?? { label: title, value, detail };
+  const headline = slides?.[activeSlide] ?? { label: title, value, detail, metrics };
 
   useEffect(() => {
-    if (!hasSlideshow || !isPlaying || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!hasSlideshow || !isPlaying) return;
 
     const interval = window.setInterval(() => {
       setActiveSlide((current) => (current + 1) % (slides?.length ?? 1));
-    }, 6000);
+    }, DASHBOARD_MONEY_SLIDE_DURATION_MS);
 
     return () => window.clearInterval(interval);
   }, [activeSlide, hasSlideshow, isPlaying, slides?.length]);
@@ -397,8 +427,8 @@ function DashboardModuleCard({
           <small>{progress.detail}</small>
         </div>
       )}
-      <dl>
-        {metrics.map(([label, metric]) => (
+      <dl className={hasSlideshow ? "dashboard-money-slide-metrics" : undefined}>
+        {headline.metrics.map(([label, metric]) => (
           <div key={label}>
             <dt>{label}</dt>
             <dd>{metric}</dd>
@@ -436,7 +466,10 @@ interface DashboardMoneySlide {
   label: string;
   value: string;
   detail: string;
+  metrics: Array<[string, string]>;
 }
+
+const DASHBOARD_MONEY_SLIDE_DURATION_MS = 10_000;
 
 function iconForMission(href: DecisionState["todayMission"]["href"]) {
   if (href === "/bills") return <ReceiptText size={29} />;

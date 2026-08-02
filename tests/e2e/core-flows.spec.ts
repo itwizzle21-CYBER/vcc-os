@@ -730,13 +730,20 @@ test("applies cash income to Money Snapshot and keeps dropdown choices readable"
   await page.goto("/");
   await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
   const moneySnapshot = page.locator(".dashboard-money-card");
-  await expect(moneySnapshot).toContainText("Spendable this week");
-  await expect(moneySnapshot).toContainText("Total Cash$19,605.32");
-  await expect(moneySnapshot).toContainText("Cash$125.00");
-  await expect(moneySnapshot).toContainText("Weekly Income$1,325.00");
-  await expect(moneySnapshot).toContainText("Week Net Impact$0.00");
+  await expect(moneySnapshot).toContainText("Money Snapshot");
+  await expect(moneySnapshot).toContainText("Total Cash");
+  await expect(moneySnapshot).toContainText("$19,605.32");
+  await expect(moneySnapshot).toContainText("Cash on Hand$125.00");
+  await expect(moneySnapshot).toContainText("Spendable / Safe");
+  await expect(moneySnapshot).toContainText("Accounts5");
+
+  await moneySnapshot.getByRole("button", { name: "Show Spendable / Safe" }).click();
+  await expect(moneySnapshot).toContainText("Bills Pressure");
   await expect(moneySnapshot).toContainText("Borrowed Money$1,700.00");
-  await expect(moneySnapshot).not.toContainText(/Week Spending|Protected Savings/);
+
+  await moneySnapshot.getByRole("button", { name: "Show Weekly Outflow" }).click();
+  await expect(moneySnapshot).toContainText("Monthly Outflow");
+  await expect(moneySnapshot).toContainText("Largest Expense");
 });
 
 test("keeps spreadsheet cells ready for immediate desktop typing and keyboard navigation", async ({ page }) => {
