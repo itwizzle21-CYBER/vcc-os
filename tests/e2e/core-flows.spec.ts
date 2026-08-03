@@ -506,19 +506,21 @@ test("keeps rejected duplicate inventory edits and blank currency cells consiste
   expect(savedQuantity).toBe("0");
 });
 
-test("shows the same overall decision engine priority on Inventory, not Bills", async ({ page }) => {
+test("keeps overall priorities on Dashboard and ranks Inventory separately", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
-  const dashboardPriority = await page.locator(".mission-banner h2").innerText();
+  await expect(page.getByRole("heading", { name: "System Priority Stack" })).toBeVisible();
 
   await page.goto("/bills");
   await expect(page.getByRole("region", { name: "Overall system decision" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Decision Engine bill order" })).toBeVisible();
 
   await page.goto("/inventory");
-  const systemDecision = page.getByRole("region", { name: "Overall system decision" });
-  await expect(systemDecision).toBeVisible();
-  await expect(systemDecision.getByRole("heading", { name: dashboardPriority })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Overall system decision" })).toHaveCount(0);
+  const inventoryDecision = page.getByRole("region", { name: "Decision Engine inventory order" });
+  await expect(inventoryDecision).toBeVisible();
+  await expect(inventoryDecision.getByRole("heading", { name: "Milk" })).toBeVisible();
+  await expect(inventoryDecision.getByRole("list", { name: "Next inventory items in order" }).getByRole("listitem")).toHaveCount(4);
 });
 
 test("traps focus in the background picker and restores it on close", async ({ page }) => {

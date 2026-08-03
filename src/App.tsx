@@ -49,7 +49,7 @@ import { amountToCents, calculateReceiptLineAmounts, centsToAmount } from "./lib
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
 import { computeFinancialState } from "./lib/engine/financialEngine";
-import { categorizeItem, getInventoryAlert, normalizeInventoryRow } from "./lib/engine/inventoryEngine";
+import { categorizeItem, getInventoryAlert, normalizeInventoryRow, rankInventoryRows } from "./lib/engine/inventoryEngine";
 import { migrateLegacyReceiptTaxRows } from "./lib/engine/receiptTransactionEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
 import { applySavingsTransfer, syncTransactionEndpointLabels, syncTransactionTransfers, transactionEndpointOptions, type TransactionShortfallSource } from "./lib/engine/savingsTransferEngine";
@@ -219,7 +219,7 @@ export default function App() {
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/car-payment" && <CarLoanWorkspace data={data} financialState={financialState} onChange={updateData} />}
       {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
-      {path === "/inventory" && <InventoryPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/reports" && <ReportsPage data={data} financialState={financialState} decisionState={decisionState} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} activity={data.activity} />}
@@ -1909,7 +1909,7 @@ function dateInputValue(date: Date): string {
 }
 */
 
-function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section"> & { decisionState: ReturnType<typeof computeDecisionEngine> }) {
+function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">) {
   const [inventoryTab, setInventoryTab] = useState("all");
   const [inventorySearch, setInventorySearch] = useState("");
   const inventoryRows = props.data.sections.inventory.map(normalizeInventoryRow);
@@ -1928,6 +1928,8 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section"> 
     return row.cells.alert.toLowerCase() === inventoryTab;
   });
   const visibleInventoryIds = new Set(visibleInventoryRows.map((row) => row.id));
+  const rankedInventory = rankInventoryRows(filledInventoryRows);
+  const nextInventoryItem = rankedInventory[0];
   const inventoryStats = {
     visible: visibleInventoryRows.length,
     total: filledInventoryRows.length,
@@ -1987,19 +1989,34 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section"> 
           <em>{formatCurrency(inventoryStats.refill)} refill</em>
         </div>
       </section>
-      <section className="inventory-system-decision panel" aria-label="Overall system decision">
-        <span className="inventory-system-decision-icon" aria-hidden="true"><BrainCircuit size={22} /></span>
-        <div>
-          <p className="eyebrow">Overall System Priority</p>
-          <h2>{props.decisionState.todayMission.title}</h2>
-          <p>{props.decisionState.todayMission.detail}</p>
-          <strong>{props.decisionState.recommendedMove}</strong>
+      <section className="inventory-decision-order panel" aria-label="Decision Engine inventory order">
+        <div className="inventory-decision-primary">
+          <span className="inventory-decision-icon" aria-hidden="true"><BrainCircuit size={22} /></span>
+          <div>
+            <p className="eyebrow">Decision Engine Inventory Order</p>
+            <h2>{nextInventoryItem ? nextInventoryItem.item : "Inventory is stocked"}</h2>
+            <p className="empty-copy">
+              {nextInventoryItem ? nextInventoryItem.reason : "No inventory item is currently below its minimum."}
+            </p>
+          </div>
         </div>
-        <span className={`mission-priority priority-${props.decisionState.todayMission.priority.toLowerCase()}`}>
-          {props.decisionState.todayMission.priority}
-        </span>
-        {props.decisionState.todayMission.href !== "/inventory" && (
-          <a href={props.decisionState.todayMission.href}>Open system priority</a>
+        {nextInventoryItem && (
+          <>
+            <div className="inventory-decision-metrics">
+              <span><small>Alert</small><strong>{nextInventoryItem.alert}</strong></span>
+              <span><small>Shortage</small><strong>{nextInventoryItem.shortage}</strong></span>
+              <span><small>Score</small><strong>{nextInventoryItem.score}/100</strong></span>
+            </div>
+            <ol className="inventory-decision-list" aria-label="Next inventory items in order">
+              {rankedInventory.slice(0, 4).map((item, index) => (
+                <li key={item.row.id}>
+                  <span>{index + 1}</span>
+                  <strong>{item.item}</strong>
+                  <em>{item.alert} · {formatCurrency(item.refillCost)}</em>
+                </li>
+              ))}
+            </ol>
+          </>
         )}
       </section>
       <section className="buy-next-panel" id="buy-next">

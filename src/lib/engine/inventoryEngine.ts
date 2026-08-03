@@ -29,6 +29,20 @@ export const inventoryCategories = [
   "General Merchandise",
 ];
 
+export interface RankedInventoryRow {
+  row: SpreadsheetRow;
+  item: string;
+  category: string;
+  qty: number;
+  minNeeded: number;
+  shortage: number;
+  unitCost: number;
+  refillCost: number;
+  alert: "Critical" | "Low";
+  score: number;
+  reason: string;
+}
+
 const categoryKeywords: Array<{ category: string; words: string[] }> = [
   { category: "Health & Medical", words: ["acetaminophen", "ibuprofen", "tylenol", "advil", "medicine", "medication", "vitamin", "supplement", "peroxide", "alcohol swab", "bandage", "gauze", "first aid", "prescription", "thermometer", "cough drops", "cold medicine", "allergy", "antacid", "pain relief", "heating pad"] },
   { category: "Beauty & Grooming", words: ["vaseline", "lotion", "cocoa butter", "face wash", "cleanser", "moisturizer", "brush", "comb", "edge control", "conditioner", "hair oil", "makeup", "mascara", "foundation", "lip balm", "chapstick", "sunscreen", "perfume", "cologne"] },
@@ -97,4 +111,41 @@ export function normalizeInventoryRow(row: SpreadsheetRow): SpreadsheetRow {
       notes: row.cells.notes || "",
     },
   };
+}
+
+export function rankInventoryRows(rows: SpreadsheetRow[]): RankedInventoryRow[] {
+  return rows
+    .map(normalizeInventoryRow)
+    .filter((row) => row.cells.item.trim() && (row.cells.alert === "Critical" || row.cells.alert === "Low"))
+    .map((row) => {
+      const qty = toNumber(row.cells.qty);
+      const minNeeded = toNumber(row.cells.minNeeded);
+      const shortage = Math.max(0, minNeeded - qty);
+      const unitCost = Math.max(0, toNumber(row.cells.cost));
+      const shortageRatio = minNeeded > 0 ? Math.min(1, shortage / minNeeded) : 0;
+      const alert = row.cells.alert as "Critical" | "Low";
+      const score = Math.min(100, Math.round(
+        (alert === "Critical" ? 70 : 45)
+        + (shortageRatio * 20)
+        + Math.min(shortage * 3, 10)
+      ));
+      const item = row.cells.item;
+
+      return {
+        row,
+        item,
+        category: row.cells.category || "General Merchandise",
+        qty,
+        minNeeded,
+        shortage,
+        unitCost,
+        refillCost: shortage * unitCost,
+        alert,
+        score,
+        reason: qty <= 0
+          ? `${item} is out of stock and needs ${shortage} to reach its minimum.`
+          : `${item} is ${shortage} below its minimum stock level.`,
+      };
+    })
+    .sort((a, b) => b.score - a.score || b.shortage - a.shortage || b.refillCost - a.refillCost || a.item.localeCompare(b.item));
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categorizeItem, clampInventoryQuantity, normalizeInventoryRow } from "./inventoryEngine";
+import { categorizeItem, clampInventoryQuantity, normalizeInventoryRow, rankInventoryRows } from "./inventoryEngine";
 
 describe("inventory engine", () => {
   it("categorizes common retail inventory items", () => {
@@ -43,5 +43,18 @@ describe("inventory engine", () => {
     expect(row.cells.qty).toBe("0");
     expect(row.cells.minNeeded).toBe("0");
     expect(row.cells.alert).toBe("Stocked");
+  });
+
+  it("ranks inventory decisions by stock severity and shortage", () => {
+    const ranked = rankInventoryRows([
+      { id: "low", cells: { item: "Eggs", qty: "1", minNeeded: "2", cost: "5" } },
+      { id: "critical-small", cells: { item: "Milk", qty: "0", minNeeded: "1", cost: "4" } },
+      { id: "critical-large", cells: { item: "Rice", qty: "0", minNeeded: "4", cost: "3" } },
+      { id: "stocked", cells: { item: "Bread", qty: "2", minNeeded: "1", cost: "3" } },
+    ]);
+
+    expect(ranked.map((item) => item.row.id)).toEqual(["critical-large", "critical-small", "low"]);
+    expect(ranked[0]).toMatchObject({ alert: "Critical", shortage: 4, refillCost: 12, score: 100 });
+    expect(ranked[0].reason).toContain("out of stock");
   });
 });

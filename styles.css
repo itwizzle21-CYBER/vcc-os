@@ -4469,13 +4469,8 @@ td textarea[readonly] {
 
 @media (max-width: 720px) {
   .bills-recurring-panel,
-  .recurring-bill-fields,
-  .inventory-system-decision {
+  .recurring-bill-fields {
     grid-template-columns: 1fr;
-  }
-
-  .inventory-system-decision > a {
-    grid-column: 1;
   }
 
   .recurring-bill-dialog footer {
@@ -4487,74 +4482,29 @@ td textarea[readonly] {
   }
 }
 
-.bills-due-display {
+.bills-due-display,
+.inventory-decision-order {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
   gap: 1rem;
   align-items: center;
 }
 
-.inventory-system-decision {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.85rem;
-  align-items: start;
+.inventory-decision-order {
   border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 74%, var(--surface)), var(--surface));
 }
 
-.inventory-system-decision-icon {
-  display: grid;
-  place-items: center;
-  width: 2.8rem;
-  height: 2.8rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
-  border-radius: 0.8rem;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.inventory-system-decision > div {
-  display: grid;
-  gap: 0.3rem;
-  min-width: 0;
-}
-
-.inventory-system-decision h2,
-.inventory-system-decision p {
-  margin: 0;
-}
-
-.inventory-system-decision > div > p:not(.eyebrow) {
-  color: var(--muted);
-  line-height: 1.45;
-}
-
-.inventory-system-decision > div > strong {
-  margin-top: 0.25rem;
-  color: var(--text);
-}
-
-.inventory-system-decision > a {
-  grid-column: 2;
-  width: fit-content;
-  color: var(--accent);
-  font-weight: 850;
-  text-decoration: none;
-}
-
-.inventory-system-decision > a:hover {
-  text-decoration: underline;
-}
-
-.bills-due-primary {
+.bills-due-primary,
+.inventory-decision-primary {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.85rem;
   align-items: start;
 }
 
-.bills-due-icon {
+.bills-due-icon,
+.inventory-decision-icon {
   display: grid;
   place-items: center;
   width: 2.7rem;
@@ -4565,21 +4515,25 @@ td textarea[readonly] {
   color: var(--accent);
 }
 
-.bills-due-primary h2 {
+.bills-due-primary h2,
+.inventory-decision-primary h2 {
   margin: 0.2rem 0 0;
 }
 
-.bills-due-primary .empty-copy {
+.bills-due-primary .empty-copy,
+.inventory-decision-primary .empty-copy {
   margin: 0.35rem 0 0;
 }
 
-.bills-due-metrics {
+.bills-due-metrics,
+.inventory-decision-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.55rem;
 }
 
-.bills-due-metrics span {
+.bills-due-metrics span,
+.inventory-decision-metrics span {
   display: grid;
   gap: 0.25rem;
   min-width: 0;
@@ -4589,7 +4543,8 @@ td textarea[readonly] {
   padding: 0.65rem;
 }
 
-.bills-due-metrics small {
+.bills-due-metrics small,
+.inventory-decision-metrics small {
   color: var(--muted);
   font-size: 0.68rem;
   font-weight: 850;
@@ -4612,14 +4567,16 @@ td textarea[readonly] {
   display: none !important;
 }
 
-.bills-due-metrics strong {
+.bills-due-metrics strong,
+.inventory-decision-metrics strong {
   color: var(--text);
   font-size: 0.86rem;
   font-weight: 900;
   overflow-wrap: anywhere;
 }
 
-.bills-due-list {
+.bills-due-list,
+.inventory-decision-list {
   display: grid;
   gap: 0.45rem;
   margin: 0;
@@ -4627,7 +4584,8 @@ td textarea[readonly] {
   list-style: none;
 }
 
-.bills-due-list li {
+.bills-due-list li,
+.inventory-decision-list li {
   display: grid;
   grid-template-columns: 1.5rem minmax(0, 1fr) auto;
   gap: 0.55rem;
@@ -4639,7 +4597,8 @@ td textarea[readonly] {
   padding: 0.45rem 0.55rem;
 }
 
-.bills-due-list span {
+.bills-due-list span,
+.inventory-decision-list span {
   display: grid;
   place-items: center;
   width: 1.5rem;
@@ -4651,7 +4610,8 @@ td textarea[readonly] {
   font-weight: 900;
 }
 
-.bills-due-list strong {
+.bills-due-list strong,
+.inventory-decision-list strong {
   min-width: 0;
   color: var(--text);
   font-size: 0.84rem;
@@ -4660,7 +4620,8 @@ td textarea[readonly] {
   white-space: nowrap;
 }
 
-.bills-due-list em {
+.bills-due-list em,
+.inventory-decision-list em {
   color: var(--muted);
   font-size: 0.76rem;
   font-style: normal;
