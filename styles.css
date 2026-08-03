@@ -4525,6 +4525,14 @@ td textarea[readonly] {
   margin: 0.35rem 0 0;
 }
 
+.inventory-route-budget {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
 .bills-due-metrics,
 .inventory-decision-metrics {
   display: grid;

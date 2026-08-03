@@ -519,7 +519,9 @@ test("keeps overall priorities on Dashboard and ranks Inventory separately", asy
   await expect(page.getByRole("region", { name: "Overall system decision" })).toHaveCount(0);
   const inventoryDecision = page.getByRole("region", { name: "Decision Engine inventory order" });
   await expect(inventoryDecision).toBeVisible();
-  await expect(inventoryDecision.getByRole("heading", { name: "Milk" })).toBeVisible();
+  await expect(inventoryDecision.getByRole("heading", { name: "Bread" })).toBeVisible();
+  await expect(inventoryDecision.getByText(/available across non-savings accounts/)).toBeVisible();
+  await expect(inventoryDecision.getByText(/Buy 1 · \$3\.25/)).toBeVisible();
   await expect(inventoryDecision.getByRole("list", { name: "Next inventory items in order" }).getByRole("listitem")).toHaveCount(4);
 });
 

@@ -55,6 +55,20 @@ describe("inventory engine", () => {
 
     expect(ranked.map((item) => item.row.id)).toEqual(["critical-large", "critical-small", "low"]);
     expect(ranked[0]).toMatchObject({ alert: "Critical", shortage: 4, refillCost: 12, score: 100 });
-    expect(ranked[0].reason).toContain("out of stock");
+    expect(ranked[0].reason).toContain("out-of-stock");
+  });
+
+  it("builds the most cost-efficient route within non-savings cash", () => {
+    const ranked = rankInventoryRows([
+      { id: "expensive-critical", cells: { item: "Medicine", qty: "0", minNeeded: "1", cost: "10" } },
+      { id: "cheap-critical", cells: { item: "Water", qty: "0", minNeeded: "1", cost: "2" } },
+      { id: "cheap-low", cells: { item: "Rice", qty: "1", minNeeded: "2", cost: "1" } },
+    ], 3);
+
+    expect(ranked.map((item) => item.row.id)).toEqual(["cheap-critical", "cheap-low", "expensive-critical"]);
+    expect(ranked.reduce((sum, item) => sum + item.plannedCost, 0)).toBe(3);
+    expect(ranked[0]).toMatchObject({ plannedQty: 1, plannedCost: 2, fullyFunded: true });
+    expect(ranked[2]).toMatchObject({ plannedQty: 0, plannedCost: 0, fullyFunded: false });
+    expect(ranked[2].reason).toContain("non-savings cash");
   });
 });

@@ -25,6 +25,7 @@ describe("financial dashboard totals", () => {
 
     expect(state.protectedSavings).toBe(1000);
     expect(state.totalCash).toBe(1000);
+    expect(state.spendableCash).toBe(0);
   });
 
   it("falls back to the latest locked paycheck instead of the largest historical balance", () => {

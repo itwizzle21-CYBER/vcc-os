@@ -1928,8 +1928,10 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
     return row.cells.alert.toLowerCase() === inventoryTab;
   });
   const visibleInventoryIds = new Set(visibleInventoryRows.map((row) => row.id));
-  const rankedInventory = rankInventoryRows(filledInventoryRows);
+  const inventoryBudget = Math.max(0, props.financialState.spendableCash);
+  const rankedInventory = rankInventoryRows(filledInventoryRows, inventoryBudget);
   const nextInventoryItem = rankedInventory[0];
+  const plannedInventoryCost = rankedInventory.reduce((sum, item) => sum + item.plannedCost, 0);
   const inventoryStats = {
     visible: visibleInventoryRows.length,
     total: filledInventoryRows.length,
@@ -1998,13 +2000,16 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
             <p className="empty-copy">
               {nextInventoryItem ? nextInventoryItem.reason : "No inventory item is currently below its minimum."}
             </p>
+            <small className="inventory-route-budget">
+              {formatCurrency(inventoryBudget)} available across non-savings accounts · {formatCurrency(plannedInventoryCost)} routed
+            </small>
           </div>
         </div>
         {nextInventoryItem && (
           <>
             <div className="inventory-decision-metrics">
               <span><small>Alert</small><strong>{nextInventoryItem.alert}</strong></span>
-              <span><small>Shortage</small><strong>{nextInventoryItem.shortage}</strong></span>
+              <span><small>Buy now</small><strong>{nextInventoryItem.plannedQty} of {nextInventoryItem.shortage}</strong></span>
               <span><small>Score</small><strong>{nextInventoryItem.score}/100</strong></span>
             </div>
             <ol className="inventory-decision-list" aria-label="Next inventory items in order">
@@ -2012,7 +2017,7 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
                 <li key={item.row.id}>
                   <span>{index + 1}</span>
                   <strong>{item.item}</strong>
-                  <em>{item.alert} · {formatCurrency(item.refillCost)}</em>
+                  <em>{item.plannedQty > 0 ? `Buy ${item.plannedQty} · ${formatCurrency(item.plannedCost)}` : `Unfunded · ${formatCurrency(item.refillCost)}`}</em>
                 </li>
               ))}
             </ol>

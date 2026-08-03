@@ -40,6 +40,11 @@ export interface RankedInventoryRow {
   refillCost: number;
   alert: "Critical" | "Low";
   score: number;
+  costEfficiencyScore: number;
+  plannedQty: number;
+  plannedCost: number;
+  fullyFunded: boolean;
+  budgetRemainingAfter: number;
   reason: string;
 }
 
@@ -113,8 +118,8 @@ export function normalizeInventoryRow(row: SpreadsheetRow): SpreadsheetRow {
   };
 }
 
-export function rankInventoryRows(rows: SpreadsheetRow[]): RankedInventoryRow[] {
-  return rows
+export function rankInventoryRows(rows: SpreadsheetRow[], availableNonSavingsCash = Number.POSITIVE_INFINITY): RankedInventoryRow[] {
+  const candidates = rows
     .map(normalizeInventoryRow)
     .filter((row) => row.cells.item.trim() && (row.cells.alert === "Critical" || row.cells.alert === "Low"))
     .map((row) => {
@@ -124,10 +129,9 @@ export function rankInventoryRows(rows: SpreadsheetRow[]): RankedInventoryRow[] 
       const unitCost = Math.max(0, toNumber(row.cells.cost));
       const shortageRatio = minNeeded > 0 ? Math.min(1, shortage / minNeeded) : 0;
       const alert = row.cells.alert as "Critical" | "Low";
-      const score = Math.min(100, Math.round(
+      const needScore = Math.min(90, Math.round(
         (alert === "Critical" ? 70 : 45)
         + (shortageRatio * 20)
-        + Math.min(shortage * 3, 10)
       ));
       const item = row.cells.item;
 
@@ -141,11 +145,76 @@ export function rankInventoryRows(rows: SpreadsheetRow[]): RankedInventoryRow[] 
         unitCost,
         refillCost: shortage * unitCost,
         alert,
-        score,
-        reason: qty <= 0
-          ? `${item} is out of stock and needs ${shortage} to reach its minimum.`
-          : `${item} is ${shortage} below its minimum stock level.`,
+        needScore,
+      };
+    });
+
+  const knownUnitCosts = candidates.map((item) => item.unitCost).filter((cost) => cost > 0);
+  const lowestUnitCost = knownUnitCosts.length > 0 ? Math.min(...knownUnitCosts) : 0;
+  const ranked = candidates
+    .map((item) => {
+      const costEfficiencyScore = item.unitCost > 0 && lowestUnitCost > 0
+        ? Math.max(1, Math.round(10 * (lowestUnitCost / item.unitCost)))
+        : 0;
+      return {
+        ...item,
+        costEfficiencyScore,
+        score: Math.min(100, item.needScore + costEfficiencyScore),
       };
     })
-    .sort((a, b) => b.score - a.score || b.shortage - a.shortage || b.refillCost - a.refillCost || a.item.localeCompare(b.item));
+    .sort((a, b) => {
+      const severity = Number(b.alert === "Critical") - Number(a.alert === "Critical");
+      return severity || b.score - a.score || a.unitCost - b.unitCost || b.shortage - a.shortage || a.item.localeCompare(b.item);
+    });
+
+  let remainingBudget = Number.isFinite(availableNonSavingsCash)
+    ? Math.max(0, availableNonSavingsCash)
+    : Number.POSITIVE_INFINITY;
+  const planned = ranked.map((item) => {
+    const affordableQty = item.unitCost > 0
+      ? Number.isFinite(remainingBudget)
+        ? Math.max(0, Math.floor((remainingBudget + Number.EPSILON) / item.unitCost))
+        : item.shortage
+      : 0;
+    const plannedQty = Math.min(item.shortage, affordableQty);
+    const plannedCost = plannedQty * item.unitCost;
+    if (Number.isFinite(remainingBudget)) remainingBudget = Math.max(0, remainingBudget - plannedCost);
+    const fullyFunded = plannedQty >= item.shortage && item.shortage > 0;
+    const reason = inventoryRouteReason(item.item, item.qty, item.shortage, item.unitCost, plannedQty, plannedCost, fullyFunded);
+
+    return {
+      ...item,
+      plannedQty,
+      plannedCost,
+      fullyFunded,
+      budgetRemainingAfter: remainingBudget,
+      reason,
+    };
+  });
+
+  return planned.sort((a, b) => {
+    const actionable = Number(b.plannedQty > 0) - Number(a.plannedQty > 0);
+    const severity = Number(b.alert === "Critical") - Number(a.alert === "Critical");
+    return actionable || severity || b.score - a.score || a.unitCost - b.unitCost || a.item.localeCompare(b.item);
+  });
+}
+
+function inventoryRouteReason(
+  item: string,
+  qty: number,
+  shortage: number,
+  unitCost: number,
+  plannedQty: number,
+  plannedCost: number,
+  fullyFunded: boolean,
+): string {
+  if (unitCost <= 0) return `${item} needs a cost before it can be placed on the funded route.`;
+  if (plannedQty <= 0) return `${item} is ${shortage} below minimum, but current non-savings cash cannot cover one unit.`;
+  if (!fullyFunded) return `Buy ${plannedQty} ${item} now for ${formatInventoryCost(plannedCost)}; ${shortage - plannedQty} will remain below minimum.`;
+  if (qty <= 0) return `Buy ${plannedQty} ${item} for ${formatInventoryCost(plannedCost)} to restore this out-of-stock item.`;
+  return `Buy ${plannedQty} ${item} for ${formatInventoryCost(plannedCost)} to reach its minimum.`;
+}
+
+function formatInventoryCost(value: number): string {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
 }
