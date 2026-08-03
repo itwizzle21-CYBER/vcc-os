@@ -213,13 +213,13 @@ export default function App() {
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
       )}
-      {path === "/bills" && <BillsPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/bills" && <BillsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/transactions" && <TransactionsConceptPage data={data} onChange={updateData} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/car-payment" && <CarLoanWorkspace data={data} financialState={financialState} onChange={updateData} />}
       {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
-      {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/inventory" && <InventoryPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/reports" && <ReportsPage data={data} financialState={financialState} decisionState={decisionState} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} activity={data.activity} />}
@@ -448,14 +448,12 @@ function MoneyPaycheckHistory({
 function BillsPage({
   data,
   financialState,
-  decisionState,
   updateRows,
   updateSort,
   resetSection,
 }: {
   data: AppData;
   financialState: ReturnType<typeof computeFinancialState>;
-  decisionState: ReturnType<typeof computeDecisionEngine>;
   updateRows: (section: SectionKey, rows: SpreadsheetRow[]) => void;
   updateSort: (section: SectionKey, sortBy: string) => void;
   resetSection: (section: SectionKey) => void;
@@ -563,22 +561,6 @@ function BillsPage({
           <em>{billStats.autopay} autopay</em>
           <em>{billStats.recurring} recurring</em>
         </div>
-      </section>
-
-      <section className="bills-system-decision panel" aria-label="Overall system decision">
-        <span className="bills-system-decision-icon" aria-hidden="true"><BrainCircuit size={22} /></span>
-        <div>
-          <p className="eyebrow">Overall System Priority</p>
-          <h2>{decisionState.todayMission.title}</h2>
-          <p>{decisionState.todayMission.detail}</p>
-          <strong>{decisionState.recommendedMove}</strong>
-        </div>
-        <span className={`mission-priority priority-${decisionState.todayMission.priority.toLowerCase()}`}>
-          {decisionState.todayMission.priority}
-        </span>
-        {decisionState.todayMission.href !== "/bills" && (
-          <a href={decisionState.todayMission.href}>Open system priority</a>
-        )}
       </section>
 
       {recurringRoots.length > 0 && (
@@ -1927,7 +1909,7 @@ function dateInputValue(date: Date): string {
 }
 */
 
-function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">) {
+function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section"> & { decisionState: ReturnType<typeof computeDecisionEngine> }) {
   const [inventoryTab, setInventoryTab] = useState("all");
   const [inventorySearch, setInventorySearch] = useState("");
   const inventoryRows = props.data.sections.inventory.map(normalizeInventoryRow);
@@ -2004,6 +1986,21 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
           <strong>{inventoryStats.stocked} stocked</strong>
           <em>{formatCurrency(inventoryStats.refill)} refill</em>
         </div>
+      </section>
+      <section className="inventory-system-decision panel" aria-label="Overall system decision">
+        <span className="inventory-system-decision-icon" aria-hidden="true"><BrainCircuit size={22} /></span>
+        <div>
+          <p className="eyebrow">Overall System Priority</p>
+          <h2>{props.decisionState.todayMission.title}</h2>
+          <p>{props.decisionState.todayMission.detail}</p>
+          <strong>{props.decisionState.recommendedMove}</strong>
+        </div>
+        <span className={`mission-priority priority-${props.decisionState.todayMission.priority.toLowerCase()}`}>
+          {props.decisionState.todayMission.priority}
+        </span>
+        {props.decisionState.todayMission.href !== "/inventory" && (
+          <a href={props.decisionState.todayMission.href}>Open system priority</a>
+        )}
       </section>
       <section className="buy-next-panel" id="buy-next">
         <div>

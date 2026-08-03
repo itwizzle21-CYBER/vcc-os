@@ -506,16 +506,19 @@ test("keeps rejected duplicate inventory edits and blank currency cells consiste
   expect(savedQuantity).toBe("0");
 });
 
-test("shows the same overall decision engine priority on the Bills page", async ({ page }) => {
+test("shows the same overall decision engine priority on Inventory, not Bills", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
   const dashboardPriority = await page.locator(".mission-banner h2").innerText();
 
   await page.goto("/bills");
+  await expect(page.getByRole("region", { name: "Overall system decision" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Decision Engine bill order" })).toBeVisible();
+
+  await page.goto("/inventory");
   const systemDecision = page.getByRole("region", { name: "Overall system decision" });
   await expect(systemDecision).toBeVisible();
   await expect(systemDecision.getByRole("heading", { name: dashboardPriority })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Decision Engine bill order" })).toBeVisible();
 });
 
 test("traps focus in the background picker and restores it on close", async ({ page }) => {
