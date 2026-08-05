@@ -8058,8 +8058,7 @@ td textarea[readonly] {
 }
 
 .dashboard-module-open:focus-visible,
-.dashboard-module-card a.dashboard-module-title:focus-visible,
-.dashboard-account-dropdown summary:focus-visible {
+.dashboard-module-card a.dashboard-module-title:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
@@ -10738,155 +10737,310 @@ body {
   white-space: nowrap;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-module-open,
+  .dashboard-module-card a.dashboard-module-title {
+    transition: none;
+  }
+}
+
+/* Dashboard cards share one centered live-slideshow foundation. */
 .dashboard-money-card {
-  align-content: start;
-  gap: 1.15rem;
+  position: relative;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: stretch;
+  gap: 0;
+  overflow: hidden;
   padding: clamp(1.2rem, 2vw, 1.35rem);
+  background:
+    radial-gradient(circle at 12% 10%, rgba(94, 162, 255, 0.14), transparent 40%),
+    var(--vcc-panel-strong);
 }
 
-.dashboard-money-slide {
-  min-height: 4.85rem;
+.dashboard-live-metric-card {
+  --dashboard-card-accent: #5ea2ff;
 }
 
-.dashboard-money-card .dashboard-money-slide strong {
-  font-size: clamp(2rem, 3vw, 2.25rem);
+.dashboard-live-metric-card.tone-red {
+  --dashboard-card-accent: #ff6969;
 }
 
-.dashboard-money-slideshow-controls {
+.dashboard-live-metric-card.tone-gold {
+  --dashboard-card-accent: #ffc22a;
+}
+
+.dashboard-live-metric-card.tone-green,
+.dashboard-live-metric-card.tone-emerald {
+  --dashboard-card-accent: #27d79a;
+}
+
+.dashboard-live-metric-card.tone-purple {
+  --dashboard-card-accent: #b16cff;
+}
+
+.dashboard-live-metric-card::before {
+  background: linear-gradient(90deg, var(--dashboard-card-accent), transparent);
+}
+
+.dashboard-live-metric-card .dashboard-money-card-icon {
+  border-color: color-mix(in srgb, var(--dashboard-card-accent) 32%, transparent);
+  background: color-mix(in srgb, var(--dashboard-card-accent) 14%, transparent);
+  color: var(--dashboard-card-accent);
+}
+
+.dashboard-live-metric-card .dashboard-money-account-slide > small {
+  color: var(--dashboard-card-accent);
+}
+
+.dashboard-money-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, #5ea2ff, rgba(94, 162, 255, 0));
+  content: "";
+}
+
+.dashboard-money-card-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding-bottom: 1rem;
+}
+
+.dashboard-money-card-icon {
+  display: grid;
+  width: 2.45rem;
+  height: 2.45rem;
+  place-items: center;
+  border: 1px solid rgba(94, 162, 255, 0.24);
+  border-radius: 0.72rem;
+  background: rgba(66, 140, 255, 0.14);
+  color: #6eafff;
+}
+
+.dashboard-money-card-header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.dashboard-money-card-header > div > strong {
+  color: #f7f9fc;
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+.dashboard-money-card-header > div > small {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  color: var(--vcc-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.dashboard-money-card-header > div > small i {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: #27d79a;
+  box-shadow: 0 0 0 3px rgba(39, 215, 154, 0.12);
+}
+
+.dashboard-money-account-stage {
+  display: grid;
+  grid-template-rows: minmax(7rem, 1fr) auto;
+  min-height: 9.75rem;
+  border-block: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 1.1rem 0 0.85rem;
+}
+
+.dashboard-money-account-slide {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+  animation: dashboard-money-account-enter 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dashboard-money-account-slide > small {
+  color: #6eafff;
+  font-size: 0.66rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dashboard-money-account-slide > strong {
+  max-width: 100%;
+  margin-top: 0.38rem;
+  color: #ffffff;
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-money-account-slide > span {
+  margin-top: 0.7rem;
+  color: #ffffff;
+  font-size: clamp(2.65rem, 4.5vw, 3.35rem);
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.dashboard-money-account-slide > span.negative {
+  color: #ff8c8c;
+}
+
+.dashboard-live-metric-slide > span.long {
+  max-width: 100%;
+  font-size: clamp(1.3rem, 2.5vw, 1.75rem);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-money-account-slide:hover > strong {
+  color: #85bcff;
+}
+
+.dashboard-money-account-slide:active {
+  transform: scale(0.985);
+}
+
+.dashboard-money-account-slide:focus-visible,
+.dashboard-money-empty:focus-visible {
+  border-radius: 0.45rem;
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.dashboard-money-account-detail {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.dashboard-money-account-detail > span {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.dashboard-money-account-detail > span:last-child {
+  justify-items: end;
+  text-align: right;
+}
+
+.dashboard-money-account-detail small {
+  color: var(--vcc-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.dashboard-money-account-detail strong {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.74rem;
+}
+
+.dashboard-money-empty {
+  display: grid;
+  align-content: center;
+  min-height: 9.75rem;
+  gap: 0.35rem;
+  border-block: 1px solid rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.dashboard-money-empty span {
+  color: var(--vcc-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.dashboard-money-card .dashboard-money-slideshow-controls {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
+  padding-top: 0.85rem;
 }
 
-.dashboard-money-slideshow-controls > div {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
+.dashboard-money-slideshow-controls > span {
+  color: var(--vcc-muted);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
 }
 
-.dashboard-money-slideshow-controls button {
+.dashboard-money-card .dashboard-money-slideshow-controls button {
   display: grid;
-  width: 1.55rem;
-  height: 1.55rem;
+  width: 1.85rem;
+  height: 1.85rem;
   place-items: center;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.025);
   color: #aeb2ba;
   cursor: pointer;
-  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, transform 140ms ease;
+  transition:
+    border-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.dashboard-money-slideshow-controls > div button {
-  width: 0.35rem;
-  height: 0.35rem;
-  border: 0;
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.dashboard-money-slideshow-controls > div button.active {
-  width: 0.85rem;
-  background: #5ea2ff;
-}
-
-.dashboard-money-slideshow-controls button:hover {
+.dashboard-money-card .dashboard-money-slideshow-controls button:hover {
   border-color: rgba(94, 162, 255, 0.55);
   background: rgba(94, 162, 255, 0.12);
   color: #ffffff;
 }
 
-.dashboard-money-slideshow-controls button:active {
+.dashboard-money-card .dashboard-money-slideshow-controls button:active {
   transform: scale(0.94);
 }
 
-.dashboard-money-slideshow-controls button:focus-visible {
+.dashboard-money-card .dashboard-money-slideshow-controls button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-.dashboard-module-card .dashboard-money-slide-metrics {
-  min-height: 9.75rem;
-  gap: 0.6rem;
-  border: 1px solid rgba(94, 162, 255, 0.14);
-  border-radius: 0.85rem;
-  background: rgba(94, 162, 255, 0.055);
-  padding: 0.9rem;
+.dashboard-money-slideshow-controls button[aria-pressed="true"] {
+  border-color: rgba(94, 162, 255, 0.35);
+  background: rgba(94, 162, 255, 0.12);
+  color: #ffffff;
 }
 
-.dashboard-module-card .dashboard-money-slide-metrics dt {
-  font-size: 0.82rem;
-}
+@keyframes dashboard-money-account-enter {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
 
-.dashboard-module-card .dashboard-money-slide-metrics dd {
-  font-size: 0.88rem;
-}
-
-.dashboard-module-card .dashboard-money-slide-metrics div:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.dashboard-account-dropdown {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 0.65rem;
-}
-
-.dashboard-account-dropdown summary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 0.45rem;
-  border-radius: 0.5rem;
-  color: #f5f5f7;
-  cursor: pointer;
-  font-size: 0.82rem;
-  font-weight: 850;
-  list-style: none;
-  padding: 0.35rem 0.25rem;
-  transition: background-color 140ms ease, transform 140ms ease;
-}
-
-.dashboard-account-dropdown summary::-webkit-details-marker {
-  display: none;
-}
-
-.dashboard-account-dropdown summary:hover {
-  background: rgba(255, 255, 255, 0.055);
-}
-
-.dashboard-account-dropdown summary:active {
-  transform: scale(0.985);
-}
-
-.dashboard-account-dropdown summary small {
-  color: #8e9299;
-  font-size: 0.74rem;
-}
-
-.dashboard-account-dropdown summary svg {
-  transition: transform 140ms ease;
-}
-
-.dashboard-account-dropdown[open] summary svg {
-  transform: rotate(180deg);
-}
-
-.dashboard-account-dropdown > dl {
-  margin-top: 0.45rem;
-}
-
-.dashboard-account-dropdown > dl > .negative dd {
-  color: #ff8c8c;
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-module-open,
-  .dashboard-module-card a.dashboard-module-title,
-  .dashboard-account-dropdown summary,
-  .dashboard-account-dropdown summary svg,
-  .dashboard-money-slideshow-controls button {
+  .dashboard-money-account-slide {
+    animation: none;
+  }
+
+  .dashboard-money-card .dashboard-money-slideshow-controls button {
     transition: none;
   }
 }
@@ -12220,14 +12374,12 @@ body {
    system wins over the legacy dark dashboard and control treatments. */
 :root[data-theme="light"] .reference-shell .dashboard-module-title strong,
 :root[data-theme="light"] .reference-shell .dashboard-module-card dd,
-:root[data-theme="light"] .reference-shell .dashboard-card-progress strong,
-:root[data-theme="light"] .reference-shell .dashboard-account-dropdown summary {
+:root[data-theme="light"] .reference-shell .dashboard-card-progress strong {
   color: var(--text);
 }
 
 :root[data-theme="light"] .reference-shell .dashboard-card-progress span,
-:root[data-theme="light"] .reference-shell .dashboard-card-progress small,
-:root[data-theme="light"] .reference-shell .dashboard-account-dropdown summary small {
+:root[data-theme="light"] .reference-shell .dashboard-card-progress small {
   color: var(--muted);
 }
 
@@ -12238,30 +12390,6 @@ body {
 
 :root[data-theme="light"] .reference-shell .dashboard-card-progress i {
   background: color-mix(in srgb, var(--border) 72%, transparent);
-}
-
-:root[data-theme="light"] .reference-shell .dashboard-account-dropdown {
-  border-top-color: var(--border);
-}
-
-:root[data-theme="light"] .reference-shell .dashboard-money-slideshow-controls button {
-  border-color: transparent;
-  background: transparent;
-  color: var(--muted);
-}
-
-:root[data-theme="light"] .reference-shell .dashboard-money-slideshow-controls > div button {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--muted) 32%, transparent);
-}
-
-:root[data-theme="light"] .reference-shell .dashboard-money-slideshow-controls > div button.active {
-  background: var(--accent);
-}
-
-:root[data-theme="light"] .reference-shell .dashboard-money-slide-metrics {
-  border-color: var(--border);
-  background: var(--surface-2);
 }
 
 :root[data-theme="light"] .reference-shell .money-account-heading > span,
@@ -12289,6 +12417,32 @@ body {
 :root[data-theme="light"] .reference-shell .goals-inline-stats strong,
 :root[data-theme="light"] .reference-shell .settings-kicker {
   color: var(--accent-ink);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-money-card-header > div > strong,
+:root[data-theme="light"] .reference-shell .dashboard-money-account-slide > strong,
+:root[data-theme="light"] .reference-shell .dashboard-money-account-slide > span,
+:root[data-theme="light"] .reference-shell .dashboard-money-account-detail strong,
+:root[data-theme="light"] .reference-shell .dashboard-money-empty {
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-money-card-header > div > small,
+:root[data-theme="light"] .reference-shell .dashboard-money-account-detail small,
+:root[data-theme="light"] .reference-shell .dashboard-money-slideshow-controls > span,
+:root[data-theme="light"] .reference-shell .dashboard-money-empty span {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-money-account-stage,
+:root[data-theme="light"] .reference-shell .dashboard-money-empty {
+  border-color: var(--border);
+}
+
+:root[data-theme="light"] .reference-shell .dashboard-money-card .dashboard-money-slideshow-controls button {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
 }
 
 /* Wide-screen layout guardrails. Lens layouts use narrow context rails, so their

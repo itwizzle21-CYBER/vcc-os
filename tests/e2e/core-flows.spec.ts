@@ -34,16 +34,29 @@ test("dashboard exposes trustworthy decisions, metrics, and module routes", asyn
   await expect(page.getByText("Recommended next move", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "System Priority Stack" })).toBeVisible();
   expect(await page.locator(".dashboard-mission-stack").getByRole("progressbar").count()).toBeGreaterThanOrEqual(4);
-  const moneyCard = page.locator(".dashboard-money-card");
+  const moneyCard = page.locator(".dashboard-money-account-card");
   await expect(moneyCard).toHaveCount(1);
   await expect(moneyCard.getByRole("link", { name: "Open Money Snapshot" })).toHaveAttribute("href", "/money");
-  const accountDropdown = moneyCard.locator(".dashboard-account-dropdown");
-  await accountDropdown.locator("summary").click();
-  await expect(accountDropdown).toHaveAttribute("open", "");
-  await expect(accountDropdown.locator("dd").first()).toBeVisible();
-  for (const href of ["/bills", "/inventory", "/transactions", "/savings", "/goals", "/car-payment"]) {
-    await expect(page.locator(`.dashboard-module-card[href="${href}"]`)).toHaveCount(1);
+  await expect(moneyCard.getByText("Live balances", { exact: true })).toBeVisible();
+  await expect(moneyCard.locator(".dashboard-money-account-slide")).toHaveCount(1);
+  await expect(moneyCard.getByRole("button", { name: "Automatic account rotation" })).toBeVisible();
+  for (const [title, href] of [
+    ["Transactions", "/transactions"],
+    ["Bills", "/bills"],
+    ["Inventory", "/inventory"],
+    ["Savings", "/savings"],
+    ["Goals", "/goals"],
+    ["Car Payment", "/car-payment"],
+  ]) {
+    await expect(page.getByRole("link", { name: `Open ${title}`, exact: true })).toHaveAttribute("href", href);
   }
+
+  const billsCard = page.getByRole("article", { name: "Bills metric slideshow" });
+  await expect(billsCard.locator(".dashboard-live-metric-slide")).toHaveCount(1);
+  const billsBefore = await billsCard.locator(".dashboard-live-metric-slide").innerText();
+  await billsCard.getByRole("button", { name: "Show next Bills metric" }).click();
+  await expect(billsCard.locator(".dashboard-live-metric-slide")).not.toHaveText(billsBefore);
+  await expect(billsCard.getByRole("button", { name: "Automatic Bills rotation" })).toHaveAttribute("aria-pressed", "false");
 
   const viewport = await page.locator('meta[name="viewport"]').getAttribute("content");
   expect(viewport).not.toContain("user-scalable=no");
@@ -759,21 +772,24 @@ test("applies cash income to Money Snapshot and keeps dropdown choices readable"
 
   await page.goto("/");
   await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
-  const moneySnapshot = page.locator(".dashboard-money-card");
+  const moneySnapshot = page.locator(".dashboard-money-account-card");
   await expect(moneySnapshot).toContainText("Money Snapshot");
-  await expect(moneySnapshot).toContainText("Total Cash");
-  await expect(moneySnapshot).toContainText("$19,605.32");
-  await expect(moneySnapshot).toContainText("Cash on Hand$125.00");
-  await expect(moneySnapshot).toContainText("Spendable / Safe");
-  await expect(moneySnapshot).toContainText("Accounts5");
+  await expect(moneySnapshot).toContainText("Chime Checking");
+  await expect(moneySnapshot).toContainText("$2,840.32");
+  await expect(moneySnapshot).not.toContainText("Cash App");
 
-  await moneySnapshot.getByRole("button", { name: "Show Spendable / Safe" }).click();
-  await expect(moneySnapshot).toContainText("Bills Pressure");
-  await expect(moneySnapshot).toContainText("Borrowed Money$1,700.00");
+  await moneySnapshot.getByRole("button", { name: "Show next account" }).click();
+  await expect(moneySnapshot).toContainText("Cash App");
+  await expect(moneySnapshot).toContainText("$640.00");
+  await expect(moneySnapshot).not.toContainText("Chime Checking");
 
-  await moneySnapshot.getByRole("button", { name: "Show Weekly Outflow" }).click();
-  await expect(moneySnapshot).toContainText("Monthly Outflow");
-  await expect(moneySnapshot).toContainText("Largest Expense");
+  await moneySnapshot.getByRole("button", { name: "Show next account" }).click();
+  await expect(moneySnapshot).toContainText("Cash");
+  await expect(moneySnapshot).toContainText("$125.00");
+  await expect(moneySnapshot).toContainText("BalanceAvailable");
+  await expect(moneySnapshot).toContainText("SourceMoney Snapshot");
+  await expect(moneySnapshot).not.toContainText("Total Cash");
+  await expect(moneySnapshot).not.toContainText("Spendable / Safe");
 });
 
 test("keeps spreadsheet cells ready for immediate desktop typing and keyboard navigation", async ({ page }) => {

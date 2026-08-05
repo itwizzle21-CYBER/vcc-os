@@ -5,7 +5,6 @@ import {
   Car,
   Check,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Circle,
@@ -38,16 +37,18 @@ interface DashboardModuleCardProps {
   tone: "blue" | "gold" | "green" | "emerald" | "purple" | "red";
   icon: ReactNode;
   title: string;
-  value: string;
-  detail: string;
-  metrics: Array<[string, string]>;
-  slides?: DashboardMoneySlide[];
-  accounts?: DepositAccountOption[];
+  slides: DashboardMetricSlide[];
+  rotationMs: number;
   progress?: {
     label: string;
     value: number;
     detail: string;
   };
+}
+
+interface DashboardMetricSlide {
+  label: string;
+  value: string;
 }
 
 export default function Dashboard({
@@ -61,94 +62,18 @@ export default function Dashboard({
   const missionIcon = iconForMission(decisionState.todayMission.href);
   const moduleCards: DashboardModuleCardProps[] = [
     {
-      href: "/money",
-      tone: "blue",
-      icon: <Wallet size={22} />,
-      title: "Money Snapshot",
-      value: formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend)),
-      detail: "Spendable this week",
-      metrics: [
-        ["Total Cash", formatExactCurrency(financialState.totalCash)],
-        ["Cash", formatExactCurrency(financialState.cashOnHand)],
-        ["Weekly Income", formatExactCurrency(financialState.weeklyIncome)],
-        ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
-        ["Account Deficit", formatExactCurrency(financialState.accountDeficit)],
-        ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
-        ["Unaccounted Cash", formatExactCurrency(financialState.unreconciledCash)],
-      ],
-      slides: [
-        {
-          label: "Total Cash",
-          value: formatExactCurrency(financialState.totalCash),
-          detail: "Across cash accounts",
-          metrics: [
-            ["Cash on Hand", formatExactCurrency(financialState.cashOnHand)],
-            ["Spendable / Safe", formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend))],
-            ["Account Deficit", formatExactCurrency(financialState.accountDeficit)],
-            ["Accounts", String(accounts.length)],
-          ],
-        },
-        {
-          label: "Spendable / Safe",
-          value: formatExactCurrency(Math.min(financialState.spendableCash, financialState.safeToSpend)),
-          detail: "Available for this week",
-          metrics: [
-            ["Total Cash", formatExactCurrency(financialState.totalCash)],
-            ["Bills Pressure", formatExactCurrency(financialState.billsPressure)],
-            ["Borrowed Money", formatExactCurrency(financialState.borrowedMoney)],
-            ["Unaccounted Cash", formatExactCurrency(financialState.unreconciledCash)],
-          ],
-        },
-        {
-          label: "Weekly Income",
-          value: formatExactCurrency(financialState.weeklyIncome),
-          detail: "Money in this week",
-          metrics: [
-            ["Monthly Income", formatExactCurrency(financialState.monthlyIncome)],
-            ["Received Income", formatExactCurrency(financialState.receivedIncome)],
-            ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
-            ["Weekly Outflow", formatDashboardOutflow(financialState.weeklySpending)],
-          ],
-        },
-        {
-          label: "Weekly Outflow",
-          value: formatDashboardOutflow(financialState.weeklySpending),
-          detail: "Money spent this week",
-          metrics: [
-            ["Monthly Outflow", formatDashboardOutflow(financialState.monthlySpending)],
-            ["Shortfall Spending", formatDashboardOutflow(financialState.shortfallSpending)],
-            ["Largest Expense", financialState.largestExpense],
-            ["Week Net Impact", formatExactCurrency(financialState.transactionWeekNet)],
-          ],
-        },
-        {
-          label: "Savings",
-          value: formatExactCurrency(financialState.protectedSavings + financialState.availableSavings),
-          detail: "Protected and available",
-          metrics: [
-            ["Protected Savings", formatExactCurrency(financialState.protectedSavings)],
-            ["Available Savings", formatExactCurrency(financialState.availableSavings)],
-            ["Emergency Fund", formatExactCurrency(financialState.emergencyFund)],
-            ["Goal Savings", formatExactCurrency(financialState.goalSavings)],
-          ],
-        },
-      ],
-      accounts,
-    },
-    {
       href: "/transactions",
       tone: "red",
       icon: <TrendingDown size={22} />,
       title: "Transactions",
-      value: formatDashboardSpending(financialState.monthlySpending),
-      detail: "Monthly spending",
-      metrics: [
-        ["Week Impact", formatExactCurrency(financialState.transactionWeekNet)],
-        ["Weekly Spending", formatDashboardSpending(financialState.weeklySpending)],
-        ["Monthly Spending", formatDashboardSpending(financialState.monthlySpending)],
-        ["Shortfall Spending", formatDashboardSpending(financialState.shortfallSpending)],
-        ["Largest Expense", financialState.largestExpense],
-        ["Last Transaction", financialState.lastTransaction],
+      rotationMs: 8_200,
+      slides: [
+        { label: "Monthly spending", value: formatDashboardSpending(financialState.monthlySpending) },
+        { label: "Weekly spending", value: formatDashboardSpending(financialState.weeklySpending) },
+        { label: "Week impact", value: formatExactCurrency(financialState.transactionWeekNet) },
+        { label: "Shortfall spending", value: formatDashboardSpending(financialState.shortfallSpending) },
+        { label: "Largest expense", value: financialState.largestExpense },
+        { label: "Last transaction", value: financialState.lastTransaction },
       ],
     },
     {
@@ -156,13 +81,12 @@ export default function Dashboard({
       tone: "gold",
       icon: <ReceiptText size={22} />,
       title: "Bills",
-      value: formatWholeCurrency(financialState.billsPressure),
-      detail: "Due pressure",
-      metrics: [
-        ["Due Today", String(financialState.billsDueToday)],
-        ["Due This Week", String(financialState.billsDueThisWeek)],
-        ["Overdue", String(financialState.overdueBills)],
-        ["Bills Pressure", formatWholeCurrency(financialState.billsPressure)],
+      rotationMs: 9_300,
+      slides: [
+        { label: "Due pressure", value: formatWholeCurrency(financialState.billsPressure) },
+        { label: "Due today", value: String(financialState.billsDueToday) },
+        { label: "Due this week", value: String(financialState.billsDueThisWeek) },
+        { label: "Overdue", value: String(financialState.overdueBills) },
       ],
     },
     {
@@ -170,13 +94,12 @@ export default function Dashboard({
       tone: "green",
       icon: <Boxes size={22} />,
       title: "Inventory",
-      value: String(financialState.buyNextCount),
-      detail: "Buy Next items",
-      metrics: [
-        ["Critical Items", String(financialState.criticalItems)],
-        ["Low Stock", String(financialState.lowStock)],
-        ["Buy Next", String(financialState.buyNextCount)],
-        ["Refill Cost", formatWholeCurrency(financialState.estimatedRefillCost)],
+      rotationMs: 10_400,
+      slides: [
+        { label: "Buy Next items", value: String(financialState.buyNextCount) },
+        { label: "Critical items", value: String(financialState.criticalItems) },
+        { label: "Low stock", value: String(financialState.lowStock) },
+        { label: "Refill cost", value: formatWholeCurrency(financialState.estimatedRefillCost) },
       ],
     },
     {
@@ -184,13 +107,13 @@ export default function Dashboard({
       tone: "emerald",
       icon: <PiggyBank size={22} />,
       title: "Savings",
-      value: formatWholeCurrency(financialState.protectedSavings + financialState.availableSavings),
-      detail: "Protected and available",
-      metrics: [
-        ["Protected Savings", formatWholeCurrency(financialState.protectedSavings)],
-        ["Available Savings", formatWholeCurrency(financialState.availableSavings)],
-        ["Emergency Fund", formatWholeCurrency(financialState.emergencyFund)],
-        ["Goal Savings", formatWholeCurrency(financialState.goalSavings)],
+      rotationMs: 11_500,
+      slides: [
+        { label: "Total savings", value: formatWholeCurrency(financialState.protectedSavings + financialState.availableSavings) },
+        { label: "Protected savings", value: formatWholeCurrency(financialState.protectedSavings) },
+        { label: "Available savings", value: formatWholeCurrency(financialState.availableSavings) },
+        { label: "Emergency fund", value: formatWholeCurrency(financialState.emergencyFund) },
+        { label: "Goal savings", value: formatWholeCurrency(financialState.goalSavings) },
       ],
     },
     {
@@ -198,13 +121,12 @@ export default function Dashboard({
       tone: "purple",
       icon: <Target size={22} />,
       title: "Goals",
-      value: `${Math.round(financialState.goalCompletionPercent)}%`,
-      detail: "Overall completion",
-      metrics: [
-        ["Goals Complete", String(financialState.goalsComplete)],
-        ["Closest Goal", financialState.closestGoal],
-        ["Completion", `${Math.round(financialState.goalCompletionPercent)}%`],
-        ["Estimated Finish", financialState.estimatedFinish],
+      rotationMs: 12_600,
+      slides: [
+        { label: "Overall completion", value: `${Math.round(financialState.goalCompletionPercent)}%` },
+        { label: "Goals complete", value: String(financialState.goalsComplete) },
+        { label: "Closest goal", value: financialState.closestGoal },
+        { label: "Estimated finish", value: financialState.estimatedFinish },
       ],
     },
     {
@@ -212,13 +134,12 @@ export default function Dashboard({
       tone: "blue",
       icon: <Car size={22} />,
       title: "Car Payment",
-      value: formatWholeCurrency(financialState.carLoanOfficialPayoff),
-      detail: "Latest official dealer payoff",
-      metrics: [
-        ["Official Payoff", formatWholeCurrency(financialState.carLoanOfficialPayoff)],
-        ["Dealer Balance", formatWholeCurrency(financialState.carLoanDealerBalance)],
-        ["Total Cash Paid", formatWholeCurrency(financialState.carLoanTotalCashPaid)],
-        ["Payments Remaining", `${financialState.carLoanPaymentsRemaining} weeks`],
+      rotationMs: 13_700,
+      slides: [
+        { label: "Official payoff", value: formatWholeCurrency(financialState.carLoanOfficialPayoff) },
+        { label: "Dealer balance", value: formatWholeCurrency(financialState.carLoanDealerBalance) },
+        { label: "Total cash paid", value: formatWholeCurrency(financialState.carLoanTotalCashPaid) },
+        { label: "Payments remaining", value: `${financialState.carLoanPaymentsRemaining} weeks` },
       ],
       progress: {
         label: "Confirmed Principal Progress",
@@ -337,6 +258,7 @@ export default function Dashboard({
       </section>
 
       <section className="dashboard-module-grid" aria-label="VCC dashboard modules">
+        <DashboardMoneyCard accounts={accounts} />
         {moduleCards.map((card) => (
           <DashboardModuleCard key={card.href} {...card} />
         ))}
@@ -351,125 +273,171 @@ function DashboardModuleCard({
   tone,
   icon,
   title,
-  value,
-  detail,
-  metrics,
-  progress,
-  accounts,
   slides,
+  rotationMs,
+  progress,
 }: DashboardModuleCardProps) {
-  const [activeSlide, setActiveSlide] = useState(0);
+  const { activeIndex, isPlaying, hasSlideshow, select, togglePlaying } = useDashboardSlideshow(slides.length, rotationMs);
+  const activeSlide = slides[activeIndex] ?? slides[0];
+  const hasLongValue = (activeSlide?.value.length ?? 0) > 18;
+
+  return (
+    <article className={`base-panel dashboard-module-card dashboard-money-card dashboard-live-metric-card tone-${tone}`} aria-label={`${title} metric slideshow`}>
+      <header className="dashboard-money-card-header">
+        <span className={`dashboard-money-card-icon ${tone}`}>{icon}</span>
+        <div>
+          <strong>{title}</strong>
+          <small><i aria-hidden="true" /> Live metrics</small>
+        </div>
+        <a className="dashboard-module-open" href={href} aria-label={`Open ${title}`}>
+          <ArrowRight size={17} aria-hidden="true" />
+        </a>
+      </header>
+
+      {activeSlide && (
+        <div className="dashboard-money-account-stage dashboard-live-metric-stage" aria-live={isPlaying ? "off" : "polite"} aria-atomic="true">
+          <a key={activeSlide.label} className="dashboard-money-account-slide dashboard-live-metric-slide" href={href} aria-label={`Open ${title}: ${activeSlide.label}`}>
+            <small>{activeSlide.label}</small>
+            <span className={hasLongValue ? "long" : undefined}>{activeSlide.value}</span>
+          </a>
+          <div className="dashboard-money-account-detail">
+            <span>
+              <small>{progress?.label ?? "Status"}</small>
+              <strong>{progress ? `${Math.round(progress.value)}%` : "Live"}</strong>
+            </span>
+            <span>
+              <small>{progress ? "Detail" : "Source"}</small>
+              <strong>{progress?.detail ?? title}</strong>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {hasSlideshow && (
+        <div className="dashboard-money-slideshow-controls" role="group" aria-label={`${title} slideshow controls`}>
+          <button type="button" onClick={() => select(activeIndex - 1)} aria-label={`Show previous ${title} metric`}>
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <span aria-live="off">{String(activeIndex + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}</span>
+          <button
+            type="button"
+            onClick={togglePlaying}
+            aria-label={`Automatic ${title} rotation`}
+            aria-pressed={isPlaying}
+            title={isPlaying ? `Pause ${title} slideshow` : `Play ${title} slideshow`}
+          >
+            {isPlaying ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
+          </button>
+          <button type="button" onClick={() => select(activeIndex + 1)} aria-label={`Show next ${title} metric`}>
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function DashboardMoneyCard({ accounts }: { accounts: DepositAccountOption[] }) {
+  const liveAccounts = accounts.filter((account) => !account.isNew);
+  const {
+    activeIndex: activeAccountIndex,
+    isPlaying,
+    hasSlideshow,
+    select: selectAccount,
+    togglePlaying,
+  } = useDashboardSlideshow(liveAccounts.length, DASHBOARD_MONEY_SLIDE_DURATION_MS);
+  const activeAccount = liveAccounts[activeAccountIndex];
+
+  return (
+    <article className="base-panel dashboard-module-card dashboard-money-card dashboard-money-account-card" aria-label="Money Snapshot account slideshow">
+      <header className="dashboard-money-card-header">
+        <span className="dashboard-money-card-icon"><Wallet size={21} aria-hidden="true" /></span>
+        <div>
+          <strong>Money Snapshot</strong>
+          <small><i aria-hidden="true" /> Live balances</small>
+        </div>
+        <a className="dashboard-module-open" href="/money" aria-label="Open Money Snapshot">
+          <ArrowRight size={17} aria-hidden="true" />
+        </a>
+      </header>
+
+      {activeAccount ? (
+        <div className="dashboard-money-account-stage" aria-live={isPlaying ? "off" : "polite"} aria-atomic="true">
+          <a key={activeAccount.id} className="dashboard-money-account-slide" href="/money" aria-label={`Open ${activeAccount.label} in Money Snapshot`}>
+            <small>Financial account</small>
+            <strong>{activeAccount.label}</strong>
+            <span className={activeAccount.balance < 0 ? "negative" : undefined}>{formatExactCurrency(activeAccount.balance)}</span>
+          </a>
+          <div className="dashboard-money-account-detail">
+            <span>
+              <small>Balance</small>
+              <strong>{activeAccount.balance < 0 ? "Overdrawn" : "Available"}</strong>
+            </span>
+            <span>
+              <small>Source</small>
+              <strong>Money Snapshot</strong>
+            </span>
+          </div>
+        </div>
+      ) : (
+        <a className="dashboard-money-empty" href="/money">
+          <strong>No financial accounts yet</strong>
+          <span>Add an account in Money Snapshot to begin the live slideshow.</span>
+        </a>
+      )}
+
+      {hasSlideshow && (
+        <div className="dashboard-money-slideshow-controls" role="group" aria-label="Money Snapshot slideshow controls">
+          <button type="button" onClick={() => selectAccount(activeAccountIndex - 1)} aria-label="Show previous account">
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <span aria-live="off">{String(activeAccountIndex + 1).padStart(2, "0")} / {String(liveAccounts.length).padStart(2, "0")}</span>
+          <button
+            type="button"
+            onClick={togglePlaying}
+            aria-label="Automatic account rotation"
+            aria-pressed={isPlaying}
+            title={isPlaying ? "Pause account slideshow" : "Play account slideshow"}
+          >
+            {isPlaying ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
+          </button>
+          <button type="button" onClick={() => selectAccount(activeAccountIndex + 1)} aria-label="Show next account">
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function useDashboardSlideshow(itemCount: number, rotationMs: number) {
+  const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const hasSlideshow = Boolean(slides && slides.length > 1);
-  const headline = slides?.[activeSlide] ?? { label: title, value, detail, metrics };
+  const hasSlideshow = itemCount > 1;
+
+  useEffect(() => {
+    setActiveIndex((current) => Math.min(current, Math.max(0, itemCount - 1)));
+  }, [itemCount]);
 
   useEffect(() => {
     if (!hasSlideshow || !isPlaying) return;
 
     const interval = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % (slides?.length ?? 1));
-    }, DASHBOARD_MONEY_SLIDE_DURATION_MS);
+      setActiveIndex((current) => (current + 1) % itemCount);
+    }, rotationMs);
 
     return () => window.clearInterval(interval);
-  }, [activeSlide, hasSlideshow, isPlaying, slides?.length]);
+  }, [hasSlideshow, isPlaying, itemCount, rotationMs]);
 
-  const selectSlide = (index: number) => {
-    if (!slides?.length) return;
-    setActiveSlide((index + slides.length) % slides.length);
+  const select = (index: number) => {
+    if (!itemCount) return;
+    setIsPlaying(false);
+    setActiveIndex((index + itemCount) % itemCount);
   };
 
-  const content = (
-    <>
-      <div className="dashboard-module-head">
-        <span className={tone}>{icon}</span>
-        {accounts
-          ? <a className="dashboard-module-open" href={href} aria-label={`Open ${title}`}><ArrowRight size={17} aria-hidden="true" /></a>
-          : <ArrowRight size={17} aria-hidden="true" />}
-      </div>
-      {accounts ? <a className="dashboard-module-title dashboard-money-slide" href={href}>
-        <small>{title} · {headline.label}</small>
-        <strong>{headline.value}</strong>
-        <em>{headline.detail}</em>
-      </a> : <div className="dashboard-module-title">
-        <small>{title}</small>
-        <strong>{value}</strong>
-        <em>{detail}</em>
-      </div>}
-      {hasSlideshow && slides && (
-        <div className="dashboard-money-slideshow-controls" aria-label="Money Snapshot slideshow controls">
-          <button type="button" onClick={() => selectSlide(activeSlide - 1)} aria-label="Show previous money view">
-            <ChevronLeft size={16} aria-hidden="true" />
-          </button>
-          <div role="group" aria-label={`Money view ${activeSlide + 1} of ${slides.length}`}>
-            {slides.map((slide, index) => (
-              <button
-                key={slide.label}
-                type="button"
-                className={index === activeSlide ? "active" : undefined}
-                onClick={() => selectSlide(index)}
-                aria-label={`Show ${slide.label}`}
-                aria-pressed={index === activeSlide}
-              />
-            ))}
-          </div>
-          <button type="button" onClick={() => setIsPlaying((playing) => !playing)} aria-label={`${isPlaying ? "Pause" : "Play"} Money Snapshot slideshow`}>
-            {isPlaying ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
-          </button>
-          <button type="button" onClick={() => selectSlide(activeSlide + 1)} aria-label="Show next money view">
-            <ChevronRight size={16} aria-hidden="true" />
-          </button>
-        </div>
-      )}
-      {progress && (
-        <div className="dashboard-card-progress" aria-label={`${progress.label}: ${Math.round(progress.value)}%`}>
-          <div>
-            <span>{progress.label}</span>
-            <strong>{Math.round(progress.value)}%</strong>
-          </div>
-          <i><b style={{ width: `${Math.max(0, Math.min(100, progress.value))}%` }} /></i>
-          <small>{progress.detail}</small>
-        </div>
-      )}
-      <dl className={hasSlideshow ? "dashboard-money-slide-metrics" : undefined}>
-        {headline.metrics.map(([label, metric]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd>{metric}</dd>
-          </div>
-        ))}
-      </dl>
-    </>
-  );
+  const togglePlaying = () => setIsPlaying((playing) => !playing);
 
-  if (!accounts) return <a href={href} className="base-panel dashboard-module-card">{content}</a>;
-
-  return (
-    <article className="base-panel dashboard-module-card dashboard-money-card">
-      {content}
-      <details className="dashboard-account-dropdown">
-        <summary>
-          <span>Accounts</span>
-          <small>{accounts.length}</small>
-          <ChevronDown size={16} aria-hidden="true" />
-        </summary>
-        <dl>
-          {accounts.map((account) => (
-            <div key={account.id} className={account.balance < 0 ? "negative" : undefined}>
-              <dt>{account.label}</dt>
-              <dd>{formatExactCurrency(account.balance)}{account.balance < 0 ? " overdrawn" : ""}</dd>
-            </div>
-          ))}
-        </dl>
-      </details>
-    </article>
-  );
-}
-
-interface DashboardMoneySlide {
-  label: string;
-  value: string;
-  detail: string;
-  metrics: Array<[string, string]>;
+  return { activeIndex, isPlaying, hasSlideshow, select, togglePlaying };
 }
 
 const DASHBOARD_MONEY_SLIDE_DURATION_MS = 7_000;
