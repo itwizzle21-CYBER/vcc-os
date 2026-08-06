@@ -261,7 +261,7 @@ function TransactionToolbar({
       <label className="transaction-concept-search">
         <Search size={17} aria-hidden="true" />
         <span className="sr-only">Search transactions</span>
-        <input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search transactions" />
+        <input aria-label="Search transactions" value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search transactions" />
       </label>
       {!segmented && (
         <select aria-label="Transaction type" value={typeFilter} onChange={(event) => onTypeFilter(event.target.value)}>

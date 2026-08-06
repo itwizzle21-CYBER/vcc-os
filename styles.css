@@ -10388,6 +10388,27 @@ body {
   }
 }
 
+@media (min-width: 64.01rem) and (max-width: 72rem) {
+  .dashboard-top-nav {
+    gap: 0.35rem;
+    padding-inline: 0.75rem;
+  }
+
+  .dashboard-brand-copy small {
+    display: none;
+  }
+
+  .dashboard-top-nav nav {
+    justify-content: safe center;
+  }
+
+  .dashboard-top-nav nav a {
+    gap: 0.3rem;
+    padding-inline: 0.35rem;
+    font-size: 0.74rem;
+  }
+}
+
 .not-found-panel {
   width: min(100%, 46rem);
   margin: clamp(2rem, 9vh, 7rem) auto;
@@ -11978,7 +11999,7 @@ body {
 .ios-tab-bar small {
   max-width: 100%;
   overflow: hidden;
-  font-size: clamp(0.58rem, 2.7vw, 0.68rem);
+  font-size: 0.7rem;
   font-weight: 700;
   line-height: 1;
   text-overflow: ellipsis;
@@ -12428,6 +12449,7 @@ body {
 }
 
 :root[data-theme="light"] .reference-shell .dashboard-money-card-header > div > small,
+:root[data-theme="light"] .reference-shell .dashboard-money-account-slide > small,
 :root[data-theme="light"] .reference-shell .dashboard-money-account-detail small,
 :root[data-theme="light"] .reference-shell .dashboard-money-slideshow-controls > span,
 :root[data-theme="light"] .reference-shell .dashboard-money-empty span {
@@ -12437,6 +12459,56 @@ body {
 :root[data-theme="light"] .reference-shell .dashboard-money-account-stage,
 :root[data-theme="light"] .reference-shell .dashboard-money-empty {
   border-color: var(--border);
+}
+
+:root[data-theme="light"] .welcome-transition > button {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .reference-shell .collapsible-section-state {
+  color: #475569;
+}
+
+:root[data-theme="light"] .reference-shell .ios-tab-bar a.active,
+:root[data-theme="light"] .reference-shell .ios-tab-bar button.active,
+:root[data-theme="light"] .dashboard-top-nav nav a.active,
+:root[data-theme="light"] .cloud-sync-trigger,
+:root[data-theme="light"] .reference-shell .mission-priority,
+:root[data-theme="light"] .reference-shell .dashboard-live-metric-card .dashboard-money-account-slide > small,
+:root[data-theme="light"] .reference-shell .bills-status-tabs button.active,
+:root[data-theme="light"] .reference-shell .inventory-tabs button.active,
+:root[data-theme="light"] .reference-shell .reports-period-tabs button.active,
+:root[data-theme="light"] .reference-shell .chart-slide-controls button[aria-selected="true"],
+:root[data-theme="light"] .reference-shell .bills-due-list span,
+:root[data-theme="light"] .reference-shell .inventory-decision-list span,
+:root[data-theme="light"] .reference-shell .goal-card-heading > span,
+:root[data-theme="light"] .reference-shell .settings-avatar {
+  color: var(--accent-ink);
+}
+
+:root[data-theme="light"] .reference-shell .inventory-inline-stats em,
+:root[data-theme="light"] .reference-shell .vault-balance-row em {
+  color: #065f46;
+}
+
+:root[data-theme="light"] .reference-shell .vault-heading > span {
+  color: var(--accent-ink);
+}
+
+:root[data-theme="light"] .reference-shell .goal-card.high .goal-card-heading em {
+  color: #7c4a00;
+}
+
+:root[data-theme="light"] .reference-shell .goal-card.critical .goal-card-heading em {
+  color: #b42318;
+}
+
+:root[data-theme="light"] .reference-shell .mission-row span,
+:root[data-theme="light"] .reference-shell .mission-row em,
+:root[data-theme="light"] .reference-shell .mission-row small {
+  color: #334155;
 }
 
 :root[data-theme="light"] .reference-shell .dashboard-money-card .dashboard-money-slideshow-controls button {

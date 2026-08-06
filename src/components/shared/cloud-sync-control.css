@@ -21,7 +21,7 @@
 body:not(.vitascan-body) .cloud-sync-trigger { top: calc(max(.55rem, env(safe-area-inset-top)) + .15rem); right: 3.45rem; bottom: auto; left: auto; z-index: 85; width: 36px; min-height: 36px; }
 body:not(.vitascan-body) .cloud-sync-trigger > svg { width: 16px; height: 16px; }
 
-.cloud-sync-trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.cloud-sync-trigger > span { display: none; }
 .cloud-sync-trigger:hover { filter: brightness(1.12); }
 .cloud-sync-trigger:active { transform: scale(.95); }
 .cloud-sync-trigger:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 3px; }

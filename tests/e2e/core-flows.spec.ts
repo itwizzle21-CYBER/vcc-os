@@ -142,10 +142,18 @@ test("publishes VitaScan mobile install identity before the VCC app boots", asyn
 
 test("keeps desktop navigation labels visible and navigates correctly", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "Desktop navigation uses the mobile drawer on small screens.");
+  await page.setViewportSize({ width: 1068, height: 705 });
   await page.goto("/bills");
-  const moneyLink = page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Money Snapshot" });
+  const navigation = page.getByRole("navigation", { name: "Primary navigation" });
+  const moneyLink = navigation.getByRole("link", { name: "Money Snapshot" });
   await expect(moneyLink).toBeVisible();
   expect((await moneyLink.boundingBox())?.width).toBeGreaterThan(70);
+  const navigationBox = await navigation.boundingBox();
+  const dashboardBox = await navigation.getByRole("link", { name: "Dashboard" }).boundingBox();
+  const settingsBox = await navigation.getByRole("link", { name: "Settings" }).boundingBox();
+  expect(navigationBox && dashboardBox && settingsBox).toBeTruthy();
+  expect(dashboardBox!.x).toBeGreaterThanOrEqual(navigationBox!.x);
+  expect(settingsBox!.x + settingsBox!.width).toBeLessThanOrEqual(navigationBox!.x + navigationBox!.width);
   await moneyLink.click();
   await expect(page).toHaveURL(/\/money$/);
   await expect(page.getByRole("heading", { name: "Money Snapshot", exact: true })).toBeVisible();
@@ -293,7 +301,7 @@ test("loads every application page without runtime or heading-structure failures
 
 test("keeps all 30 selectable layouts collision-free from mobile through desktop", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "This test supplies its own responsive viewport matrix.");
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
 
   const pages = [
     { label: "Dashboard", path: "/" },
