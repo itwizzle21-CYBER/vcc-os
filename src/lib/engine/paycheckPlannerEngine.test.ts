@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createZeroData } from "../storage/defaultData";
 import { computeFinancialState } from "./financialEngine";
-import { depositAccountOptions, eligibleDepositAccounts, lockPaycheckWeek } from "./paycheckPlannerEngine";
+import { applyPendingPaycheckDeposit, depositAccountOptions, eligibleDepositAccounts, lockPaycheckWeek } from "./paycheckPlannerEngine";
 import { applySavingsTransfer } from "./savingsTransferEngine";
 
 describe("connected paycheck planner", () => {
@@ -37,6 +37,32 @@ describe("connected paycheck planner", () => {
       cells: expect.objectContaining({ label: "Wise", amount: "400.00", section: "cash" }),
     }));
     expect(next.sections.transactions[0].cells.account).toBe("Wise");
+  });
+
+  it("automatically applies a pending locked paycheck exactly once", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "125.00" } }];
+    data.paycheckPlanner = {
+      incomeSource: "",
+      depositAccountId: "",
+      paycheckAmount: "800.00",
+      payDate: "2026-08-07",
+      weekStart: "2026-08-02",
+      weekEnd: "2026-08-08",
+      spotMeRepayment: "50.00",
+      myPayRepayment: "150.00",
+      depositApplied: false,
+      locked: true,
+    };
+
+    const applied = applyPendingPaycheckDeposit(data);
+    const unchanged = applyPendingPaycheckDeposit(applied);
+
+    expect(applied.sections.money[0].cells.amount).toBe("725.00");
+    expect(applied.paycheckHistory[0].remaining).toBe("600.00");
+    expect(applied.paycheckHistory[0]).toMatchObject({ incomeSource: "Paycheck", depositAccountId: "checking" });
+    expect(applied.paycheckPlanner.depositApplied).toBe(true);
+    expect(unchanged).toBe(applied);
   });
 
   it("treats an existing Cash row as Cash without offering a duplicate", () => {

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatCurrency, formatDateMDY, toNumber, weekBounds } from "../../lib/calculations/currency";
-import { depositAccountOptions, lockPaycheckWeek, paycheckBreakdown } from "../../lib/engine/paycheckPlannerEngine";
+import { applyPendingPaycheckDeposit, depositAccountOptions, lockPaycheckWeek, paycheckBreakdown } from "../../lib/engine/paycheckPlannerEngine";
 import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner } from "../../lib/types/app";
 import BufferedTextInput from "../shared/BufferedTextInput";
 
@@ -21,6 +21,16 @@ export default function PaycheckPlanner({
   const breakdown = paycheckBreakdown(data);
   const remaining = breakdown.remaining;
 
+  useEffect(() => {
+    if (!planner.locked || planner.depositApplied) return;
+    try {
+      onChange(applyPendingPaycheckDeposit(data));
+      setPlannerMessage(`${formatCurrency(remaining)} remaining was automatically added to the selected Money Snapshot account.`);
+    } catch (error) {
+      setPlannerMessage(error instanceof Error ? error.message : "The remaining paycheck amount could not be added automatically.");
+    }
+  }, [data, onChange, planner.depositApplied, planner.locked, remaining]);
+
   function updatePlanner(updates: Partial<Planner>) {
     setPlannerMessage("");
     const next = { ...planner, ...updates };
@@ -35,7 +45,7 @@ export default function PaycheckPlanner({
   function lockWeek() {
     try {
       onChange(lockPaycheckWeek(data));
-      setPlannerMessage("Paycheck locked. Money Snapshot and Transactions are updated, and the deposit account is ready for savings transfers.");
+      setPlannerMessage(`${formatCurrency(remaining)} remaining was automatically added to the selected Money Snapshot account.`);
     } catch (error) {
       setPlannerMessage(error instanceof Error ? error.message : "The paycheck could not be locked.");
     }

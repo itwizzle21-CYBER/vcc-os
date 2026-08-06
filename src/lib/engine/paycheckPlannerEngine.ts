@@ -44,6 +44,21 @@ export function depositAccountOptions(data: AppData): DepositAccountOption[] {
   return [...currentOptions, ...suggestedOptions];
 }
 
+export function applyPendingPaycheckDeposit(data: AppData): AppData {
+  if (!data.paycheckPlanner.locked || data.paycheckPlanner.depositApplied) return data;
+  const selectedAccountExists = depositAccountOptions(data)
+    .some((account) => account.id === data.paycheckPlanner.depositAccountId);
+  const fallbackAccountId = eligibleDepositAccounts(data)[0]?.id || suggestedAccounts[0].id;
+  return lockPaycheckWeek({
+    ...data,
+    paycheckPlanner: {
+      ...data.paycheckPlanner,
+      incomeSource: data.paycheckPlanner.incomeSource.trim() || "Paycheck",
+      depositAccountId: selectedAccountExists ? data.paycheckPlanner.depositAccountId : fallbackAccountId,
+    },
+  });
+}
+
 export function lockPaycheckWeek(data: AppData): AppData {
   const planner = data.paycheckPlanner;
   const incomeSource = planner.incomeSource.trim();
