@@ -2,6 +2,7 @@ import { getInventoryAlert } from "./inventoryEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionType } from "./transactionEngine";
 import { summarizeCarLoan } from "./carLoanEngine";
 import { isBalanceAppliedTransaction } from "./savingsTransferEngine";
+import { isChimeAccount } from "./chimeAccountingEngine";
 import { isBlankRow, isValidIsoDate, todayIso, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
@@ -35,9 +36,13 @@ export function computeFinancialState(data: AppData): FinancialState {
   const availableSavingsMoney = moneyRows
     .filter((item) => item.section === "availableSavings")
     .reduce((sum, item) => sum + item.amount, 0);
-  const borrowedMoney = moneyRows
-    .filter((item) => item.section === "borrowed")
+  const externalBorrowedMoney = moneyRows
+    .filter((item) => item.section === "borrowed" && !isSpotMeOnlyRow(item.row))
     .reduce((sum, item) => sum + positive(item.amount), 0);
+  const chimeOverdraftUsed = cashRows
+    .filter((item) => isChimeAccount(item.row))
+    .reduce((sum, item) => sum + Math.abs(Math.min(0, item.amount)), 0);
+  const borrowedMoney = externalBorrowedMoney + chimeOverdraftUsed;
   const repaymentImpact = data.paycheckPlanner.depositApplied
     ? 0
     : toNumber(data.paycheckPlanner.spotMeRepayment) + toNumber(data.paycheckPlanner.myPayRepayment);
@@ -91,7 +96,9 @@ export function computeFinancialState(data: AppData): FinancialState {
   const weeklyIncome = plannedIncome + currentWeekAdditionalTransactionIncome;
   const monthlyIncome = weeklyIncome * 4.33;
   const receivedIncome = data.paycheckHistory.reduce((sum, row) => sum + toNumber(row.income), 0) + transactionIncome;
-  const spendableCash = cashRows.length > 0 ? operatingCash + plannedIncome + transactionNet - repaymentImpact : operatingCash + transactionNet;
+  // Account rows are the canonical, already-reconciled ledger balances. Planned income
+  // and transaction activity are reporting signals and must not be added a second time.
+  const spendableCash = operatingCash;
 
   const today = new Date();
   const billsDueToday = bills.filter((row) => isSameDay(row.cells.dueDate, today) && isOpenBill(row)).length;
@@ -100,7 +107,9 @@ export function computeFinancialState(data: AppData): FinancialState {
   const billsPressure = bills
     .filter((row) => isDueBy(row.cells.dueDate, today, 7) && isOpenBill(row))
     .reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
-  const safeToSpend = spendableCash - billsPressure - borrowedMoney - unreconciledCash;
+  // A negative Chime balance already lowers operating cash, so subtract only borrowing
+  // that is not represented by that account position. Unused SpotMe is never cash.
+  const safeToSpend = spendableCash - billsPressure - externalBorrowedMoney - unreconciledCash;
 
   const expenseRows = transactions.filter((row) => transactionType(row) === "expense");
   const weeklySpending = currentWeekTransactions
@@ -224,6 +233,11 @@ function positive(value: number): number {
 function isCashOnHand(row: SpreadsheetRow): boolean {
   const label = String(row.cells.label || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   return ["cash", "cashonhand", "physicalcash", "walletcash"].includes(label);
+}
+
+function isSpotMeOnlyRow(row: SpreadsheetRow): boolean {
+  const value = `${row.cells.label || ""} ${row.cells.notes || ""}`.toLowerCase();
+  return /spot\s?me/.test(value) && !/my\s?pay|advance|loan|borrowed transaction shortfall/.test(value);
 }
 
 function formatTransactionLabel(row: SpreadsheetRow, fallback: string): string {

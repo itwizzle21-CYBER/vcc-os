@@ -114,6 +114,7 @@ export function normalizeInventoryRow(row: SpreadsheetRow): SpreadsheetRow {
       cost,
       alert: getInventoryAlert(qty, minNeeded),
       notes: row.cells.notes || "",
+      duplicateMergeEvidence: row.cells.duplicateMergeEvidence || "",
     },
   };
 }

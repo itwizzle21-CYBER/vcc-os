@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createStarterData, createZeroData } from "../storage/defaultData";
+import { todayIso } from "../calculations/currency";
 import type { SpreadsheetRow } from "../types/app";
 import { computeFinancialState } from "./financialEngine";
 
@@ -116,6 +117,53 @@ describe("financial dashboard totals", () => {
 
     expect(state.overdueBills).toBe(1);
     expect(state.billsPressure).toBe(125.5);
+  });
+
+  it("does not add already-applied transactions to canonical account balances again", () => {
+    const data = createZeroData();
+    data.sections.money = [row("chime", { label: "Chime", section: "cash", amount: "100" })];
+    data.sections.transactions = [row("income", {
+      description: "Already deposited",
+      type: "income",
+      amount: "50",
+      date: "2026-08-08",
+      account: "Chime",
+      balanceApplied: "yes",
+      balanceApplication: "transaction-editor",
+    })];
+
+    expect(computeFinancialState(data).spendableCash).toBe(100);
+  });
+
+  it("treats unused SpotMe capacity as a limit, not borrowed cash", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      row("chime", { label: "Chime", section: "cash", amount: "20" }),
+      row("spotme", { label: "SpotMe Limit", section: "borrowed", amount: "40" }),
+    ];
+
+    expect(computeFinancialState(data)).toMatchObject({ spendableCash: 20, borrowedMoney: 0, safeToSpend: 20 });
+  });
+
+  it("counts negative Chime once as used SpotMe without double-reducing safe cash", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      row("chime", { label: "Chime", section: "cash", amount: "-40" }),
+      row("spotme", { label: "SpotMe Limit", section: "borrowed", amount: "40" }),
+    ];
+
+    expect(computeFinancialState(data)).toMatchObject({ spendableCash: -40, borrowedMoney: 40, safeToSpend: -40 });
+  });
+
+  it("subtracts unpaid bills and external advances from safe-to-spend", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      row("chime", { label: "Chime", section: "cash", amount: "100" }),
+      row("mypay", { label: "MyPay Advance", section: "borrowed", amount: "10" }),
+    ];
+    data.sections.bills = [row("phone", { name: "Phone", amount: "20", dueDate: todayIso(), status: "unpaid" })];
+
+    expect(computeFinancialState(data).safeToSpend).toBe(70);
   });
 
   it("removes cancelled bills from priority pressure", () => {

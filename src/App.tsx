@@ -47,8 +47,8 @@ import TransactionHistoryConcepts, { type TransactionLayoutVariant } from "./com
 import { formatCurrency, formatDateMDY, isBlankRow, todayIso, toNumber } from "./lib/calculations/currency";
 import { amountToCents, calculateReceiptLineAmounts, centsToAmount } from "./lib/calculations/receiptMath";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
-import { isCarPaymentTransaction, syncBillPaymentTransactions } from "./lib/engine/billPaymentSync";
 import { computeFinancialState } from "./lib/engine/financialEngine";
+import { applyBillRowsEvent, deleteTransactionEvent } from "./lib/engine/financialEventEngine";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow, rankInventoryRows } from "./lib/engine/inventoryEngine";
 import { migrateLegacyReceiptTaxRows } from "./lib/engine/receiptTransactionEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
@@ -59,6 +59,7 @@ import { loadAppData, normalizeAppData, resetAllData, resetSection, saveAppData,
 import { applyVisualSettings, getSystemTheme } from "./lib/theme/themePreference";
 import type { AppData, SectionKey, SpreadsheetRow, ThemeMode, UserSettings } from "./lib/types/app";
 import { enforceChimeBalanceFloor } from "./lib/engine/chimeAccountingEngine";
+import { canonicalizeAccountRows, canonicalizeInventoryRows } from "./lib/engine/canonicalRecords";
 import { configureRecurringBill, disableRecurringBill, frequencyLabel, recurringSeriesRoots, syncRecurringBillOccurrences, type RecurringBillFrequency } from "./lib/engine/recurringBillEngine";
 import { useVccCloudSync } from "./lib/cloud/useVccCloudSync";
 
@@ -90,11 +91,12 @@ export default function App() {
   const normalizeAndSetData = useCallback((next: AppData) => {
     const normalized = {
       ...next,
-      version: 4,
+      version: 5,
       settings: { ...next.settings, theme: themePreferenceRef.current },
       sections: {
         ...next.sections,
-        inventory: next.sections.inventory.map(normalizeInventoryRow),
+        money: canonicalizeAccountRows(next.sections.money),
+        inventory: canonicalizeInventoryRows(next.sections.inventory),
         transactions: migrateLegacyReceiptTaxRows(next.sections.transactions),
       },
     };
@@ -165,19 +167,14 @@ export default function App() {
   }
 
   function updateRows(section: SectionKey, rows: SpreadsheetRow[]) {
-    const nextRows = section === "money" ? enforceChimeBalanceFloor(autoFillMoneyWeek(rows, data)) : rows;
+    const nextRows = section === "money"
+      ? canonicalizeAccountRows(enforceChimeBalanceFloor(autoFillMoneyWeek(rows, data)))
+      : section === "inventory"
+        ? canonicalizeInventoryRows(rows)
+        : rows;
     if (section === "bills") {
       const recurringRows = syncRecurringBillOccurrences(nextRows);
-      const syncedTransactions = syncBillPaymentTransactions(data.sections.bills, recurringRows, data.sections.transactions);
-      const { transactions, carPayment } = applyBillPaymentsToCarLoan(
-        data.sections.transactions,
-        syncedTransactions,
-        data.sections.carPayment
-      );
-      updateData({
-        ...data,
-        sections: { ...data.sections, bills: recurringRows, transactions, carPayment },
-      });
+      updateData(applyBillRowsEvent(data, recurringRows));
       return;
     }
     const nextData = { ...data, sections: { ...data.sections, [section]: nextRows } };
@@ -238,51 +235,6 @@ export default function App() {
   );
 }
 
-function applyBillPaymentsToCarLoan(
-  previousTransactions: SpreadsheetRow[],
-  nextTransactions: SpreadsheetRow[],
-  carPaymentRows: SpreadsheetRow[]
-): { transactions: SpreadsheetRow[]; carPayment: SpreadsheetRow[] } {
-  const previousIds = new Set(previousTransactions.map((row) => row.id));
-  const nextIds = new Set(nextTransactions.map((row) => row.id));
-  const loan = carPaymentRows.find((row) => !isBlankRow(row.cells));
-  if (!loan) return { transactions: nextTransactions, carPayment: carPaymentRows };
-
-  let remaining = toNumber(loan.cells.remainingBalance);
-  const transactions = nextTransactions.map((transaction) => {
-    if (!isCarPaymentTransaction(transaction) || previousIds.has(transaction.id)) return transaction;
-    const amount = Math.abs(toNumber(transaction.cells.amount));
-    const interest = Math.max(0, toNumber(loan.cells.apr));
-    const interestAmount = amount * (interest / 100);
-    const principalAmount = Math.max(0, amount - interestAmount);
-    remaining = Math.max(0, remaining - principalAmount);
-    return {
-      ...transaction,
-      cells: {
-        ...transaction.cells,
-        interestPercent: String(interest),
-        interestAmount: String(interestAmount),
-        principalAmount: String(principalAmount),
-        remainingBalance: String(remaining),
-        vehicleId: loan.id,
-      },
-    };
-  });
-
-  previousTransactions.forEach((transaction) => {
-    if (isCarPaymentTransaction(transaction) && !nextIds.has(transaction.id)) {
-      remaining += Math.max(0, toNumber(transaction.cells.principalAmount) || Math.abs(toNumber(transaction.cells.amount)));
-    }
-  });
-
-  return {
-    transactions,
-    carPayment: carPaymentRows.map((row) => row.id === loan.id
-      ? { ...row, cells: { ...row.cells, remainingBalance: formatCurrency(remaining) } }
-      : row),
-  };
-}
-
 function MoneyPage({
   data,
   financialState,
@@ -335,16 +287,24 @@ function MoneyPage({
 
       <PaycheckPlanner data={data} onChange={onChange} showHistory={false} />
 
-      <section className="money-simple-inputs">
+      <section className="money-simple-inputs" aria-labelledby="canonical-accounts-title">
+        <div className="money-account-heading">
+          <div>
+            <p className="eyebrow">Authoritative Accounts</p>
+            <h2 id="canonical-accounts-title">Manage account balances at their source</h2>
+            <p>Money Snapshot is derived from these accounts, linked transactions, savings vaults, bills, and borrowing rules.</p>
+          </div>
+        </div>
         <Spreadsheet
-          config={{ ...sectionConfigs.money, title: "Money Snapshot Inputs" }}
+          config={{ ...sectionConfigs.money, title: "Canonical Accounts" }}
           rows={moneyRows}
           sortBy={data.sortBy.money}
           onSortChange={updateSort}
           onRowsChange={updateRows}
           onResetSection={resetSection}
           getComputedCell={(row, columnKey) => computedCell("money", row, columnKey)}
-          addLabel="Add Money Row"
+          preventDuplicateKey="label"
+          addLabel="Add Account"
         />
       </section>
 
@@ -461,6 +421,7 @@ function BillsPage({
   const [billSearch, setBillSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [recurringBillId, setRecurringBillId] = useState("");
+  const [billMessage, setBillMessage] = useState("");
   const billRows = data.sections.bills.map(normalizeBillRow);
   const filledBillRows = billRows.filter((row) => !isBlankRow(row.cells));
   const visibleBillRows = billRows.filter((row) => {
@@ -498,11 +459,18 @@ function BillsPage({
     let nextBillRows = [...mergedRows, ...addedRows];
     for (const nextRow of normalizedNextRows) {
       const previousRow = billRows.find((row) => row.id === nextRow.id);
+      const newlyPaid = billStatus(nextRow) === "paid" && billStatus(previousRow || { id: "", cells: {} }) !== "paid";
+      if (newlyPaid && !nextRow.cells.paymentAccount?.trim()) {
+        setBillMessage(`Choose the account that paid ${nextRow.cells.name || "this bill"} before marking it paid.`);
+        return;
+      }
+      if (newlyPaid && !nextRow.cells.paidDate) nextRow.cells.paidDate = todayIso();
       const becameRecurring = isAffirmative(nextRow.cells.recurring) && !isAffirmative(previousRow?.cells.recurring);
       const stoppedRecurring = !isAffirmative(nextRow.cells.recurring) && isAffirmative(previousRow?.cells.recurring);
       if (becameRecurring) setRecurringBillId(nextRow.cells.recurrenceSeriesId || nextRow.id);
       if (stoppedRecurring) nextBillRows = disableRecurringBill(nextBillRows, nextRow.id);
     }
+    setBillMessage("");
     updateRows(section, nextBillRows);
   }
 
@@ -526,7 +494,7 @@ function BillsPage({
       <SummaryGrid items={summaryForSection("bills", financialState)} />
       <section className="bills-command-panel">
         <div>
-          <p className="eyebrow">Bills Control</p>
+          <p className="eyebrow">Bills Workspace</p>
           <h2>Track and manage recurring expenses</h2>
         </div>
         <div className="bills-filter-row">
@@ -562,6 +530,7 @@ function BillsPage({
           <em>{billStats.recurring} recurring</em>
         </div>
       </section>
+      {billMessage && <p className="table-validation" role="alert">{billMessage}</p>}
 
       {recurringRoots.length > 0 && (
         <section className="bills-recurring-panel panel" aria-labelledby="recurring-schedules-title">
@@ -648,8 +617,14 @@ function BillsPage({
         onRowsChange={updateVisibleBillRows}
         onResetSection={resetSection}
         getComputedCell={(row, columnKey) => computedCell("bills", row, columnKey)}
+        selectOptions={{
+          status: ["unpaid", "upcoming", "overdue", "paid", "cancelled"].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) })),
+          paymentAccount: transactionEndpointOptions(data)
+            .filter((account) => account.kind === "money" && !account.isNew)
+            .map((account) => ({ value: account.value, label: account.label })),
+          recurring: [{ value: "Yes", label: "Yes" }, { value: "No", label: "No" }],
+        }}
         addLabel="Add Bill"
-        selectOptions={{ recurring: [{ value: "Yes", label: "Yes" }, { value: "No", label: "No" }] }}
       />
       {recurringDialogBill && (
         <RecurringBillDialog
@@ -1017,6 +992,11 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
   const layoutVariant: TransactionLayoutVariant = data.settings.layoutViews.transactions;
 
   function saveTransactionRow(row: SpreadsheetRow): boolean {
+    const existingRow = transactionRows.find((existing) => existing.id === row.id);
+    if (existingRow?.cells.financialEventType === "bill_payment") {
+      setMessage("Edit this payment from Bills so the bill, transaction, and paying account remain one event.");
+      return false;
+    }
     const normalizedRow = normalizeTransactionRow(row);
     const nextRows = transactionRows.some((existing) => existing.id === row.id)
       ? transactionRows.map((existing) => existing.id === row.id ? normalizedRow : existing)
@@ -1038,9 +1018,12 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
   }
 
   function deleteTransactionRow(rowId: string) {
+    const transaction = transactionRows.find((row) => row.id === rowId);
+    const description = transaction?.cells.description || transaction?.cells.merchant || "this transaction";
+    if (!window.confirm(`Delete ${description}? Linked balances and bill state will be reconciled.`)) return;
     try {
-      onChange(syncTransactionTransfers(data, transactionRows.filter((row) => row.id !== rowId)));
-      setMessage("Transaction deleted and account balances updated.");
+      onChange(deleteTransactionEvent(data, rowId));
+      setMessage("Transaction deleted; linked balances and bill state were reconciled.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The transaction could not be deleted.");
     }
@@ -3380,6 +3363,8 @@ function normalizeBillRow(row: SpreadsheetRow): SpreadsheetRow {
       dueDate,
       amount: row.cells.amount || "",
       status: row.cells.status || "",
+      paymentAccount: row.cells.paymentAccount || "",
+      paidDate: row.cells.paidDate || "",
       recurring: row.cells.recurring || row.cells.is_recurring || "No",
       autopay: row.cells.autopay || row.cells.is_autopay || "",
       priority: row.cells.priority || "",

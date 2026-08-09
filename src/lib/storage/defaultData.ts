@@ -5,9 +5,9 @@ import { createVerifiedCarLoanData } from "./carLoanReference";
 export const sectionConfigs: Record<SectionKey, SectionConfig> = {
   money: {
     key: "money",
-    title: "Money",
+    title: "Canonical Accounts",
     columns: [
-      { key: "label", label: "Source" },
+      { key: "label", label: "Account" },
       { key: "amount", label: "Amount", type: "currency" },
       { key: "section", label: "Section" },
       { key: "weekStart", label: "Week Start", type: "date" },
@@ -24,6 +24,8 @@ export const sectionConfigs: Record<SectionKey, SectionConfig> = {
       { key: "dueDate", label: "Due Date", type: "date" },
       { key: "amount", label: "Amount", type: "currency" },
       { key: "status", label: "Status" },
+      { key: "paymentAccount", label: "Paid From" },
+      { key: "paidDate", label: "Paid Date", type: "date" },
       { key: "recurring", label: "Recurring" },
       { key: "autopay", label: "Autopay" },
       { key: "notes", label: "Notes" },
@@ -385,7 +387,7 @@ export function createStarterData(): AppData {
 
 export function createZeroData(): AppData {
   return {
-    version: 4,
+    version: 5,
     sections: {
       money: [],
       bills: [],

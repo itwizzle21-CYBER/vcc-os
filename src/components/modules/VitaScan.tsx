@@ -28,7 +28,6 @@ const emptyDraft = parseReceiptText("");
 type ScanStatus = "idle" | "scanning" | "ready" | "saving" | "saved";
 
 export default function VitaScan({ data, onChange }: { data: AppData; onChange: (data: AppData) => void }) {
-  const [pageOpen, setPageOpen] = useState(true);
   const [preview, setPreview] = useState("");
   const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
   const [status, setStatus] = useState<ScanStatus>("idle");
@@ -193,14 +192,6 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
 
     <div className="vitascan-page">
       <section className="vitascan-hero" aria-labelledby="vitascan-title">
-        <button
-          className="vitascan-page-heading"
-          type="button"
-          aria-label={`${pageOpen ? "Collapse" : "Expand"} VitaScan page`}
-          aria-expanded={pageOpen}
-          aria-controls="vitascan-page-content"
-          onClick={() => setPageOpen((open) => !open)}
-        />
         <div className="vitascan-mark"><ScanLine aria-hidden="true" /></div>
         <div>
           <p className="eyebrow">VitaScan</p>
@@ -210,10 +201,9 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
         <span className={`vitascan-sync ${vitaCloudEnabled ? "online" : ""}`}>
           <Cloud size={14} aria-hidden="true" />{vitaCloudEnabled ? "Sync ready" : "On-device"}
         </span>
-        <small className="collapsible-section-state">{pageOpen ? "Hide page" : "Show page"}</small>
       </section>
 
-      <div id="vitascan-page-content" className="vitascan-page-content" hidden={!pageOpen}>
+      <div className="vitascan-page-content">
       <div className="vitascan-workbench">
         <section
           className="vitascan-capture panel"

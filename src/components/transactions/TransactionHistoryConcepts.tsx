@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -336,7 +336,7 @@ function CalmLedger({
           <div className="transaction-ledger-columns" aria-hidden="true">
             <span>Date</span><span>Description</span><span>Category</span><span>Account / movement</span><span>Amount</span>
           </div>
-          <TransactionGroups rows={rows} selectedId={editingRow?.id} onEdit={onEdit} />
+          <TransactionGroups rows={rows} selectedId={editingRow?.id} onEdit={onEdit} onDelete={onDelete} />
           {!rows.length && <EmptyTransactions />}
         </div>
         {editingRow && (
@@ -394,7 +394,7 @@ function AccountLens({
           {toolbar}
           <div className={`transaction-account-main-grid ${editingRow ? "has-editor" : ""}`}>
             <div className="transaction-ledger-list">
-              <TransactionGroups rows={rows} selectedId={editingRow?.id} onEdit={onEdit} compact />
+              <TransactionGroups rows={rows} selectedId={editingRow?.id} onEdit={onEdit} onDelete={onDelete} compact />
               {!rows.length && <EmptyTransactions />}
             </div>
             {editingRow && (
@@ -448,7 +448,7 @@ function MoneyTimeline({
               <h3 id={`timeline-${slug(bucket.label)}`}>{bucket.label}</h3>
               {bucket.rows.map((row) => (
                 <div key={row.id} className={`transaction-timeline-item ${editingRow?.id === row.id ? "expanded" : ""}`}>
-                  <TransactionRow row={row} selected={editingRow?.id === row.id} onEdit={onEdit} timeline />
+                  <TransactionRow row={row} selected={editingRow?.id === row.id} onEdit={onEdit} onDelete={onDelete} timeline />
                   {editingRow?.id === row.id && (
                     <div className="transaction-inline-editor">
                       <TransactionEditor row={editingRow} accounts={accounts} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} compact />
@@ -517,7 +517,7 @@ function CashflowFocus({
       ]} />
       {toolbar}
       <div className="transaction-cashflow-list">
-        <TransactionGroups rows={rows} selectedId={editingRow?.id} onEdit={onEdit} compact />
+        <TransactionGroups rows={rows} selectedId={editingRow?.id} onEdit={onEdit} onDelete={onDelete} compact />
         {!rows.length && <EmptyTransactions />}
       </div>
       {editingRow && (
@@ -640,21 +640,57 @@ function TransactionMetrics({ items }: { items: Array<[string, number, string]> 
   );
 }
 
-function TransactionGroups({ rows, selectedId, compact = false, onEdit }: { rows: SpreadsheetRow[]; selectedId?: string; compact?: boolean; onEdit: (row: SpreadsheetRow) => void }) {
+function TransactionGroups({ rows, selectedId, compact = false, onEdit, onDelete }: { rows: SpreadsheetRow[]; selectedId?: string; compact?: boolean; onEdit: (row: SpreadsheetRow) => void; onDelete: (rowId: string) => void }) {
   return groupRowsByDate(rows).map((group) => (
     <section key={group.date} className="transaction-date-group" aria-labelledby={`date-${slug(group.date)}`}>
       <h3 id={`date-${slug(group.date)}`}>{dateGroupLabel(group.date)}</h3>
-      {group.rows.map((row) => <TransactionRow key={row.id} row={row} selected={row.id === selectedId} compact={compact} onEdit={onEdit} />)}
+      {group.rows.map((row) => <TransactionRow key={row.id} row={row} selected={row.id === selectedId} compact={compact} onEdit={onEdit} onDelete={onDelete} />)}
     </section>
   ));
 }
 
-function TransactionRow({ row, selected, compact = false, timeline = false, onEdit }: { row: SpreadsheetRow; selected: boolean; compact?: boolean; timeline?: boolean; onEdit: (row: SpreadsheetRow) => void }) {
+function TransactionRow({ row, selected, compact = false, timeline = false, onEdit, onDelete }: { row: SpreadsheetRow; selected: boolean; compact?: boolean; timeline?: boolean; onEdit: (row: SpreadsheetRow) => void; onDelete: (rowId: string) => void }) {
   const type = transactionType(row);
   const receipt = receiptSummary(row);
   const status = shortfallLabel(row);
+  const [deleteRevealed, setDeleteRevealed] = useState(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressClickRef = useRef(false);
+
+  function handleTouchStart(event: React.TouchEvent<HTMLButtonElement>) {
+    const touch = event.touches[0];
+    touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  }
+
+  function handleTouchEnd(event: React.TouchEvent<HTMLButtonElement>) {
+    const start = touchStartRef.current;
+    const touch = event.changedTouches[0];
+    touchStartRef.current = null;
+    if (!start || !touch) return;
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (deltaX < -64 && Math.abs(deltaY) < 40) {
+      suppressClickRef.current = true;
+      setDeleteRevealed(true);
+    }
+  }
+
   return (
-    <button type="button" className={`transaction-simple-row ${selected ? "selected" : ""} ${compact ? "compact" : ""} ${timeline ? "timeline" : ""}`} onClick={() => onEdit(row)}>
+    <div className={`transaction-swipe-row ${deleteRevealed ? "delete-revealed" : ""}`}>
+    <button
+      type="button"
+      className={`transaction-simple-row ${selected ? "selected" : ""} ${compact ? "compact" : ""} ${timeline ? "timeline" : ""}`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onClick={() => {
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false;
+          return;
+        }
+        if (deleteRevealed) setDeleteRevealed(false);
+        else onEdit(row);
+      }}
+    >
       <span className={`transaction-row-icon ${type}`} aria-hidden="true">
         {type === "transfer" ? <ArrowRightLeft size={17} /> : row.cells.salesTax ? <ReceiptText size={17} /> : <CircleDollarSign size={17} />}
       </span>
@@ -672,6 +708,17 @@ function TransactionRow({ row, selected, compact = false, timeline = false, onEd
       </span>
       <ChevronRight className="transaction-row-chevron" size={17} aria-hidden="true" />
     </button>
+    <button
+      type="button"
+      className="transaction-swipe-delete"
+      tabIndex={deleteRevealed ? 0 : -1}
+      aria-hidden={!deleteRevealed}
+      aria-label={`Delete ${row.cells.description || row.cells.merchant || "transaction"}`}
+      onClick={() => onDelete(row.id)}
+    >
+      <Trash2 size={18} aria-hidden="true" /> Delete
+    </button>
+    </div>
   );
 }
 

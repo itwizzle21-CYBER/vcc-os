@@ -950,6 +950,39 @@
   cursor: pointer;
 }
 
+.transaction-swipe-row {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--danger) 88%, #000);
+}
+
+.transaction-swipe-row .transaction-simple-row {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  transition: transform 160ms ease;
+  touch-action: pan-y;
+}
+
+.transaction-swipe-row.delete-revealed .transaction-simple-row {
+  transform: translateX(-6.25rem);
+}
+
+.transaction-swipe-delete {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: flex;
+  width: 6.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-weight: 850;
+  cursor: pointer;
+}
+
 .transaction-simple-row:hover,
 .transaction-simple-row:focus-visible,
 .transaction-simple-row.selected {
@@ -1311,6 +1344,19 @@
     padding-inline: 0.85rem;
   }
 
+  .transaction-swipe-row {
+    overflow: visible;
+    background: transparent;
+  }
+
+  .transaction-swipe-row.delete-revealed .transaction-simple-row {
+    transform: none;
+  }
+
+  .transaction-swipe-delete {
+    display: none;
+  }
+
   .transaction-simple-row > time,
   .transaction-row-category,
   .transaction-row-account {
@@ -1327,6 +1373,12 @@
 
   .transaction-editor-fields .wide {
     grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transaction-swipe-row .transaction-simple-row {
+    transition: none;
   }
 }
 

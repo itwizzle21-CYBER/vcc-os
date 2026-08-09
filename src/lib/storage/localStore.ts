@@ -1,11 +1,11 @@
 import type { AppData, SectionKey, SpreadsheetRow, ThemeMode } from "../types/app";
 import { isBlankRow, toNumber } from "../calculations/currency";
-import { normalizeInventoryRow } from "../engine/inventoryEngine";
+import { canonicalizeAccountRows, canonicalizeInventoryRows } from "../engine/canonicalRecords";
 import { syncConfirmedReceiptTransactions } from "../engine/carLoanEngine";
 import { displayAccountLabel } from "../engine/paycheckPlannerEngine";
 import { migrateLegacyReceiptTaxRows } from "../engine/receiptTransactionEngine";
 import { createVerifiedCarLoanData } from "./carLoanReference";
-import { createStarterData, createZeroData, sectionConfigs } from "./defaultData";
+import { createZeroData, sectionConfigs } from "./defaultData";
 
 const STORAGE_KEY = "vcc-os:data:v2";
 export const THEME_PREFERENCE_KEY = "vcc-os:theme-preference";
@@ -17,11 +17,6 @@ export function loadAppData(): AppData {
   const existing = readJson(window.localStorage.getItem(STORAGE_KEY));
   if (existing) {
     const migrated = normalizeAppData(existing);
-    if (isEmptyAppData(migrated) && !hasBlankResetMarker(migrated)) {
-      const starter = createStarterData();
-      saveAppData(starter);
-      return withLocalThemePreference(starter);
-    }
     return withLocalThemePreference(migrated);
   }
 
@@ -34,14 +29,14 @@ export function loadAppData(): AppData {
     }
   }
 
-  const starter = createStarterData();
-  saveAppData(starter);
-  return withLocalThemePreference(starter);
+  const blank = createZeroData();
+  saveAppData(blank);
+  return withLocalThemePreference(blank);
 }
 
 export function saveAppData(data: AppData) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, version: 4 }));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, version: 5 }));
 }
 
 export function loadThemePreference(fallback: ThemeMode): ThemeMode {
@@ -111,17 +106,16 @@ export function normalizeAppData(raw: unknown): AppData {
     if (maybeRows) {
       sections[section] = maybeRows
         .map((row) => migrateRow(section, row))
-        .map((row) => (section === "inventory" ? normalizeInventoryRow(row) : row))
         .filter((row) => !isBlankRow(row.cells))
         .filter((row) => !isLegacySampleRow(section, row));
     }
   }
 
-  sections.inventory = sections.inventory.map(normalizeInventoryRow);
-  sections.money = sections.money.map((row) => ({
+  sections.inventory = canonicalizeInventoryRows(sections.inventory);
+  sections.money = canonicalizeAccountRows(sections.money.map((row) => ({
     ...row,
     cells: { ...row.cells, label: displayAccountLabel(row.cells.label) },
-  }));
+  })));
   sections.transactions = sections.transactions.map((row) => {
     const cells = { ...row.cells };
     delete cells.recurring;
@@ -186,7 +180,7 @@ export function normalizeAppData(raw: unknown): AppData {
   return {
     ...starter,
     ...source,
-    version: 4,
+    version: 5,
     sections,
     carLoan,
     sortBy: { ...starter.sortBy, ...(typeof source.sortBy === "object" ? source.sortBy : {}) },
@@ -285,12 +279,4 @@ function normalizeText(value: string | undefined): string {
 
 function replaceCashAccountText(value: string | undefined): string {
   return String(value || "").replace(/\bcash on hand\b/gi, "Cash");
-}
-
-function isEmptyAppData(data: AppData): boolean {
-  return Object.values(data.sections).every((rows) => rows.length === 0) && data.paycheckHistory.length === 0;
-}
-
-function hasBlankResetMarker(data: AppData): boolean {
-  return data.settings.hiddenWidgets.includes(BLANK_RESET_MARKER);
 }

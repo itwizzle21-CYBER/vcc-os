@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadThemePreference, normalizeAppData, resetAllData, saveThemePreference, THEME_PREFERENCE_KEY } from "./localStore";
+import { loadAppData, loadThemePreference, normalizeAppData, resetAllData, saveThemePreference, THEME_PREFERENCE_KEY } from "./localStore";
 
 function installLocalStorage() {
   const values = new Map<string, string>();
@@ -45,6 +45,15 @@ describe("theme preference", () => {
     installLocalStorage();
     expect(loadThemePreference("system")).toBe("system");
     expect(loadThemePreference("dark")).toBe("dark");
+  });
+
+  it("starts a new workspace blank instead of injecting demonstration data", () => {
+    installLocalStorage();
+
+    const loaded = loadAppData();
+
+    expect(Object.values(loaded.sections).every((rows) => rows.length === 0)).toBe(true);
+    expect(loaded.version).toBe(5);
   });
 
   it("keeps an explicit device theme authoritative across reloads", () => {
@@ -146,10 +155,30 @@ describe("import normalization", () => {
       },
     });
 
-    expect(imported.version).toBe(4);
+    expect(imported.version).toBe(5);
     expect(imported.sections.transactions.filter((row) => row.cells.receiptId === "receipt-1").map((row) => row.cells)).toEqual([
       expect.objectContaining({ description: "Water", salesTax: "0.42", amount: "-7.42", receiptTotal: "8.75" }),
       expect.objectContaining({ description: "Snack", salesTax: "0.08", amount: "-1.33", receiptTotal: "8.75" }),
     ]);
+  });
+
+  it("deduplicates exact accounts and conservatively merges duplicate inventory on import", () => {
+    const imported = normalizeAppData({
+      sections: {
+        money: [
+          { id: "cash-1", cells: { label: "Cash", section: "cash", amount: "10" } },
+          { id: "cash-2", cells: { label: " cash ", section: "cash", amount: "$10.00" } },
+        ],
+        inventory: [
+          { id: "water-1", cells: { item: "Water", qty: "5", minNeeded: "2" } },
+          { id: "water-2", cells: { item: "water", qty: "0", minNeeded: "3" } },
+        ],
+      },
+    });
+
+    expect(imported.sections.money).toHaveLength(1);
+    expect(imported.sections.inventory).toHaveLength(1);
+    expect(imported.sections.inventory[0].cells).toMatchObject({ qty: "0", minNeeded: "3", alert: "Critical" });
+    expect(imported.sections.inventory[0].cells.duplicateMergeEvidence).toBeTruthy();
   });
 });

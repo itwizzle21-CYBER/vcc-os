@@ -58,7 +58,6 @@ export default function Dashboard({
   accounts,
   layoutView,
 }: DashboardProps) {
-  const [pageOpen, setPageOpen] = useState(true);
   const missionIcon = iconForMission(decisionState.todayMission.href);
   const moduleCards: DashboardModuleCardProps[] = [
     {
@@ -152,20 +151,14 @@ export default function Dashboard({
   return (
     <div className={`base44-dashboard ${layoutViewClass(layoutView)}`} data-layout-view={layoutView}>
       <h1 className="sr-only">VCC-OS Dashboard</h1>
-      <button
+      <div
         className="dashboard-status-line dashboard-collapse-heading"
-        type="button"
-        aria-label={`${pageOpen ? "Collapse" : "Expand"} Dashboard page`}
-        aria-expanded={pageOpen}
-        aria-controls="dashboard-page-content"
-        onClick={() => setPageOpen((open) => !open)}
       >
         <i aria-hidden="true" />
         <span>System Active</span>
-        <small className="collapsible-section-state">{pageOpen ? "Hide page" : "Show page"}</small>
-      </button>
+      </div>
 
-      <div id="dashboard-page-content" className="dashboard-page-content" hidden={!pageOpen}>
+      <div className="dashboard-page-content">
       <a href={decisionState.todayMission.href} className="mission-banner">
         <div>
           <p><Zap size={16} /> Today&apos;s Mission</p>

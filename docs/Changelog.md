@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Made Money Snapshot derived from canonical account balances and corrected Spendable, Safe-to-Spend, and Chime/SpotMe accounting.
+- Added atomic bill-payment and transaction-deletion events with paying-account validation, deterministic links, balance reconciliation, and duplicate prevention.
+- Added intentional mobile swipe-to-delete, conservative account/inventory deduplication, blank production initialization, and permanent access to core pages.
+- Added ADR-003, a financial-integrity risk matrix, and unit/browser regression coverage for the accepted domain rules.
+
 - Rebuilt Car Payments around the verified 2026 Lincoln MKX contract, four confirmed dealer receipts, and the supplied amortization schedule.
 - Added evidence statuses, receipt revisions, dealer communications, reconciliation warnings, confirmed-payment transaction sync, and private local attachment storage.
 - Separated official payoff, dealer account balance, scheduled balance, principal, interest, fees, and total cash paid across the module and dashboard.

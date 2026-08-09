@@ -11,6 +11,8 @@ function bill(status: string): SpreadsheetRow {
       amount: "$95.00",
       status,
       autopay: "no",
+      paymentAccount: status === "paid" ? "Chime" : "",
+      paidDate: status === "paid" ? "2026-07-16" : "",
     },
   };
 }
@@ -27,19 +29,29 @@ describe("paid bill transaction sync", () => {
         type: "expense",
         amount: "$95.00",
         date: "2026-07-16",
+        account: "Chime",
+        billId: "phone",
+        financialEventType: "bill_payment",
       },
     });
   });
 
   it("does not duplicate the expense when a paid bill is edited", () => {
     const existing = syncBillPaymentTransactions([bill("overdue")], [bill("paid")], [], "2026-07-16");
+    existing[0].cells.principalAmount = "90.00";
     const edited = bill("paid");
     edited.cells.amount = "$105.00";
     edited.cells.name = "Mobile phone";
     const transactions = syncBillPaymentTransactions([bill("paid")], [edited], existing, "2026-07-20");
 
     expect(transactions).toHaveLength(1);
-    expect(transactions[0].cells).toMatchObject({ description: "Mobile phone bill payment", amount: "$105.00", date: "2026-07-16" });
+    expect(transactions[0].cells).toMatchObject({ description: "Mobile phone bill payment", amount: "$105.00", date: "2026-07-16", principalAmount: "90.00" });
+  });
+
+  it("does not invent a payment for a legacy paid bill with no linked event", () => {
+    const transactions = syncBillPaymentTransactions([bill("paid")], [bill("paid")], [], "2026-07-16");
+
+    expect(transactions).toEqual([]);
   });
 
   it("removes its generated expense when paid status is corrected back", () => {

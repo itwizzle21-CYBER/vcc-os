@@ -21,9 +21,12 @@ describe("recurring bill engine", () => {
     const rows = configureRecurringBill([bill()], "internet", { frequency: "monthly", dueDate: "2026-01-31" });
     const unchanged = syncRecurringBillOccurrences(rows);
     expect(unchanged).toHaveLength(2);
-    const paid = rows.map((row) => row.cells.recurrenceGenerated === "yes" ? { ...row, cells: { ...row.cells, status: "paid" } } : row);
+    const paid = rows.map((row) => row.cells.recurrenceGenerated === "yes"
+      ? { ...row, cells: { ...row.cells, status: "paid", paymentAccount: "Chime", paidDate: "2026-02-28" } }
+      : row);
     const advanced = syncRecurringBillOccurrences(paid);
     expect(advanced.map((row) => row.cells.dueDate)).toEqual(["2026-01-31", "2026-02-28", "2026-03-28"]);
+    expect(advanced[2].cells).toMatchObject({ paymentAccount: "", paidDate: "" });
   });
 
   it("keeps variable bill edits and starts the next occurrence from the latest values", () => {

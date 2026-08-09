@@ -6,7 +6,7 @@ import { computeFinancialState } from "./financialEngine";
 describe("decision engine mission lifecycle", () => {
   it("shows borrowed money while active, briefly completes it, then removes it from the stack", () => {
     const data = createZeroData();
-    data.sections.money = [{ id: "spotme", cells: { label: "SpotMe", section: "borrowed", amount: "50" } }];
+    data.sections.money = [{ id: "mypay", cells: { label: "MyPay Advance", section: "borrowed", amount: "50" } }];
 
     const active = computeDecisionEngine(computeFinancialState(data), data);
     expect(active.missionStack.find((mission) => mission.id === "clear-borrowed-money")).toMatchObject({ completed: false, target: "$50.00 left" });

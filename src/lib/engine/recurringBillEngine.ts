@@ -76,6 +76,8 @@ export function syncRecurringBillOccurrences(rows: SpreadsheetRow[]): Spreadshee
         ...(latest?.cells || root.cells),
         dueDate,
         status: "unpaid",
+        paymentAccount: "",
+        paidDate: "",
         recurring: "Yes",
         recurrenceFrequency: root.cells.recurrenceFrequency,
         recurrenceSeriesId: seriesId,

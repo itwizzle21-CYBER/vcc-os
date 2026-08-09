@@ -20,11 +20,11 @@ export function syncBillPaymentTransactions(
     const paymentId = paymentTransactionId(bill.id);
     const paymentIndex = nextTransactions.findIndex((row) => row.id === paymentId);
 
-    if (paid && paymentIndex === -1) {
+    if (paid && !wasPaid && paymentIndex === -1) {
       nextTransactions.push(createBillPaymentTransaction(bill, paymentDate));
     } else if (paid && paymentIndex !== -1) {
       const existingPayment = nextTransactions[paymentIndex];
-      nextTransactions[paymentIndex] = createBillPaymentTransaction(bill, existingPayment.cells.date || paymentDate);
+      nextTransactions[paymentIndex] = createBillPaymentTransaction(bill, paymentDate, existingPayment);
     }
 
     if (!paid && wasPaid && paymentIndex !== -1) {
@@ -40,18 +40,21 @@ export function syncBillPaymentTransactions(
   });
 }
 
-function createBillPaymentTransaction(bill: SpreadsheetRow, paymentDate: string): SpreadsheetRow {
+function createBillPaymentTransaction(bill: SpreadsheetRow, paymentDate: string, existing?: SpreadsheetRow): SpreadsheetRow {
   const name = String(bill.cells.name || "Bill").trim() || "Bill";
   const carPayment = isCarPaymentBill(bill);
   return {
     id: paymentTransactionId(bill.id),
     cells: {
+      ...existing?.cells,
       description: carPayment ? `${name} payment` : `${name} bill payment`,
       type: "expense",
       category: carPayment ? "Debt Payments" : bill.cells.category || "",
       amount: bill.cells.amount || "",
-      date: paymentDate,
-      account: "",
+      date: bill.cells.paidDate || existing?.cells.date || paymentDate,
+      account: bill.cells.paymentAccount || existing?.cells.account || "",
+      billId: bill.id,
+      financialEventType: "bill_payment",
       notes: carPayment
         ? `${CAR_PAYMENT_MARKER} Recorded automatically when ${name} was marked paid.`
         : `Recorded automatically when ${name} was marked paid.`,
@@ -69,6 +72,10 @@ export function isCarPaymentBill(bill: SpreadsheetRow): boolean {
 
 export function isCarPaymentTransaction(transaction: SpreadsheetRow): boolean {
   return transaction.cells.notes?.includes("Car payment recorded") || false;
+}
+
+export function isBillPaymentTransaction(transaction: SpreadsheetRow): boolean {
+  return transaction.cells.financialEventType === "bill_payment" || transaction.id.startsWith(PAYMENT_ID_PREFIX);
 }
 
 function paymentTransactionId(billId: string): string {

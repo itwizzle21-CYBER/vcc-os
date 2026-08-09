@@ -1,12 +1,16 @@
 import { expect, test } from "@playwright/test";
+import { createStarterData } from "../../src/lib/storage/defaultData";
+
+const regressionFixture = createStarterData();
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
+  await page.addInitScript((fixture) => {
     if (window.sessionStorage.getItem("vcc-e2e-initialized")) return;
     window.localStorage.clear();
     window.sessionStorage.clear();
+    window.localStorage.setItem("vcc-os:data:v2", JSON.stringify(fixture));
     window.sessionStorage.setItem("vcc-e2e-initialized", "true");
-  });
+  }, regressionFixture);
 });
 
 test("shows a brief, skippable welcome before the dashboard", async ({ page }) => {
@@ -170,6 +174,69 @@ test("requires confirmation before deleting a financial row", async ({ page }) =
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete Bills row 1" }).click();
   await expect(rows).toHaveCount(initialCount - 1);
+});
+
+test("keeps every core domain page available without a page-level hide control", async ({ page }) => {
+  for (const [path, title] of [
+    ["/", "VCC-OS Dashboard"],
+    ["/money", "Money Snapshot"],
+    ["/bills", "Bills"],
+    ["/transactions", "Transactions"],
+    ["/inventory", "Inventory"],
+    ["/savings", "Savings"],
+    ["/debt", "Debt"],
+    ["/goals", "Goals"],
+    ["/car-payment", "Car Payment"],
+    ["/vitascan", "Scan it. Send it to VCC."],
+  ]) {
+    await page.goto(path);
+    await expect(page.locator("main").getByRole("heading", { level: 1, name: title, exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^(Collapse|Expand) .+ page$/i })).toHaveCount(0);
+  }
+});
+
+test("posting a paid bill debits one account and creates one linked transaction", async ({ page }) => {
+  await page.goto("/bills");
+  const initial = await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return Number.parseFloat(data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking").cells.amount.replace(/[^0-9.-]/g, ""));
+  });
+
+  await page.getByRole("combobox", { name: /Paid From, Bills row 1/ }).selectOption("Chime Checking");
+  await page.getByRole("combobox", { name: /Status, Bills row 1/ }).selectOption("paid");
+
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    const bill = data.sections.bills[0];
+    const linked = data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === bill.id);
+    const account = data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking");
+    return { status: bill.cells.status, linked: linked.length, balance: Number.parseFloat(account.cells.amount) };
+  })).toEqual({ status: "paid", linked: 1, balance: initial - 186.42 });
+
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === data.sections.bills[0].id).length;
+  })).toBe(1);
+});
+
+test("mobile swipe intentionally reveals transaction deletion and requires confirmation", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile"), "Mobile swipe behavior.");
+  await page.goto("/transactions");
+  const firstRow = page.locator(".transaction-simple-row").first();
+  const initialCount = await page.locator(".transaction-simple-row").count();
+
+  await firstRow.evaluate((element) => {
+    const makeTouch = (clientX: number) => new Touch({ identifier: 1, target: element, clientX, clientY: 120 });
+    element.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, cancelable: true, touches: [makeTouch(250)] }));
+    element.dispatchEvent(new TouchEvent("touchend", { bubbles: true, cancelable: true, changedTouches: [makeTouch(120)] }));
+  });
+
+  const deleteButton = page.locator(".transaction-swipe-row").first().getByRole("button", { name: /^Delete / });
+  await expect(deleteButton).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await deleteButton.click();
+  await expect(page.locator(".transaction-simple-row")).toHaveCount(initialCount - 1);
 });
 
 test("mobile navigation exposes labeled destinations", async ({ page }, testInfo) => {

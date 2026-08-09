@@ -70,7 +70,6 @@ export default function AppShell({
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [launcherDragging, setLauncherDragging] = useState(false);
   const [launcherTarget, setLauncherTarget] = useState<string | null>(null);
-  const [pageOpen, setPageOpen] = useState(true);
   const [query, setQuery] = useState("");
   const brandRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -107,7 +106,6 @@ export default function AppShell({
   const isTransactions = normalize(currentPath) === "/transactions";
   const moreTabActive = !mobileTabPaths.includes(normalize(currentPath));
   const pageTitle = titleForPath(currentPath, settings);
-  const pageContentId = `page-content-${normalize(currentPath).replace(/[^a-z0-9]+/gi, "-") || "dashboard"}`;
   const accountName = settings.accountName.trim();
   const firstName = accountName.split(/\s+/)[0] || "Account";
   const visualSettings = wallpaperPreview ? { ...settings, ...wallpaperPreview } : settings;
@@ -155,10 +153,6 @@ export default function AppShell({
   useEffect(() => () => {
     if (launcherHoldTimerRef.current) clearTimeout(launcherHoldTimerRef.current);
   }, []);
-
-  useEffect(() => {
-    setPageOpen(true);
-  }, [currentPath]);
 
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 64.01rem)");
@@ -390,19 +384,7 @@ export default function AppShell({
       <main className="workspace">
         {!isDashboard && <header className="topbar">
           <div>
-            <h1 aria-label={pageTitle}>
-              <button
-                className="page-collapse-heading"
-                type="button"
-                aria-label={`${pageOpen ? "Collapse" : "Expand"} ${pageTitle} page`}
-                aria-expanded={pageOpen}
-                aria-controls={pageContentId}
-                onClick={() => setPageOpen((open) => !open)}
-              >
-                <span>{pageTitle}</span>
-                <small className="collapsible-section-state">{pageOpen ? "Hide page" : "Show page"}</small>
-              </button>
-            </h1>
+            <h1 aria-label={pageTitle}>{pageTitle}</h1>
           </div>
           <div className="top-actions">
             <div className="search-shell">
@@ -436,7 +418,7 @@ export default function AppShell({
           </div>
         </header>}
         {isDashboard ? children : (
-          <div id={pageContentId} className="page-route-content" hidden={!pageOpen}>
+          <div className="page-route-content">
             {children}
           </div>
         )}
