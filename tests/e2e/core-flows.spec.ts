@@ -269,6 +269,75 @@ test("VCC Agent stays out of the way and can start a guided walkthrough", async 
   await expect(page.getByText(/Based on: Money Snapshot and bills/)).toBeVisible();
 });
 
+test("switches between nuanced AI pet companions and remembers the selection", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.getByRole("button", { name: "Open VCC Agent" }).click();
+  const companionTabs = page.getByRole("tablist", { name: "AI companion" });
+  await expect(companionTabs.getByRole("tab")).toHaveCount(4);
+  await expect(companionTabs.locator(".vcc-companion-art.is-tab")).toHaveCount(4);
+  await expect(companionTabs.getByRole("tab", { name: "Scout" })).toHaveAttribute("aria-selected", "true");
+
+  await companionTabs.getByRole("tab", { name: "Penny" }).click();
+  await expect(page.locator(".vcc-agent-popover header strong")).toHaveText("Penny");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}").settings?.vccCompanionId)).toBe("penny");
+
+  const input = page.getByRole("textbox", { name: "Ask VCC Agent" });
+  await input.fill("What looks off?");
+  await page.getByRole("button", { name: "Send question" }).click();
+  await expect(page.getByText(/Reality check:/).last()).toBeVisible();
+
+  await page.reload();
+  await page.getByRole("button", { name: "Open VCC Agent" }).click();
+  await expect(page.getByRole("tab", { name: "Penny" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("moves an animated companion by mouse or touch and restores its saved position", async ({ page }, testInfo) => {
+  await page.goto("/money");
+  const launcher = page.getByRole("button", { name: "Open VCC Agent" });
+  await expect(launcher.locator(".vcc-companion-art.is-launcher")).toBeVisible();
+  const before = await launcher.boundingBox();
+  expect(before).not.toBeNull();
+
+  if (testInfo.project.name.includes("mobile")) {
+    const session = await page.context().newCDPSession(page);
+    const startX = before!.x + before!.width / 2;
+    const startY = before!.y + before!.height / 2;
+    await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: startX, y: startY, id: 1 }] });
+    await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 120, y: 240, id: 1 }] });
+    await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  } else {
+    await page.mouse.move(before!.x + before!.width / 2, before!.y + before!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(140, 180, { steps: 8 });
+    await page.mouse.up();
+  }
+
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("vcc.agent.position.v1") || "null"));
+  expect(saved).toEqual(expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }));
+  await page.reload();
+  const restored = await launcher.boundingBox();
+  expect(restored?.x).toBeCloseTo(saved.x, 0);
+  expect(restored?.y).toBeCloseTo(saved.y, 0);
+
+  await launcher.click();
+  await expect(page.getByRole("dialog", { name: "Chat with VCC Agent" })).toBeVisible();
+  await page.getByRole("button", { name: "Reset companion position" }).click();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("vcc.agent.position.v1"))).toBeNull();
+});
+
+test("offers a quiet companion check-in during longer VCC sessions", async ({ page }) => {
+  await page.clock.install();
+  await page.goto("/money");
+  await expect(page.getByRole("button", { name: "Open VCC Agent" })).toBeVisible();
+  await page.clock.fastForward(45_100);
+  const nudge = page.locator(".vcc-agent-nudge");
+  await expect(nudge).toBeVisible();
+  await expect(nudge).toContainText(/next move|reality check|calm step|progress check/i);
+  await nudge.getByRole("button", { name: /Ask/ }).click();
+  await expect(page.getByRole("dialog", { name: "Chat with VCC Agent" })).toBeVisible();
+  await expect(nudge).toBeHidden();
+});
+
 test("VCC Agent learns conversational preferences and can forget them", async ({ page }) => {
   await page.goto("/goals");
   await page.getByRole("button", { name: "Open VCC Agent" }).click();

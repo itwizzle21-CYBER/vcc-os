@@ -14,6 +14,74 @@
   gap: 0.75rem;
 }
 
+.settings-companion-picker {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--surface-2) 68%, transparent);
+  padding: 0.85rem;
+}
+
+.settings-companion-picker > div:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.settings-companion-picker > div:first-child small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.settings-companion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.settings-companion-grid button {
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  min-width: 0;
+  min-height: 5.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.72rem;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+.settings-companion-grid button > span:last-child {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+}
+
+.settings-companion-grid small,
+.settings-companion-grid em {
+  color: var(--muted);
+  font-size: 0.67rem;
+  line-height: 1.38;
+}
+
+.settings-companion-grid em { margin-top: 0.18rem; font-style: normal; }
+.settings-companion-grid button:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent-soft) 42%, var(--surface)); }
+.settings-companion-grid button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.settings-companion-grid button:active { transform: scale(0.98); }
+.settings-companion-grid button.is-selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface)); box-shadow: inset 3px 0 var(--accent); }
+.settings-companion-grid button.is-selected strong::after { content: " · Selected"; color: var(--accent); font-size: 0.64rem; }
+
+@media (max-width: 620px) {
+  .settings-companion-grid { grid-template-columns: 1fr; }
+}
+
 .premium-settings .settings-section {
   overflow: hidden;
   margin: 0;

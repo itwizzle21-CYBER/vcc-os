@@ -3073,6 +3073,39 @@ textarea {
   color: var(--muted);
 }
 
+:root[data-theme="light"] .vcc-companion-tabs {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+
+:root[data-theme="light"] .vcc-companion-tabs button {
+  color: var(--muted);
+}
+
+:root[data-theme="light"] .vcc-companion-tabs button:hover,
+:root[data-theme="light"] .vcc-companion-tabs button[aria-selected="true"] {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .vcc-agent-quick-actions button {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 48%, var(--surface));
+  color: color-mix(in srgb, var(--accent) 82%, #15345f);
+}
+
+:root[data-theme="light"] .vcc-agent-quick-actions button:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+:root[data-theme="light"] .vcc-agent-input button:not(:disabled) {
+  color: #ffffff;
+  background: var(--accent);
+}
+
 :root[data-theme="light"] .vitascan-app-shell {
   background:
     radial-gradient(circle at 20% 0, var(--accent-soft), transparent 32%),

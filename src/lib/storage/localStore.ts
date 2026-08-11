@@ -176,6 +176,9 @@ export function normalizeAppData(raw: unknown): AppData {
       return [page, candidate >= 1 && candidate <= 5 ? candidate : fallback];
     }),
   ) as AppData["settings"]["layoutViews"];
+  const vccCompanionId = (["scout", "penny", "clover", "pico"] as const).includes(sourceSettings.vccCompanionId as "scout" | "penny" | "clover" | "pico")
+    ? sourceSettings.vccCompanionId as AppData["settings"]["vccCompanionId"]
+    : starter.settings.vccCompanionId;
 
   return {
     ...starter,
@@ -188,7 +191,7 @@ export function normalizeAppData(raw: unknown): AppData {
     paycheckHistory: (Array.isArray(source.paycheckHistory) ? source.paycheckHistory : starter.paycheckHistory)
       .map((row) => ({ ...row, depositAccountLabel: displayAccountLabel(row.depositAccountLabel) })),
     activity: Array.isArray(source.activity) ? source.activity : starter.activity,
-    settings: { ...starter.settings, ...sourceSettings, theme, appearanceTheme, layoutViews },
+    settings: { ...starter.settings, ...sourceSettings, theme, appearanceTheme, vccCompanionId, layoutViews },
   } as AppData;
 }
 

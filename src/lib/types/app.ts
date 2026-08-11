@@ -86,6 +86,7 @@ export interface UserSettings {
   welcomeTransition: "rise" | "fade" | "focus" | "sweep";
   vitaScanEnabled: boolean;
   vccPetEnabled: boolean;
+  vccCompanionId: VccCompanionId;
   layoutViews: LayoutViews;
 }
 
@@ -99,6 +100,7 @@ export interface ActivityEvent {
 
 export type EvidenceStatus = "draft" | "confirmed" | "needs_review" | "superseded" | "rejected";
 export type CommunicationStatus = "unverified" | "dealer_confirmed" | "matches_receipt" | "conflicts_with_receipt" | "superseded";
+export type VccCompanionId = "scout" | "penny" | "clover" | "pico";
 
 export interface CarLoanContract {
   id: string;

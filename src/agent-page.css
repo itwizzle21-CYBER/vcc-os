@@ -4,16 +4,18 @@
 .vcc-agent-launcher > svg:first-child { width: 19px; height: 19px; }
 .vcc-agent-launcher span { font-weight: 750; white-space: nowrap; }
 .vcc-agent-launcher-spark { position: absolute; top: 5px; right: 5px; color: #fff4a3; filter: drop-shadow(0 0 5px rgba(255, 226, 105, .7)); }
-.vcc-agent-widget.pet-enabled .vcc-agent-launcher { border-radius: 50% 50% 46% 46%; }
+.vcc-agent-widget.pet-enabled .vcc-agent-launcher { overflow: hidden; border-radius: 50% 50% 46% 46%; touch-action: none; cursor: grab; }
+.vcc-agent-widget.is-dragging .vcc-agent-launcher { cursor: grabbing; filter: brightness(1.08); box-shadow: 0 18px 48px rgba(34, 43, 120, .55); }
 .vcc-agent-widget.pet-enabled .vcc-agent-launcher-spark { animation: vcc-pet-spark 2.4s ease-in-out infinite; }
 .vcc-agent-launcher:hover { filter: brightness(1.08); box-shadow: 0 17px 44px rgba(34, 43, 120, .48); }
 .vcc-agent-launcher:active { transform: scale(.96); }
 .vcc-agent-launcher:focus-visible, .vcc-agent-popover button:focus-visible, .vcc-agent-popover input:focus-visible, .vcc-agent-popover a:focus-visible { outline: 3px solid #b8c2ff; outline-offset: 3px; }
 .vcc-agent-widget.is-open .vcc-agent-launcher { width: 36px; min-width: 36px; height: 36px; justify-content: center; padding: 0; border-radius: 11px; }
 
-.vcc-agent-popover { position: fixed; top: calc(max(.55rem, env(safe-area-inset-top)) + 3.35rem); right: .65rem; width: min(390px, calc(100vw - 1.3rem)); max-height: min(650px, calc(100dvh - 9rem - env(safe-area-inset-top) - env(safe-area-inset-bottom))); display: grid; grid-template-rows: auto minmax(120px, 1fr) auto auto auto; overflow: hidden; border: 1px solid rgba(140, 151, 230, .28); border-radius: 20px; color: var(--text, #f4f6ff); background: rgba(14, 19, 34, .97); box-shadow: 0 24px 80px rgba(0, 0, 0, .46); backdrop-filter: blur(20px); animation: vcc-agent-in 160ms ease-out; }
+.vcc-agent-popover { position: fixed; top: calc(max(.55rem, env(safe-area-inset-top)) + 3.35rem); right: .65rem; width: min(390px, calc(100vw - 1.3rem)); max-height: min(650px, calc(100dvh - 9rem - env(safe-area-inset-top) - env(safe-area-inset-bottom))); display: grid; grid-template-rows: auto auto minmax(120px, 1fr) auto auto auto; overflow: hidden; border: 1px solid rgba(140, 151, 230, .28); border-radius: 20px; color: var(--text, #f4f6ff); background: rgba(14, 19, 34, .97); box-shadow: 0 24px 80px rgba(0, 0, 0, .46); backdrop-filter: blur(20px); animation: vcc-agent-in 160ms ease-out; }
 .vcc-agent-popover > header { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 14px 15px; border-bottom: 1px solid rgba(255,255,255,.08); }
 .vcc-agent-face { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 13px; color: #d3d8ff; background: rgba(110, 126, 255, .18); }
+.vcc-agent-widget.pet-enabled .vcc-agent-face { overflow: hidden; padding: 0; }
 .vcc-agent-popover header div { display: grid; gap: 2px; min-width: 0; }
 .vcc-agent-popover header small { display: flex; align-items: center; gap: 6px; overflow: hidden; color: #99a3b9; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
 .vcc-agent-popover header small i { width: 7px; height: 7px; border-radius: 50%; background: #55d99b; }
@@ -21,12 +23,23 @@
 .vcc-agent-popover header button:hover { color: white; background: rgba(255,255,255,.08); }
 .vcc-agent-popover header button:active { transform: scale(.93); }
 
+.vcc-companion-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 9px 11px; border-bottom: 1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.1); }
+.vcc-companion-tabs button { display: grid; justify-items: center; gap: 2px; min-width: 0; min-height: 48px; border: 1px solid transparent; border-radius: 10px; color: #9ca6bd; background: transparent; padding: 5px 3px; cursor: pointer; transition: transform 140ms ease, border-color 140ms ease, background 140ms ease; }
+.vcc-companion-tabs button > span { line-height: 1; }
+.vcc-companion-tabs button small { max-width: 100%; overflow: hidden; font-size: .66rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.vcc-companion-tabs button:hover { border-color: rgba(135,148,255,.28); background: rgba(104,121,245,.08); color: #d9ddff; }
+.vcc-companion-tabs button:focus-visible { outline: 3px solid #b8c2ff; outline-offset: 2px; }
+.vcc-companion-tabs button:active { transform: scale(.96); }
+.vcc-companion-tabs button[aria-selected="true"] { border-color: rgba(151,162,255,.58); background: rgba(104,121,245,.2); color: #fff; box-shadow: inset 0 -2px #8c9aff; }
+.vcc-companion-tabs button[aria-selected="true"] small::after { content: " ✓"; }
+
 .vcc-agent-thread { display: grid; align-content: start; gap: 13px; overflow-y: auto; padding: 17px 15px; }
 .vcc-agent-message { display: flex; gap: 8px; align-items: flex-start; }
 .vcc-agent-message.user { justify-content: flex-end; }
 .vcc-agent-message > div { max-width: 82%; padding: 11px 13px; border-radius: 5px 15px 15px; background: rgba(255,255,255,.06); }
 .vcc-agent-message.user > div { border-radius: 15px 15px 5px; background: rgba(101, 117, 245, .24); }
 .vcc-agent-mini-face { display: grid; place-items: center; flex: 0 0 auto; width: 28px; height: 28px; border-radius: 10px; color: #cbd2ff; background: rgba(104, 121, 245, .16); }
+.vcc-agent-widget.pet-enabled .vcc-agent-mini-face { overflow: hidden; }
 .vcc-agent-message p { margin: 0; font-size: .9rem; line-height: 1.52; }
 .vcc-agent-message > div > small { display: block; margin-top: 7px; color: #919bb2; font-size: .75rem; line-height: 1.42; }
 .vcc-agent-message details { margin-top: 9px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
@@ -57,15 +70,65 @@
 
 @keyframes vcc-agent-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
 @keyframes vcc-pet-spark { 0%, 100% { transform: rotate(-8deg) scale(.9); opacity: .72; } 50% { transform: rotate(8deg) scale(1.15); opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .vcc-agent-popover { animation: none; } .vcc-agent-launcher, .vcc-agent-popover button { transition: none; } }
+@keyframes vcc-pet-idle { 0%, 100% { transform: translateY(0) scale(1); } 45% { transform: translateY(-2px) scale(1.025); } 55% { transform: translateY(-2px) scale(1.025) rotate(.8deg); } }
+@media (prefers-reduced-motion: reduce) { .vcc-agent-popover, .vcc-companion-art { animation: none !important; } .vcc-agent-launcher, .vcc-agent-popover button { transition: none; } }
 @media (max-width: 640px) {
   .vcc-agent-widget { right: 12px; }
-  .vcc-agent-launcher span { display: none; }
+  .vcc-agent-launcher span:not(.vcc-companion-art) { display: none; }
 }
 @media (min-width: 64.01rem) {
   .vcc-agent-widget { top: auto; right: 22px; bottom: 22px; z-index: 80; }
   .vcc-agent-launcher { width: 48px; min-width: 48px; min-height: 48px; height: 48px; border-radius: 16px; box-shadow: 0 12px 32px rgba(34, 43, 120, .36); }
   .vcc-agent-launcher > svg:first-child { width: 23px; height: 23px; }
   .vcc-agent-widget.is-open .vcc-agent-launcher { width: 46px; min-width: 46px; min-height: 46px; height: 46px; border-radius: 15px; }
-  .vcc-agent-popover { position: static; width: min(390px, calc(100vw - 28px)); max-height: min(650px, calc(100vh - 100px)); }
+  .vcc-agent-popover { position: fixed; top: auto; right: 22px; bottom: 82px; width: min(390px, calc(100vw - 28px)); max-height: min(650px, calc(100vh - 100px)); }
 }
+
+.vcc-companion-art {
+  display: block;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: inherit;
+  background-image: url("/companions/vcc-companions-concept.png");
+  background-repeat: no-repeat;
+  background-size: 400% auto;
+  background-position-y: 15%;
+}
+.vcc-companion-art.art-scout { background-position-x: 0%; }
+.vcc-companion-art.art-penny { background-position-x: 33.333%; }
+.vcc-companion-art.art-clover { background-position-x: 66.667%; }
+.vcc-companion-art.art-pico { background-position-x: 100%; }
+.vcc-companion-art.is-launcher { position: absolute; inset: 0; width: auto; height: auto; border-radius: inherit; animation: vcc-pet-idle 4.8s ease-in-out infinite; }
+.vcc-companion-art.is-header { width: 100%; height: 100%; border-radius: inherit; }
+.vcc-companion-art.is-tab { width: 30px; height: 30px; border: 1px solid rgba(255,255,255,.1); border-radius: 9px; }
+.vcc-companion-art.is-message { width: 100%; height: 100%; border-radius: inherit; }
+.vcc-companion-art.is-settings { width: 2.8rem; height: 2.8rem; border-radius: .72rem; }
+.vcc-companion-art.is-nudge { width: 44px; height: 44px; border-radius: 13px; box-shadow: 0 7px 18px rgba(0,0,0,.24); }
+
+.vcc-agent-nudge {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 9px;
+  width: min(285px, calc(100vw - 24px));
+  border: 1px solid rgba(151,162,255,.38);
+  border-radius: 16px;
+  background: rgba(14,19,34,.97);
+  color: var(--text, #f4f6ff);
+  padding: 10px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.38);
+  backdrop-filter: blur(18px);
+  animation: vcc-agent-in 180ms ease-out;
+}
+.vcc-agent-nudge.is-below { top: calc(100% + 10px); bottom: auto; }
+.vcc-agent-nudge.is-left { right: auto; left: 0; }
+.vcc-agent-nudge > div { display: grid; min-width: 0; gap: 3px; }
+.vcc-agent-nudge strong { font-size: .76rem; }
+.vcc-agent-nudge span { color: #aeb7ca; font-size: .72rem; line-height: 1.38; white-space: normal; }
+.vcc-agent-nudge > div button { justify-self: start; margin-top: 4px; border: 0; border-radius: 999px; background: rgba(104,121,245,.2); color: #d9ddff; padding: 5px 8px; font-size: .68rem; font-weight: 800; cursor: pointer; }
+.vcc-agent-nudge > div button:hover { background: rgba(104,121,245,.34); color: white; }
+.vcc-agent-nudge-dismiss { display: grid; width: 25px; height: 25px; place-items: center; border: 0; border-radius: 8px; background: transparent; color: #9ca6ba; padding: 0; cursor: pointer; }
+.vcc-agent-nudge-dismiss:hover { background: rgba(255,255,255,.08); color: white; }

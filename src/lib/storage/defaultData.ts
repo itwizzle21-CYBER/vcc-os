@@ -444,7 +444,8 @@ export function createZeroData(): AppData {
       welcomeDurationSeconds: 4,
       welcomeTransition: "rise",
       vitaScanEnabled: true,
-      vccPetEnabled: false,
+      vccPetEnabled: true,
+      vccCompanionId: "scout",
       layoutViews: {
         dashboard: 1,
         money: 2,

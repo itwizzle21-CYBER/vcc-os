@@ -36,7 +36,7 @@ import { LayoutViewSettings, layoutViewClass } from "./components/layout/LayoutV
 import NotFound from "./components/layout/NotFound";
 import WelcomeTransition from "./components/layout/WelcomeTransition";
 import Dashboard from "./components/dashboard/Dashboard";
-import VccAgent from "./components/agent/VccAgent";
+import VccAgent, { CompanionArt, VCC_COMPANIONS } from "./components/agent/VccAgent";
 import PaycheckPlanner from "./components/modules/PaycheckPlanner";
 import CarLoanWorkspace from "./components/modules/CarLoanWorkspace";
 import Spreadsheet from "./components/shared/Spreadsheet";
@@ -222,7 +222,7 @@ export default function App() {
       {path === "/missions" && <MissionsPage decisionState={decisionState} activity={data.activity} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} onWallpaperPreviewChange={setWallpaperPreview} />}
       {!isKnownPath && <NotFound />}
-      {isKnownPath && <VccAgent data={data} financialState={financialState} decisionState={decisionState} petEnabled={data.settings.vccPetEnabled} />}
+      {isKnownPath && <VccAgent data={data} financialState={financialState} decisionState={decisionState} petEnabled={data.settings.vccPetEnabled} companionId={data.settings.vccCompanionId} onCompanionChange={(vccCompanionId) => updateData({ ...data, settings: { ...data.settings, vccCompanionId } })} />}
     </AppShell>
     {recentlyCompletedMissionIds.includes("clear-borrowed-money") && (
       <div className="mission-completion-notice" role="status" aria-live="polite">
@@ -2425,8 +2425,21 @@ function SettingsPage({
           <SettingsSection id="settings-features" icon={Bot} title="Features" description="Choose which optional tools appear across VCC-OS." open={openSection === "settings-features"}>
             <div className="settings-row-list">
               <SettingFeatureRow title="VitaScan" description="Show the receipt scanner in desktop and mobile navigation." checked={data.settings.vitaScanEnabled} onChange={(vitaScanEnabled) => onChange({ ...data, settings: { ...data.settings, vitaScanEnabled } })} />
-              <SettingFeatureRow title="VCC companion mode" description="Give Ask VCC a small pet-like presence while keeping the chatbot compact." checked={data.settings.vccPetEnabled} onChange={(vccPetEnabled) => onChange({ ...data, settings: { ...data.settings, vccPetEnabled } })} />
+              <SettingFeatureRow title="AI pet companions" description="Choose a pet guide with its own financial specialty, tone, and coaching style." checked={data.settings.vccPetEnabled} onChange={(vccPetEnabled) => onChange({ ...data, settings: { ...data.settings, vccPetEnabled } })} />
             </div>
+            {data.settings.vccPetEnabled && (
+              <div className="settings-companion-picker" role="radiogroup" aria-label="Default AI pet companion">
+                <div><strong>Default companion</strong><small>All companions use the same VCC records and decision rules; only their focus and voice change.</small></div>
+                <div className="settings-companion-grid">
+                  {VCC_COMPANIONS.map((companion) => (
+                    <button key={companion.id} type="button" role="radio" aria-checked={data.settings.vccCompanionId === companion.id} className={data.settings.vccCompanionId === companion.id ? "is-selected" : ""} onClick={() => onChange({ ...data, settings: { ...data.settings, vccCompanionId: companion.id } })}>
+                      <CompanionArt companionId={companion.id} variant="settings" />
+                      <span><strong>{companion.name}</strong><small>{companion.species} · {companion.specialty}</small><em>{companion.nuance}</em></span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {data.settings.vitaScanEnabled && <a className="settings-feature-link" href="/vitascan"><ScanLine size={17} aria-hidden="true" /> Open VitaScan</a>}
           </SettingsSection>
 
