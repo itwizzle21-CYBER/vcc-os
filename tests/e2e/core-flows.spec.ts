@@ -698,12 +698,11 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   await expect(page.locator(".transaction-row-account")).toContainText("Emergency Fund");
 
   await page.goto("/reports");
-  await page.getByRole("button", { name: "Monthly" }).click();
-  await expect(page.getByRole("button", { name: "Monthly" })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("tab", { name: "Trend lines" }).click();
-  await expect(page.getByRole("tab", { name: "Trend lines" })).toHaveAttribute("aria-selected", "true");
-  await page.getByRole("button", { name: "Next chart" }).last().click();
-  await expect(page.getByRole("tab", { name: "Milestones" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("button", { name: "All Time" }).click();
+  await expect(page.getByRole("button", { name: "All Time" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".report-svg-chart")).toHaveCount(2);
+  await expect(page.locator(".report-category-chart")).toBeVisible();
+  await expect(page.locator(".chart-slide-controls")).toHaveCount(0);
 
   await page.goto("/car-payment");
   for (const [tab, heading] of [
@@ -748,6 +747,23 @@ test("moves transaction transfers between linked accounts and savings vaults in 
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
     return [data.sections.money.find((item: { id: string }) => item.id === "money-cash-1").cells.amount, data.sections.savings.find((item: { id: string }) => item.id === "sav-emergency").cells.balance];
   })).toEqual(["2890.32", "12750.00"]);
+});
+
+test("adds multiple item-and-cost rows from one transaction entry", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  const editor = page.locator(".transaction-detail-editor");
+  await editor.getByLabel("Description").fill("Lunch");
+  await editor.getByLabel("Amount").fill("12.50");
+  await editor.getByRole("button", { name: "Add another item" }).click();
+  await editor.getByLabel("Item 2", { exact: true }).fill("Coffee");
+  await editor.getByLabel("Cost for item 2", { exact: true }).fill("4.25");
+  await editor.getByText("Account", { exact: true }).locator("..").locator("select").selectOption("Cash App");
+  await editor.getByRole("button", { name: "Save 2 items" }).click();
+
+  await expect(page.getByText("2 transactions saved and account balances updated.")).toBeVisible();
+  await expect(page.locator(".transaction-simple-row").filter({ hasText: "Lunch" })).toBeVisible();
+  await expect(page.locator(".transaction-simple-row").filter({ hasText: "Coffee" })).toBeVisible();
 });
 
 test("posts a multi-item manual receipt as itemized transaction rows", async ({ page }) => {
@@ -962,7 +978,7 @@ test("updates the transaction category from completed U.S. retail descriptions",
   await editor.getByText("Account", { exact: true }).locator("..").locator("select").selectOption("Cash App");
   await editor.getByRole("button", { name: "Save changes" }).click();
 
-  await page.getByRole("button", { name: /KROGER #0456/ }).click();
+  await page.locator(".transaction-simple-row").filter({ hasText: "KROGER #0456" }).click();
   await page.getByRole("button", { name: "More accounting details" }).click();
   await expect(page.locator(".transaction-detail-editor").getByLabel("Category")).toHaveValue("Groceries");
 });

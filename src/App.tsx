@@ -60,7 +60,7 @@ import { applyVisualSettings, getSystemTheme } from "./lib/theme/themePreference
 import type { AppData, SectionKey, SpreadsheetRow, ThemeMode, UserSettings } from "./lib/types/app";
 import { enforceChimeBalanceFloor } from "./lib/engine/chimeAccountingEngine";
 import { canonicalizeAccountRows, canonicalizeInventoryRows } from "./lib/engine/canonicalRecords";
-import { configureRecurringBill, disableRecurringBill, frequencyLabel, recurringSeriesRoots, syncRecurringBillOccurrences, type RecurringBillFrequency } from "./lib/engine/recurringBillEngine";
+import { syncRecurringBillOccurrences } from "./lib/engine/recurringBillEngine";
 import { useVccCloudSync } from "./lib/cloud/useVccCloudSync";
 
 const worldwideTransactionCategories = [
@@ -218,7 +218,7 @@ export default function App() {
       {path === "/savings" && <SavingsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
       {path === "/inventory" && <InventoryPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
-      {path === "/reports" && <ReportsPage data={data} financialState={financialState} decisionState={decisionState} />}
+      {path === "/reports" && <ReportsPage data={data} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} activity={data.activity} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} onWallpaperPreviewChange={setWallpaperPreview} />}
       {!isKnownPath && <NotFound />}
@@ -420,7 +420,6 @@ function BillsPage({
 }) {
   const [billSearch, setBillSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [recurringBillId, setRecurringBillId] = useState("");
   const [billMessage, setBillMessage] = useState("");
   const billRows = data.sections.bills.map(normalizeBillRow);
   const filledBillRows = billRows.filter((row) => !isBlankRow(row.cells));
@@ -446,7 +445,6 @@ function BillsPage({
     unpaid: filledBillRows.filter((row) => billStatus(row) === "unpaid").length,
     paid: filledBillRows.filter((row) => billStatus(row) === "paid").length,
     autopay: filledBillRows.filter((row) => isAffirmative(row.cells.autopay)).length,
-    recurring: recurringSeriesRoots(filledBillRows).length,
     priority: rankedBills.filter((bill) => ["overdue", "late"].includes(bill.status) || bill.score >= 75).length,
   };
 
@@ -456,7 +454,7 @@ function BillsPage({
     const preservedRows = billRows.filter((row) => !visibleBillIds.has(row.id) || nextVisibleIds.has(row.id));
     const mergedRows = preservedRows.map((row) => normalizedNextRows.find((next) => next.id === row.id) || row);
     const addedRows = normalizedNextRows.filter((row) => !billRows.some((existing) => existing.id === row.id));
-    let nextBillRows = [...mergedRows, ...addedRows];
+    const nextBillRows = [...mergedRows, ...addedRows];
     for (const nextRow of normalizedNextRows) {
       const previousRow = billRows.find((row) => row.id === nextRow.id);
       const newlyPaid = billStatus(nextRow) === "paid" && billStatus(previousRow || { id: "", cells: {} }) !== "paid";
@@ -465,90 +463,19 @@ function BillsPage({
         return;
       }
       if (newlyPaid && !nextRow.cells.paidDate) nextRow.cells.paidDate = todayIso();
-      const becameRecurring = isAffirmative(nextRow.cells.recurring) && !isAffirmative(previousRow?.cells.recurring);
-      const stoppedRecurring = !isAffirmative(nextRow.cells.recurring) && isAffirmative(previousRow?.cells.recurring);
-      if (becameRecurring) setRecurringBillId(nextRow.cells.recurrenceSeriesId || nextRow.id);
-      if (stoppedRecurring) nextBillRows = disableRecurringBill(nextBillRows, nextRow.id);
     }
     setBillMessage("");
     updateRows(section, nextBillRows);
   }
 
-  function saveRecurringBill(rowId: string, details: { frequency: RecurringBillFrequency; dueDate: string }) {
-    updateRows("bills", configureRecurringBill(billRows, rowId, details));
-    setRecurringBillId("");
-  }
-
-  function stopRecurringBill(rowId: string) {
-    updateRows("bills", disableRecurringBill(billRows, rowId));
-    setRecurringBillId("");
-  }
-
-  const recurringRoots = recurringSeriesRoots(filledBillRows);
-  const recurringDialogBill = recurringBillId
-    ? billRows.find((row) => row.id === recurringBillId || row.cells.recurrenceSeriesId === recurringBillId && row.cells.recurrenceGenerated !== "yes")
-    : undefined;
+  const billsTableConfig = {
+    ...sectionConfigs.bills,
+    title: "Bills",
+    columns: sectionConfigs.bills.columns.filter((column) => column.key !== "recurring"),
+  };
 
   return (
     <div className={`bills-page module-page ${layoutViewClass(data.settings.layoutViews.bills)}`} data-layout-view={data.settings.layoutViews.bills}>
-      <SummaryGrid items={summaryForSection("bills", financialState)} />
-      <section className="bills-command-panel">
-        <div>
-          <p className="eyebrow">Bills Workspace</p>
-          <h2>Track and manage recurring expenses</h2>
-        </div>
-        <div className="bills-filter-row">
-          <label className="bills-search">
-            <span>Search bills</span>
-            <BufferedTextInput aria-label="Search bills" value={billSearch} onValueChange={setBillSearch} placeholder="Search bills, categories, status" />
-          </label>
-          <div className="bills-status-tabs" role="tablist" aria-label="Bill status filter">
-            {[
-              ["all", "All"],
-              ["unpaid", "Unpaid"],
-              ["paid", "Paid"],
-              ["overdue", "Overdue"],
-            ].map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={statusFilter === value ? "active" : ""}
-                aria-pressed={statusFilter === value}
-                onClick={() => setStatusFilter(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="bills-inline-stats">
-          <span>{billStats.shown} shown</span>
-          <span>{billStats.total} bills</span>
-          <strong>{formatCurrency(billStats.amount)} total</strong>
-          <strong className={billStats.overdue > 0 ? "bad" : ""}>{billStats.overdue} overdue</strong>
-          <em>{billStats.autopay} autopay</em>
-          <em>{billStats.recurring} recurring</em>
-        </div>
-      </section>
-      {billMessage && <p className="table-validation" role="alert">{billMessage}</p>}
-
-      {recurringRoots.length > 0 && (
-        <section className="bills-recurring-panel panel" aria-labelledby="recurring-schedules-title">
-          <div>
-            <p className="eyebrow">Recurring Schedules</p>
-            <h2 id="recurring-schedules-title">Upcoming bills stay in your main list</h2>
-          </div>
-          <div className="bills-recurring-list">
-            {recurringRoots.map((row) => (
-              <button type="button" key={row.id} onClick={() => setRecurringBillId(row.id)}>
-                <span><strong>{row.cells.name || "Recurring bill"}</strong><small>{frequencyLabel(row.cells.recurrenceFrequency)} · next due {formatDateMDY(row.cells.dueDate)}</small></span>
-                <em>Manage</em>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
       <section className="bills-due-display panel" aria-label="Decision Engine bill order">
         <div className="bills-due-primary">
           <span className="bills-due-icon" aria-hidden="true">
@@ -591,6 +518,42 @@ function BillsPage({
         ) : null}
       </section>
 
+      <SummaryGrid items={summaryForSection("bills", financialState)} />
+
+      <section className="bills-command-panel bills-list-toolbar" aria-label="Bills list controls">
+        <div className="bills-filter-row">
+          <label className="bills-search">
+            <span>Search bills</span>
+            <BufferedTextInput aria-label="Search bills" value={billSearch} onValueChange={setBillSearch} placeholder="Search bills, categories, status" />
+          </label>
+          <div className="bills-status-tabs" role="tablist" aria-label="Bill status filter">
+            {[
+              ["all", "All"],
+              ["unpaid", "Unpaid"],
+              ["paid", "Paid"],
+              ["overdue", "Overdue"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={statusFilter === value ? "active" : ""}
+                aria-pressed={statusFilter === value}
+                onClick={() => setStatusFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="bills-inline-stats" aria-label="Visible bill summary">
+          <span>{billStats.shown} shown</span>
+          <strong>{formatCurrency(billStats.amount)} total</strong>
+          <strong className={billStats.overdue > 0 ? "bad" : ""}>{billStats.overdue} overdue</strong>
+          <em>{billStats.autopay} autopay</em>
+        </div>
+      </section>
+      {billMessage && <p className="table-validation" role="alert">{billMessage}</p>}
+
       <section className="bills-insight-grid">
         <article className="panel bill-insight-card">
           <p className="eyebrow">Status Mix</p>
@@ -610,7 +573,7 @@ function BillsPage({
       </section>
 
       <Spreadsheet
-        config={sectionConfigs.bills}
+        config={billsTableConfig}
         rows={visibleBillRows}
         sortBy={data.sortBy.bills}
         onSortChange={updateSort}
@@ -622,103 +585,10 @@ function BillsPage({
           paymentAccount: transactionEndpointOptions(data)
             .filter((account) => account.kind === "money" && !account.isNew)
             .map((account) => ({ value: account.value, label: account.label })),
-          recurring: [{ value: "Yes", label: "Yes" }, { value: "No", label: "No" }],
         }}
         addLabel="Add Bill"
       />
-      {recurringDialogBill && (
-        <RecurringBillDialog
-          key={`${recurringDialogBill.id}-${recurringDialogBill.cells.recurrenceFrequency}-${recurringDialogBill.cells.dueDate}`}
-          bill={recurringDialogBill}
-          onClose={() => {
-            if (!recurringDialogBill.cells.recurrenceFrequency) stopRecurringBill(recurringDialogBill.id);
-            else setRecurringBillId("");
-          }}
-          onSave={(details) => saveRecurringBill(recurringDialogBill.id, details)}
-          onStop={() => stopRecurringBill(recurringDialogBill.id)}
-        />
-      )}
     </div>
-  );
-}
-
-function RecurringBillDialog({
-  bill,
-  onClose,
-  onSave,
-  onStop,
-}: {
-  bill: SpreadsheetRow;
-  onClose: () => void;
-  onSave: (details: { frequency: RecurringBillFrequency; dueDate: string }) => void;
-  onStop: () => void;
-}) {
-  const [frequency, setFrequency] = useState<RecurringBillFrequency>((bill.cells.recurrenceFrequency as RecurringBillFrequency) || "monthly");
-  const [dueDate, setDueDate] = useState(bill.cells.dueDate || todayIso());
-  const [message, setMessage] = useState("");
-  const dialogRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    dialogRef.current?.querySelector<HTMLElement>("input, select, button")?.focus();
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  function save() {
-    if (!dueDate) {
-      setMessage("Choose the next due date.");
-      return;
-    }
-    try {
-      onSave({ frequency, dueDate });
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The recurring schedule could not be saved.");
-    }
-  }
-
-  return createPortal(
-    <div className="recurring-bill-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
-    }}>
-      <section ref={dialogRef} className="recurring-bill-dialog" role="dialog" aria-modal="true" aria-labelledby="recurring-bill-title" aria-describedby="recurring-bill-description">
-        <header>
-          <div>
-            <p className="eyebrow">Recurring Bill</p>
-            <h2 id="recurring-bill-title">{bill.cells.name || "Bill schedule"}</h2>
-            <p id="recurring-bill-description">Set when this bill should return to the main Bills list.</p>
-          </div>
-          <button type="button" aria-label="Close recurring bill details" onClick={onClose}><X size={18} /></button>
-        </header>
-        <div className="recurring-bill-fields">
-          <label>
-            <span>Repeats</span>
-            <select aria-label="Recurring frequency" value={frequency} onChange={(event) => setFrequency(event.target.value as RecurringBillFrequency)}>
-              <option value="weekly">Weekly</option>
-              <option value="biweekly">Every 2 weeks</option>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Every 3 months</option>
-              <option value="yearly">Yearly</option>
-            </select>
-          </label>
-          <label>
-            <span>Next due date</span>
-            <input aria-label="Recurring next due date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
-          </label>
-        </div>
-        <p className="recurring-bill-preview">Each occurrence stays editable. Update its amount, category, autopay, or notes in the Bills list; the next bill will begin with your latest values.</p>
-        {message && <p className="planner-message" role="alert">{message}</p>}
-        <footer>
-          {bill.cells.recurrenceFrequency && <button type="button" className="recurring-stop-button" onClick={onStop}>Stop recurring</button>}
-          <span />
-          <button type="button" onClick={onClose}>Cancel</button>
-          <button type="button" className="primary-button" onClick={save}>Save schedule</button>
-        </footer>
-      </section>
-    </div>,
-    document.body,
   );
 }
 
@@ -991,25 +861,28 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
     .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
   const layoutVariant: TransactionLayoutVariant = data.settings.layoutViews.transactions;
 
-  function saveTransactionRow(row: SpreadsheetRow): boolean {
-    const existingRow = transactionRows.find((existing) => existing.id === row.id);
-    if (existingRow?.cells.financialEventType === "bill_payment") {
+  function saveTransactionRows(input: SpreadsheetRow | SpreadsheetRow[]): boolean {
+    const rows = Array.isArray(input) ? input : [input];
+    const linkedPayment = rows.find((row) => transactionRows.find((existing) => existing.id === row.id)?.cells.financialEventType === "bill_payment");
+    if (linkedPayment) {
       setMessage("Edit this payment from Bills so the bill, transaction, and paying account remain one event.");
       return false;
     }
-    const normalizedRow = normalizeTransactionRow(row);
-    const nextRows = transactionRows.some((existing) => existing.id === row.id)
-      ? transactionRows.map((existing) => existing.id === row.id ? normalizedRow : existing)
-      : [...transactionRows, normalizedRow];
+    const normalizedRows = rows.map(normalizeTransactionRow);
+    const savedIds = new Set(normalizedRows.map((row) => row.id));
+    const nextRows = [
+      ...transactionRows.map((existing) => normalizedRows.find((row) => row.id === existing.id) || existing),
+      ...normalizedRows.filter((row) => !transactionRows.some((existing) => existing.id === row.id)),
+    ];
     try {
       const next = syncTransactionTransfers(data, nextRows);
-      const validation = next.sections.transactions.find((transaction) => transaction.id === row.id)?.cells.transferValidation || "";
+      const validation = next.sections.transactions.find((transaction) => savedIds.has(transaction.id) && transaction.cells.transferValidation)?.cells.transferValidation || "";
       if (validation) {
         setMessage(validation);
         return false;
       }
       onChange(next);
-      setMessage("Transaction saved and account balances updated.");
+      setMessage(rows.length > 1 ? `${rows.length} transactions saved and account balances updated.` : "Transaction saved and account balances updated.");
       return true;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The transaction could not be saved.");
@@ -1051,7 +924,7 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
         transferTotal={transferTotal}
         message={message}
         receiptAction={<ReceiptEntry accounts={transactionEndpoints.map(({ value, label }) => ({ value, label }))} onAddReceipt={addReceiptRows} />}
-        onSave={saveTransactionRow}
+        onSave={saveTransactionRows}
         onDelete={deleteTransactionRow}
       />
     </div>
@@ -2039,16 +1912,10 @@ function InventoryPage(props: Omit<Parameters<typeof ModulePage>[0], "section">)
 
 function ReportsPage({
   data,
-  financialState,
-  decisionState,
 }: {
   data: AppData;
-  financialState: ReturnType<typeof computeFinancialState>;
-  decisionState: ReturnType<typeof computeDecisionEngine>;
 }) {
   const [period, setPeriod] = useState("monthly");
-  const [cashFlowSlide, setCashFlowSlide] = useState(0);
-  const [forecastSlide, setForecastSlide] = useState(0);
   const transactions = data.sections.transactions.map(normalizeTransactionRow).filter((row) => !isBlankRow(row.cells));
   const filteredTransactions = transactions.filter((row) => period === "all" || transactionDateMatchesReport(row.cells.date, period));
   const incomeRows = filteredTransactions.filter((row) => transactionType(row) === "income");
@@ -2058,12 +1925,8 @@ function ReportsPage({
   const cashFlow = totalIncome - totalExpenses;
   const savingsRate = totalIncome > 0 ? Math.round((cashFlow / totalIncome) * 100) : 0;
   const categoryData = buildCategoryReport(expenseRows);
-  const averageExpense = expenseRows.length > 0 ? totalExpenses / expenseRows.length : 0;
-  const burnRate = totalIncome > 0 ? Math.round((totalExpenses / totalIncome) * 100) : 0;
-  const topCategoryShare = totalExpenses > 0 && categoryData.length > 0 ? Math.round((categoryData[0].amount / totalExpenses) * 100) : 0;
   const trendData = buildTrendReport(filteredTransactions, period);
   const trendMax = Math.max(1, ...trendData.flatMap((item) => [item.income, item.expenses]));
-  const netTrendMax = Math.max(1, ...trendData.map((item) => Math.abs(item.income - item.expenses)));
   const forecast = buildForecast(cashFlow, period);
   const forecastMax = Math.max(1, ...forecast.map((item) => Math.abs(item.balance)));
   const monthlyProjection = projectedMonthlyCashFlow(cashFlow, period);
@@ -2097,13 +1960,6 @@ function ReportsPage({
 
       <SummaryGrid items={reportSummary} />
 
-      <section className="report-insight-strip" aria-label="Report metrics">
-        <div><span>Transactions</span><strong>{filteredTransactions.length}</strong><small>{incomeRows.length} income · {expenseRows.length} expense</small></div>
-        <div><span>Average expense</span><strong>{formatCurrency(averageExpense)}</strong><small>per expense transaction</small></div>
-        <div><span>Income used</span><strong className={burnRate > 100 ? "metric-negative" : ""}>{burnRate}%</strong><small>{burnRate > 100 ? "spending exceeds income" : `${Math.max(0, 100 - burnRate)}% retained`}</small></div>
-        <div><span>Largest category</span><strong>{categoryData[0]?.label || "—"}</strong><small>{topCategoryShare}% of total expenses</small></div>
-      </section>
-
       {transactions.length === 0 ? (
         <section className="panel report-empty-state">
           <p className="eyebrow">No Data Yet</p>
@@ -2121,35 +1977,14 @@ function ReportsPage({
               </div>
               <a href="/transactions" className="report-link">Transactions</a>
             </div>
-            <ChartSlideControls labels={["Compare", "Trend lines", "Net flow"]} active={cashFlowSlide} onChange={setCashFlowSlide} />
             <figure className="report-chart-figure">
-              {cashFlowSlide < 2 && <div className="report-chart-key" aria-hidden="true"><span className="income">Income</span><span className="expense">Expenses</span></div>}
-              {cashFlowSlide === 0 && <div className="report-flow-chart" role="img" aria-label={`Income and expense comparison. Income ${formatCurrency(totalIncome)}, expenses ${formatCurrency(totalExpenses)}.`}>
-              {trendData.length ? trendData.map((item) => (
-                <div key={item.label}>
-                  <span>{item.label}</span>
-                  <div>
-                    <i style={{ height: `${(item.income / trendMax) * 100}%` }} title={`Income ${formatCurrency(item.income)}`} />
-                    <b style={{ height: `${(item.expenses / trendMax) * 100}%` }} title={`Expenses ${formatCurrency(item.expenses)}`} />
-                  </div>
-                  <small>{formatCurrency(item.income)} in</small>
-                  <small>{formatCurrency(item.expenses)} out</small>
-                </div>
-              )) : <p className="empty-copy">No transactions in this period.</p>}
-              </div>}
-              {cashFlowSlide === 1 && <ReportLineChart data={trendData} max={trendMax} />}
-              {cashFlowSlide === 2 && <div className="report-net-chart" role="img" aria-label="Net cash flow by period, above zero is positive and below zero is negative">
-                {trendData.map((item) => {
-                  const net = item.income - item.expenses;
-                  return <div key={item.label}><strong>{formatCurrency(net)}</strong><div><i className={net >= 0 ? "positive" : "negative"} style={{ height: `${(Math.abs(net) / netTrendMax) * 50}%` }} /></div><span>{item.label}</span></div>;
-                })}
-              </div>}
+              <ReportLineChart data={trendData} max={trendMax} />
               <figcaption>{cashFlow >= 0 ? `You kept ${formatCurrency(cashFlow)} after expenses.` : `Expenses exceeded income by ${formatCurrency(Math.abs(cashFlow))}.`}</figcaption>
               <table className="visually-hidden"><caption>Cash flow trend data</caption><thead><tr><th>Period</th><th>Income</th><th>Expenses</th></tr></thead><tbody>{trendData.map((item) => <tr key={item.label}><th>{item.label}</th><td>{formatCurrency(item.income)}</td><td>{formatCurrency(item.expenses)}</td></tr>)}</tbody></table>
             </figure>
           </article>
 
-          <article className="panel report-card">
+          <article className="panel report-card report-category-card">
             <div className="panel-heading">
               <div>
                 <p className="eyebrow">Spending By Category</p>
@@ -2158,18 +1993,18 @@ function ReportsPage({
               <a href="/transactions" className="report-link">Open</a>
             </div>
             <div className="report-category-chart">
-              {categoryData.length ? categoryData.slice(0, 8).map((category, index) => (
+              {categoryData.length ? categoryData.slice(0, 8).map((category) => (
                 <div key={category.label}>
-                  <span><i style={{ background: REPORT_COLORS[index % REPORT_COLORS.length] }} />{category.label}</span>
+                  <span>{category.label}</span>
                   <strong>{formatCurrency(category.amount)}</strong>
-                  <b style={{ width: `${(category.amount / Math.max(1, categoryData[0].amount)) * 100}%`, background: REPORT_COLORS[index % REPORT_COLORS.length] }} />
+                  <b style={{ width: `${(category.amount / Math.max(1, categoryData[0].amount)) * 100}%` }} />
                   <small>{totalExpenses > 0 ? Math.round((category.amount / totalExpenses) * 100) : 0}% of spend</small>
                 </div>
               )) : <p className="empty-copy">No expense data in this period.</p>}
             </div>
           </article>
 
-          <article className="panel report-card">
+          <article className="panel report-card report-forecast-card">
             <div className="panel-heading">
               <div>
                 <p className="eyebrow">12-Month Forecast</p>
@@ -2177,41 +2012,9 @@ function ReportsPage({
               </div>
               <span className="report-pill">{formatCurrency(projectedMonthlyCashFlow(cashFlow, period))}/mo</span>
             </div>
-            <ChartSlideControls labels={["Projection", "Milestones", "Monthly pace"]} active={forecastSlide} onChange={setForecastSlide} />
-            {forecastSlide === 0 && <ForecastLineChart data={forecast} max={forecastMax} />}
-            {forecastSlide === 1 && <div className="report-forecast-bars" role="img" aria-label={`Quarterly forecast milestones at ${formatCurrency(monthlyProjection)} per month`}>
-              {forecast.filter((_, index) => [2, 5, 8, 11].includes(index)).map((item) => (
-                <div key={item.label}>
-                  <span>{item.label}</span>
-                  <div className="forecast-track"><i className={item.balance >= 0 ? "positive" : "negative"} style={{ height: `${(Math.abs(item.balance) / forecastMax) * 50}%` }} /></div>
-                  <strong>{formatCurrency(item.balance)}</strong>
-                </div>
-              ))}
-            </div>}
-            {forecastSlide === 2 && <div className="report-waterfall-chart" role="img" aria-label={`Monthly contribution of ${formatCurrency(monthlyProjection)} over 12 months`}>
-              {forecast.map((item, index) => <div key={item.label}><strong>{formatCurrency(item.balance)}</strong><div><i className={monthlyProjection >= 0 ? "positive" : "negative"} style={{ height: `${Math.max(8, ((index + 1) / 12) * 100)}%` }} /></div><span>{item.label}</span></div>)}
-            </div>}
-            <p className="report-chart-caption">At the current pace, 12-month cash flow is projected at <strong>{formatCurrency(monthlyProjection * 12)}</strong>.</p>
-          </article>
-
-          <article className="panel report-card report-card-wide">
-            <div className="panel-heading">
-              <div>
-                <p className="eyebrow">Decision Pulse</p>
-                <h2>Current recommendation</h2>
-              </div>
-              <a href="/missions" className="report-link">Missions</a>
-            </div>
-            <div className="report-callout">
-              <strong>{decisionState.recommendedMove}</strong>
-              <span>{decisionState.todayBriefing}</span>
-            </div>
-            <div className="report-metric-grid">
-              <ReportMetric label="Spendable / Safe" value={Math.min(financialState.spendableCash, financialState.safeToSpend)} href="/money" />
-              <ReportMetric label="Bills Pressure" value={financialState.billsPressure} href="/bills" />
-              <ReportMetric label="Protected Savings" value={financialState.protectedSavings} href="/savings" />
-              <ReportMetric label="Total Debt" value={financialState.totalDebt} href="/debt" />
-            </div>
+            <ForecastLineChart data={forecast} max={forecastMax} />
+            <p className="report-chart-caption"><strong>{formatCurrency(monthlyProjection * 12)}</strong> projected over 12 months.</p>
+            <table className="visually-hidden"><caption>12-month cash flow forecast</caption><thead><tr><th>Month</th><th>Projected balance</th></tr></thead><tbody>{forecast.map((item) => <tr key={item.label}><th>{item.label}</th><td>{formatCurrency(item.balance)}</td></tr>)}</tbody></table>
           </article>
         </section>
       )}
@@ -2267,17 +2070,6 @@ function MissionsPage({ decisionState, activity }: { decisionState: ReturnType<t
     </div>
   );
 }
-
-function ReportMetric({ label, value, href }: { label: string; value: number; href: string }) {
-  return (
-    <a href={href}>
-      <span>{label}</span>
-      <strong>{formatCurrency(value)}</strong>
-    </a>
-  );
-}
-
-const REPORT_COLORS = ["#56a5ff", "#25d39b", "#ffc22a", "#ff6666", "#b16cff", "#23c6d8", "#ec6aa5", "#8e9299"];
 
 function transactionDateMatchesReport(dateText: string, period: string): boolean {
   if (!dateText) return false;
@@ -2858,31 +2650,34 @@ function AccentPicker({ value, onChange }: { value: string; onChange: (value: st
   );
 }
 
-function ChartSlideControls({ labels, active, onChange }: { labels: string[]; active: number; onChange: (index: number) => void }) {
-  return <div className="chart-slide-controls">
-    <button type="button" onClick={() => onChange((active - 1 + labels.length) % labels.length)} aria-label="Previous chart">‹</button>
-    <div role="tablist" aria-label="Chart views">{labels.map((label, index) => <button key={label} type="button" role="tab" aria-selected={active === index} onClick={() => onChange(index)}><i aria-hidden="true" />{label}</button>)}</div>
-    <button type="button" onClick={() => onChange((active + 1) % labels.length)} aria-label="Next chart">›</button>
-  </div>;
-}
-
 function chartPoints(values: number[], max: number): string {
   return values.map((value, index) => `${42 + (values.length <= 1 ? 264 : (index / (values.length - 1)) * 528)},${180 - (value / Math.max(1, max)) * 162}`).join(" ");
 }
 
 function ReportLineChart({ data, max }: { data: Array<{ label: string; income: number; expenses: number }>; max: number }) {
   if (!data.length) return <p className="empty-copy">No transactions in this period.</p>;
+  const incomePoints = chartPoints(data.map((item) => item.income), max);
+  const expensePoints = chartPoints(data.map((item) => item.expenses), max);
+  const last = data[data.length - 1];
+  const lastX = data.length <= 1 ? 306 : 570;
   return <svg className="report-svg-chart" viewBox="0 0 600 220" role="img" aria-label="Income and expense trend lines">
-    <line x1="42" y1="180" x2="570" y2="180" className="chart-axis" /><polyline points={chartPoints(data.map((item) => item.income), max)} className="chart-line income" /><polyline points={chartPoints(data.map((item) => item.expenses), max)} className="chart-line expense" />
+    <line x1="42" y1="180" x2="570" y2="180" className="chart-axis" />
+    <polyline points={incomePoints} className="chart-line income" />
+    <polyline points={expensePoints} className="chart-line expense" />
     {data.map((item, index) => { const x = 42 + (data.length <= 1 ? 264 : (index / (data.length - 1)) * 528); return <g key={item.label}><circle cx={x} cy={180 - (item.income / max) * 162} r="4" className="chart-dot income" /><circle cx={x} cy={180 - (item.expenses / max) * 162} r="4" className="chart-dot expense" /><text x={x} y="205" textAnchor="middle">{item.label}</text></g>; })}
+    <text x={lastX - 6} y={Math.max(13, 174 - (last.income / max) * 162)} textAnchor="end" className="chart-direct-label income">Income</text>
+    <text x={lastX - 6} y={Math.min(176, 194 - (last.expenses / max) * 162)} textAnchor="end" className="chart-direct-label expense">Expenses</text>
   </svg>;
 }
 
 function ForecastLineChart({ data, max }: { data: Array<{ label: string; balance: number }>; max: number }) {
   const points = data.map((item, index) => `${42 + (index / Math.max(1, data.length - 1)) * 528},${item.balance >= 0 ? 110 - (item.balance / max) * 82 : 110 + (Math.abs(item.balance) / max) * 82}`).join(" ");
+  const last = data[data.length - 1];
+  const lastY = last ? last.balance >= 0 ? 110 - (last.balance / max) * 82 : 110 + (Math.abs(last.balance) / max) * 82 : 110;
   return <svg className="report-svg-chart forecast" viewBox="0 0 600 220" role="img" aria-label="Cumulative 12-month cash flow projection">
     <line x1="42" y1="110" x2="570" y2="110" className="chart-axis zero" /><polyline points={points} className={`chart-line ${data[0]?.balance >= 0 ? "income" : "expense"}`} />
     {data.map((item, index) => { const x = 42 + (index / Math.max(1, data.length - 1)) * 528; const y = item.balance >= 0 ? 110 - (item.balance / max) * 82 : 110 + (Math.abs(item.balance) / max) * 82; return <g key={item.label}><circle cx={x} cy={y} r="3.5" className={`chart-dot ${item.balance >= 0 ? "income" : "expense"}`} />{(index === 0 || index === 5 || index === 11) && <text x={x} y="207" textAnchor="middle">{item.label}</text>}</g>; })}
+    {last && <text x="562" y={Math.max(16, Math.min(196, lastY - 10))} textAnchor="end" className={`chart-direct-label ${last.balance >= 0 ? "income" : "expense"}`}>{formatCurrency(last.balance)}</text>}
   </svg>;
 }
 

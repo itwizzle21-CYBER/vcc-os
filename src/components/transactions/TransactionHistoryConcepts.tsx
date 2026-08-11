@@ -37,7 +37,7 @@ interface TransactionHistoryConceptsProps {
   transferTotal: number;
   message: string;
   receiptAction: ReactNode;
-  onSave: (row: SpreadsheetRow) => boolean;
+  onSave: (rows: SpreadsheetRow | SpreadsheetRow[]) => boolean;
   onDelete: (rowId: string) => void;
 }
 
@@ -128,6 +128,7 @@ export default function TransactionHistoryConcepts({
 
   return (
     <div className="transaction-concept-page">
+      {message && <p className="transaction-page-message" role="status">{message}</p>}
       {variant === 1 && (
         <CalmLedger
           rows={filteredRows}
@@ -623,7 +624,7 @@ interface ConceptBodyProps {
   toolbar: ReactNode;
   onEdit: (row: SpreadsheetRow) => void;
   onClose: () => void;
-  onSave: (row: SpreadsheetRow) => void;
+  onSave: (rows: SpreadsheetRow | SpreadsheetRow[]) => void;
   onDelete: (rowId: string) => void;
 }
 
@@ -711,8 +712,6 @@ function TransactionRow({ row, selected, compact = false, timeline = false, onEd
     <button
       type="button"
       className="transaction-swipe-delete"
-      tabIndex={deleteRevealed ? 0 : -1}
-      aria-hidden={!deleteRevealed}
       aria-label={`Delete ${row.cells.description || row.cells.merchant || "transaction"}`}
       onClick={() => onDelete(row.id)}
     >
@@ -722,15 +721,27 @@ function TransactionRow({ row, selected, compact = false, timeline = false, onEd
   );
 }
 
-function TransactionEditor({ row, accounts, message, compact = false, onClose, onSave, onDelete }: { row: SpreadsheetRow; accounts: AccountOption[]; message: string; compact?: boolean; onClose: () => void; onSave: (row: SpreadsheetRow) => void; onDelete: (rowId: string) => void }) {
+interface TransactionLineItem {
+  id: string;
+  description: string;
+  cost: string;
+}
+
+function TransactionEditor({ row, accounts, message, compact = false, onClose, onSave, onDelete }: { row: SpreadsheetRow; accounts: AccountOption[]; message: string; compact?: boolean; onClose: () => void; onSave: (rows: SpreadsheetRow | SpreadsheetRow[]) => void; onDelete: (rowId: string) => void }) {
   const [draft, setDraft] = useState<SpreadsheetRow>(() => ({
     ...row,
     cells: { ...row.cells, amount: String(Math.abs(toNumber(row.cells.amount)) || "") },
   }));
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [validation, setValidation] = useState("");
+  const [lineItems, setLineItems] = useState<TransactionLineItem[]>(() => [{
+    id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    description: row.cells.description || "",
+    cost: String(Math.abs(toNumber(row.cells.amount)) || ""),
+  }]);
   const type = transactionType(draft);
   const isNew = row.id.startsWith("concept-transaction-");
+  const usesLineItems = isNew && type === "expense";
 
   function updateCell(key: string, value: string) {
     setDraft((current) => ({ ...current, cells: { ...current.cells, [key]: value } }));
@@ -740,11 +751,34 @@ function TransactionEditor({ row, accounts, message, compact = false, onClose, o
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const magnitude = Math.abs(toNumber(draft.cells.amount));
-    if (!draft.cells.description?.trim()) return setValidation("Add a description.");
-    if (!magnitude) return setValidation("Enter an amount greater than $0.");
     if (!draft.cells.date) return setValidation("Choose a date.");
     if (!draft.cells.account) return setValidation("Choose the account the money came from or went to.");
     if (type === "transfer" && !draft.cells.transferDestination) return setValidation("Choose where the transfer went.");
+    if (usesLineItems) {
+      const filledItems = lineItems.filter((item) => item.description.trim() || toNumber(item.cost));
+      if (!filledItems.length) return setValidation("Add at least one item and cost.");
+      if (filledItems.some((item) => !item.description.trim())) return setValidation("Add a name for every item.");
+      if (filledItems.some((item) => Math.abs(toNumber(item.cost)) <= 0)) return setValidation("Every item needs a cost greater than $0.");
+      onSave(filledItems.map((item, index) => {
+        const itemMagnitude = Math.abs(toNumber(item.cost));
+        return {
+          ...draft,
+          id: index === 0 ? draft.id : `${draft.id}-${index}-${Math.random().toString(36).slice(2, 6)}`,
+          cells: {
+            ...draft.cells,
+            description: item.description.trim(),
+            quantity: "1",
+            unitCost: itemMagnitude.toFixed(2),
+            amount: (-itemMagnitude).toFixed(2),
+            transferDestination: "",
+            shortfallSource: type === "expense" ? (draft.cells.shortfallSource || "overdraft") : "",
+          },
+        };
+      }));
+      return;
+    }
+    if (!draft.cells.description?.trim()) return setValidation("Add a description.");
+    if (!magnitude) return setValidation("Enter an amount greater than $0.");
     onSave({
       ...draft,
       cells: {
@@ -757,21 +791,55 @@ function TransactionEditor({ row, accounts, message, compact = false, onClose, o
     });
   }
 
+  function updateLineItem(id: string, key: "description" | "cost", value: string) {
+    setLineItems((items) => items.map((item) => item.id === id ? { ...item, [key]: value } : item));
+    setValidation("");
+  }
+
+  function addLineItem() {
+    setLineItems((items) => [...items, {
+      id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      description: "",
+      cost: "",
+    }]);
+  }
+
+  function removeLineItem(id: string) {
+    setLineItems((items) => items.length === 1 ? items : items.filter((item) => item.id !== id));
+  }
+
   return (
     <form className={`transaction-detail-editor ${compact ? "compact" : ""}`} onSubmit={submit}>
       <header>
-        <div><p className="eyebrow">{isNew ? "New transaction" : "Transaction details"}</p><h3>{draft.cells.description || "Untitled transaction"}</h3></div>
+        <div><p className="eyebrow">{isNew ? "New transaction" : "Transaction details"}</p><h3>{isNew ? "Add one or more items" : draft.cells.description || "Untitled transaction"}</h3></div>
         <button type="button" aria-label="Close transaction details" onClick={onClose}><X size={18} /></button>
       </header>
       <div className="transaction-editor-fields">
         <label><span>Type</span><select value={type} onChange={(event) => updateCell("type", event.target.value)}><option value="expense">Expense</option><option value="income">Income</option><option value="transfer">Transfer</option></select></label>
         <label><span>Date</span><input type="date" value={draft.cells.date || ""} onChange={(event) => updateCell("date", event.target.value)} /></label>
-        <label className="wide"><span>Description</span><input value={draft.cells.description || ""} onChange={(event) => updateCell("description", event.target.value)} /></label>
+        {!usesLineItems && <label className="wide"><span>Description</span><input value={draft.cells.description || ""} onChange={(event) => updateCell("description", event.target.value)} /></label>}
         <label><span>{type === "transfer" ? "From" : "Account"}</span><select value={draft.cells.account || ""} onChange={(event) => updateCell("account", event.target.value)}><option value="">Choose account</option>{accounts.map((account) => <option key={`${account.kind}-${account.value}`} value={account.value}>{accountName(account)}</option>)}</select></label>
         {type === "transfer" && <label><span>To</span><select value={draft.cells.transferDestination || ""} onChange={(event) => updateCell("transferDestination", event.target.value)}><option value="">Choose destination</option>{accounts.map((account) => <option key={`${account.kind}-${account.value}`} value={account.value}>{accountName(account)}</option>)}</select></label>}
-        <label><span>Amount</span><input inputMode="decimal" value={draft.cells.amount || ""} onChange={(event) => updateCell("amount", event.target.value)} placeholder="0.00" /></label>
+        {!usesLineItems && <label><span>Amount</span><input inputMode="decimal" value={draft.cells.amount || ""} onChange={(event) => updateCell("amount", event.target.value)} placeholder="0.00" /></label>}
         {type === "expense" && <label><span>If account is short</span><select value={draft.cells.shortfallSource || "overdraft"} onChange={(event) => updateCell("shortfallSource", event.target.value)}><option value="overdraft">Let account go negative</option><option value="borrowed">Borrowed money</option><option value="unreconciled">Unaccounted cash</option></select></label>}
       </div>
+      {usesLineItems && (
+        <fieldset className="transaction-line-items">
+          <legend>Items and cost</legend>
+          <div className="transaction-line-items-heading" aria-hidden="true"><span>Item</span><span>Cost</span><span /></div>
+          {lineItems.map((item, index) => (
+            <div className="transaction-line-item" key={item.id}>
+              <label><span className="sr-only">{index === 0 ? "Description" : `Item ${index + 1}`}</span><input aria-label={index === 0 ? "Description" : `Item ${index + 1}`} value={item.description} onChange={(event) => updateLineItem(item.id, "description", event.target.value)} placeholder={index === 0 ? "e.g. Groceries" : "Another item"} /></label>
+              <label><span className="sr-only">{index === 0 ? "Amount" : `Cost for item ${index + 1}`}</span><input aria-label={index === 0 ? "Amount" : `Cost for item ${index + 1}`} inputMode="decimal" value={item.cost} onChange={(event) => updateLineItem(item.id, "cost", event.target.value)} placeholder="0.00" /></label>
+              <button type="button" aria-label={`Remove item ${index + 1}`} disabled={lineItems.length === 1} onClick={() => removeLineItem(item.id)}><Trash2 size={16} aria-hidden="true" /></button>
+            </div>
+          ))}
+          <div className="transaction-line-items-footer">
+            <button type="button" onClick={addLineItem}><Plus size={16} aria-hidden="true" /> Add another item</button>
+            <strong>{formatCurrency(lineItems.reduce((sum, item) => sum + Math.abs(toNumber(item.cost)), 0))}</strong>
+          </div>
+        </fieldset>
+      )}
       <button type="button" className="transaction-advanced-toggle" aria-expanded={advancedOpen} onClick={() => setAdvancedOpen((open) => !open)}>More accounting details <ChevronDown size={16} aria-hidden="true" /></button>
       {advancedOpen && (
         <div className="transaction-editor-fields advanced">
@@ -788,7 +856,7 @@ function TransactionEditor({ row, accounts, message, compact = false, onClose, o
         {!isNew && <button type="button" className="transaction-delete-button" onClick={() => onDelete(row.id)}><Trash2 size={15} aria-hidden="true" /> Delete</button>}
         <span />
         <button type="button" onClick={onClose}>Cancel</button>
-        <button type="submit" className="transaction-save-button">Save changes</button>
+        <button type="submit" className="transaction-save-button">{usesLineItems && lineItems.length > 1 ? `Save ${lineItems.length} items` : "Save changes"}</button>
       </footer>
     </form>
   );
