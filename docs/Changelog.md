@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reduced the initial production JavaScript entry from 598.87 kB to 494.77 kB by deferring route-specific and optional React surfaces.
+- Added a 500,000-byte build-time application chunk budget and cleared Vite's oversized-chunk warning.
+- Made browser regression coverage lazy-route-aware and paint-settled while preserving all user-visible assertions.
+
 - Stabilized the full desktop/mobile Playwright release gate at 68 passed, 10 intentional project skips, and zero failures or flaky tests.
 - Self-hosted VitaScan's English Tesseract language model so receipt OCR no longer depends on a third-party runtime download.
 - Added deterministic OCR configuration coverage and right-sized the multi-route desktop control-matrix timeout.

@@ -35,15 +35,11 @@ import AppShell from "./components/layout/AppShell";
 import { LayoutViewSettings, layoutViewClass } from "./components/layout/LayoutViews";
 import NotFound from "./components/layout/NotFound";
 import WelcomeTransition from "./components/layout/WelcomeTransition";
-import Dashboard from "./components/dashboard/Dashboard";
-import VccAgent, { CompanionArt, VCC_COMPANIONS } from "./components/agent/VccAgent";
-import PaycheckPlanner from "./components/modules/PaycheckPlanner";
-import CarLoanWorkspace from "./components/modules/CarLoanWorkspace";
+import { CompanionArt, VCC_COMPANIONS } from "./components/agent/Companions";
 import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
-import CloudSyncControl from "./components/shared/CloudSyncControl";
 import BufferedTextInput from "./components/shared/BufferedTextInput";
-import TransactionHistoryConcepts, { type TransactionLayoutVariant } from "./components/transactions/TransactionHistoryConcepts";
+import type { TransactionLayoutVariant } from "./components/transactions/TransactionHistoryConcepts";
 import { formatCurrency, formatDateMDY, isBlankRow, todayIso, toNumber } from "./lib/calculations/currency";
 import { amountToCents, calculateReceiptLineAmounts, centsToAmount } from "./lib/calculations/receiptMath";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
@@ -70,6 +66,12 @@ const worldwideTransactionCategories = [
 ];
 
 type WallpaperPreviewSettings = Pick<UserSettings, "wallpaper" | "customWallpaper" | "backgroundOpacity" | "cardOpacity">;
+const VccAgent = lazy(() => import("./components/agent/VccAgent"));
+const CloudSyncControl = lazy(() => import("./components/shared/CloudSyncControl"));
+const Dashboard = lazy(() => import("./components/dashboard/Dashboard"));
+const PaycheckPlanner = lazy(() => import("./components/modules/PaycheckPlanner"));
+const CarLoanWorkspace = lazy(() => import("./components/modules/CarLoanWorkspace"));
+const TransactionHistoryConcepts = lazy(() => import("./components/transactions/TransactionHistoryConcepts"));
 const VitaScan = lazy(() => import("./components/modules/VitaScan"));
 
 export default function App() {
@@ -206,6 +208,7 @@ export default function App() {
     <>
     {path === "/" && <WelcomeTransition settings={data.settings} />}
     <AppShell currentPath={path} settings={data.settings} activeTheme={activeTheme} wallpaperPreview={wallpaperPreview} data={data} onSettingsChange={(settings) => updateData({ ...data, settings })}>
+      <Suspense fallback={<RouteLoading />}>
       {path === "/" && <Dashboard financialState={financialState} decisionState={decisionState} activity={data.activity} accounts={depositAccountOptions(data)} layoutView={data.settings.layoutViews.dashboard} />}
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
@@ -222,7 +225,10 @@ export default function App() {
       {path === "/missions" && <MissionsPage decisionState={decisionState} activity={data.activity} />}
       {path === "/settings" && <SettingsPage data={data} onChange={updateData} onWallpaperPreviewChange={setWallpaperPreview} />}
       {!isKnownPath && <NotFound />}
-      {isKnownPath && <VccAgent data={data} financialState={financialState} decisionState={decisionState} petEnabled={data.settings.vccPetEnabled} companionId={data.settings.vccCompanionId} onCompanionChange={(vccCompanionId) => updateData({ ...data, settings: { ...data.settings, vccCompanionId } })} />}
+      </Suspense>
+      <Suspense fallback={null}>
+        {isKnownPath && <VccAgent data={data} financialState={financialState} decisionState={decisionState} petEnabled={data.settings.vccPetEnabled} companionId={data.settings.vccCompanionId} onCompanionChange={(vccCompanionId) => updateData({ ...data, settings: { ...data.settings, vccCompanionId } })} />}
+      </Suspense>
     </AppShell>
     {recentlyCompletedMissionIds.includes("clear-borrowed-money") && (
       <div className="mission-completion-notice" role="status" aria-live="polite">
@@ -230,8 +236,18 @@ export default function App() {
         <div><strong>Borrowed money repaid</strong><span>Mission completed and added to Activity.</span></div>
       </div>
     )}
-    <CloudSyncControl sync={cloudSync}/>
+    <Suspense fallback={null}>
+      <CloudSyncControl sync={cloudSync}/>
+    </Suspense>
     </>
+  );
+}
+
+function RouteLoading() {
+  return (
+    <section className="panel" role="status" aria-live="polite">
+      <p>Opening page…</p>
+    </section>
   );
 }
 

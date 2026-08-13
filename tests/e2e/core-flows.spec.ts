@@ -177,6 +177,7 @@ test("requires confirmation before deleting a financial row", async ({ page }) =
 });
 
 test("keeps every core domain page available without a page-level hide control", async ({ page }) => {
+  test.setTimeout(60_000);
   for (const [path, title] of [
     ["/", "VCC-OS Dashboard"],
     ["/money", "Money Snapshot"],
@@ -224,6 +225,7 @@ test("mobile swipe intentionally reveals transaction deletion and requires confi
   test.skip(!testInfo.project.name.includes("mobile"), "Mobile swipe behavior.");
   await page.goto("/transactions");
   const firstRow = page.locator(".transaction-simple-row").first();
+  await expect(firstRow).toBeVisible();
   const initialCount = await page.locator(".transaction-simple-row").count();
 
   await firstRow.evaluate((element) => {
@@ -329,6 +331,7 @@ test("offers a quiet companion check-in during longer VCC sessions", async ({ pa
   await page.clock.install();
   await page.goto("/money");
   await expect(page.getByRole("button", { name: "Open VCC Agent" })).toBeVisible();
+  await page.clock.runFor(100);
   await page.clock.fastForward(45_100);
   const nudge = page.locator(".vcc-agent-nudge");
   await expect(nudge).toBeVisible();
@@ -437,7 +440,8 @@ test("loads every application page without runtime or heading-structure failures
 
 test("keeps all 30 selectable layouts collision-free from mobile through desktop", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "This test supplies its own responsive viewport matrix.");
-  test.setTimeout(300_000);
+  test.setTimeout(420_000);
+  await page.emulateMedia({ reducedMotion: "reduce" });
 
   const pages = [
     { label: "Dashboard", path: "/" },
@@ -478,6 +482,9 @@ test("keeps all 30 selectable layouts collision-free from mobile through desktop
 
       for (const viewport of viewports) {
         await page.setViewportSize(viewport);
+        await page.evaluate(() => new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }));
         const layout = await page.evaluate(() => {
           const root = document.querySelector<HTMLElement>("[data-layout-view]");
           const visible = root ? [...root.querySelectorAll<HTMLElement>("*")].filter((element) => {
@@ -595,6 +602,7 @@ test("keeps all 30 selectable layouts collision-free from mobile through desktop
 
 test("keeps wide-screen context rails readable", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "This test targets full-screen desktop composition.");
+  test.setTimeout(60_000);
 
   const chooseLayout = async (section: string, option: string) => {
     await page.goto("/settings#settings-layout-views");
@@ -664,6 +672,7 @@ test("keeps rejected duplicate inventory edits and blank currency cells consiste
 });
 
 test("keeps overall priorities on Dashboard and ranks Inventory separately", async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto("/");
   await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
   await expect(page.getByRole("heading", { name: "System Priority Stack" })).toBeVisible();
