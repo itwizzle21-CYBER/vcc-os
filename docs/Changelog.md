@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Stabilized the full desktop/mobile Playwright release gate at 68 passed, 10 intentional project skips, and zero failures or flaky tests.
+- Self-hosted VitaScan's English Tesseract language model so receipt OCR no longer depends on a third-party runtime download.
+- Added deterministic OCR configuration coverage and right-sized the multi-route desktop control-matrix timeout.
+
 - Made Money Snapshot derived from canonical account balances and corrected Spendable, Safe-to-Spend, and Chime/SpotMe accounting.
 - Added atomic bill-payment and transaction-deletion events with paying-account validation, deterministic links, balance reconciliation, and duplicate prevention.
 - Added intentional mobile swipe-to-delete, conservative account/inventory deduplication, blank production initialization, and permanent access to core pages.

@@ -3,12 +3,13 @@ import { mergeReceiptCandidates, receiptImageScale, receiptOcrCorePaths, receipt
 import { parseReceiptText } from "./receiptParser";
 
 describe("VitaScan receipt OCR selection", () => {
-  it("self-hosts executable OCR assets for the production security policy", () => {
+  it("self-hosts OCR runtime and language assets for deterministic receipt reads", () => {
     expect(receiptOcrRuntimeOptions.workerPath).not.toContain("cdn.jsdelivr.net");
     expect(receiptOcrCorePaths.every((path) => !path.includes("cdn.jsdelivr.net"))).toBe(true);
     expect(receiptOcrRuntimeOptions.workerBlobURL).toBe(false);
-    expect(receiptOcrRuntimeOptions.langPath).toContain("4.0.0_fast");
-    expect(receiptOcrRuntimeOptions.cachePath).toBe("vitascan-fast-v2");
+    expect(receiptOcrRuntimeOptions.langPath).toBe("/tessdata");
+    expect(receiptOcrRuntimeOptions.langPath).not.toMatch(/^https?:/);
+    expect(receiptOcrRuntimeOptions.cachePath).toBe("vitascan-best-int-v1");
   });
 
   it("shrinks high-resolution phone images before OCR", () => {

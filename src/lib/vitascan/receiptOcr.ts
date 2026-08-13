@@ -20,8 +20,8 @@ let activePass = 1;
 
 export const receiptOcrRuntimeOptions = {
   workerPath: ocrWorkerPath,
-  langPath: "https://tessdata.projectnaptha.com/4.0.0_fast",
-  cachePath: "vitascan-fast-v2",
+  langPath: "/tessdata",
+  cachePath: "vitascan-best-int-v1",
   workerBlobURL: false,
 } as const;
 

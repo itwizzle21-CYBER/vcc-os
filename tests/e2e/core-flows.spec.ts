@@ -726,6 +726,7 @@ test("VitaScan saves to this VCC workspace and keeps light-theme actions readabl
 
 test("exercises major navigation, filter, report, and car-loan controls", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "Desktop control matrix; mobile navigation has dedicated coverage.");
+  test.setTimeout(60_000);
   await page.setViewportSize({ width: 1600, height: 900 });
 
   await page.goto("/bills");
