@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Extracted Settings and its existing stylesheet into a bounded lazy-loaded route owner, reducing `src/App.tsx` from 3,211 to 2,309 lines.
+- Reduced the initial application entry from 486,332 to 448,534 bytes and moved 24.67 kB of Settings CSS out of the eager graph.
+- Preserved Settings preferences, data import/export, reset controls, wallpaper previews, focus containment, and responsive layout behavior across the full browser suite.
+
+- Extracted Reports into a bounded lazy-loaded module and reduced `src/App.tsx` from 3,421 to 3,211 lines.
+- Added direct unit coverage for report aggregation, trend periods, date windows, and cash-flow forecasts.
+- Reduced the initial application entry from 494,779 to 486,332 bytes, increasing bundle-budget headroom to 13,668 bytes.
+
 - Reduced the initial production JavaScript entry from 598.87 kB to 494.77 kB by deferring route-specific and optional React surfaces.
 - Added a 500,000-byte build-time application chunk budget and cleared Vite's oversized-chunk warning.
 - Made browser regression coverage lazy-route-aware and paint-settled while preserving all user-visible assertions.

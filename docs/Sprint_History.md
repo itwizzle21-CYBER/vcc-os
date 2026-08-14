@@ -97,3 +97,65 @@ Known constraints:
 - The initial entry has 5,221 bytes of headroom under the enforced budget.
 - VitaScan's deferred OCR model and WebAssembly assets remain intentionally large.
 
+## Sprint 0.9: Reports Module Extraction
+
+Date: 2026-08-13
+
+Goal:
+
+- Begin the audit-recommended incremental decomposition of `src/App.tsx` with one self-contained route.
+- Preserve Reports behavior while giving its calculations and rendering a bounded owner.
+
+Completed:
+
+- Extracted Reports into a lazy-loaded module with a narrow transaction/layout contract.
+- Moved report filters, aggregations, forecasts, and charts with the route.
+- Added direct unit coverage for the extracted calculations and corrected the period selector semantics.
+- Reduced `src/App.tsx` by 210 lines and the initial entry by another 8,447 bytes.
+- Recorded evidence and rollback guidance in `docs/SPRINT_0_9_REPORTS_MODULE_EXTRACTION.md`.
+
+Validation:
+
+- Build, bundle budget, lint, TypeScript, 151 unit tests, 68 browser tests, dependency audit, and whitespace checks passed.
+- 10 browser cases were intentionally skipped by project; no failures remained.
+
+Release status:
+
+- GO for the bounded architecture objective.
+- Sprint 0.8 was committed, pushed, and deployed first; Sprint 0.9 was later committed with Sprint 0.10 when requested, without deployment.
+
+Known constraint:
+
+- `App.tsx` remains large at 3,211 lines and should continue to be decomposed one bounded route at a time.
+
+## Sprint 0.10: Settings Ownership Extraction
+
+Date: 2026-08-14
+
+Goal:
+
+- Give Settings a bounded React and stylesheet owner.
+- Preserve every preference, local-data, accessibility, and responsive-layout behavior.
+
+Completed:
+
+- Extracted Settings and its helper components into a lazy-loaded route module.
+- Moved the existing Settings stylesheet from the eager root CSS graph to the route owner.
+- Removed Settings-only imports from the central application module.
+- Reduced `src/App.tsx` by 902 lines, initial JavaScript by 37,798 bytes, and eager CSS by 24.68 kB.
+- Recorded release evidence and rollback guidance in `docs/SPRINT_0_10_SETTINGS_OWNERSHIP_EXTRACTION.md`.
+
+Validation:
+
+- Build, bundle budget, lint, TypeScript, 151 unit tests, 6 focused Settings browser journeys, 68 full-suite browser tests, dependency audit, and whitespace checks passed.
+- 10 full-suite browser cases were intentionally skipped by project; no failures remained.
+
+Release status:
+
+- GO for the bounded ownership objective.
+- Sprint 0.10 was committed with Sprint 0.9 when requested; neither sprint was deployed.
+
+Known constraint:
+
+- Persistence and section-reset contracts still need direct coverage before redundant local-storage writes or reset semantics are changed.
+
