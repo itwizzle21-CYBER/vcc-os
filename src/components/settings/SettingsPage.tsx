@@ -31,7 +31,8 @@ import { CompanionArt, VCC_COMPANIONS } from "../agent/Companions";
 import { LayoutViewSettings } from "../layout/LayoutViews";
 import WelcomeTransition from "../layout/WelcomeTransition";
 import BufferedTextInput from "../shared/BufferedTextInput";
-import { normalizeAppData, resetAllData, resetSection } from "../../lib/storage/localStore";
+import { resetAllData } from "../../lib/storage/localStore";
+import { loadRecoveryPoints, MAX_BACKUP_BYTES, parseVccBackup, restoreRecoveryPoint, saveRecoveryPoint, serializeVccBackup } from "../../lib/storage/backup";
 import type { AppData, SectionKey, UserSettings } from "../../lib/types/app";
 import "../../settings-page.css";
 
@@ -44,13 +45,17 @@ function titleCase(value: string): string {
 export default function SettingsPage({
   data,
   onChange,
+  onResetSection,
   onWallpaperPreviewChange,
 }: {
   data: AppData;
   onChange: (data: AppData) => void;
+  onResetSection: (section: SectionKey) => void;
   onWallpaperPreviewChange: (preview: WallpaperPreviewSettings | null) => void;
 }) {
   const [featurePrefs, setFeaturePrefs] = useState<Record<string, boolean>>(() => loadFeaturePrefs());
+  const [recoveryPoints, setRecoveryPoints] = useState(() => loadRecoveryPoints());
+  const [dataStatus, setDataStatus] = useState("");
   const [welcomePreviewId, setWelcomePreviewId] = useState<number | null>(null);
   const [openSection, setOpenSection] = useState<string | null>(() => {
     const hash = window.location.hash.slice(1);
@@ -64,14 +69,7 @@ export default function SettingsPage({
   }
 
   function exportData() {
-    const payload = {
-      app: "VCC-OS",
-      version: data.version,
-      exportDate: new Date().toISOString(),
-      data,
-      smartFeatures: featurePrefs,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const blob = new Blob([serializeVccBackup(data, featurePrefs)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -82,17 +80,22 @@ export default function SettingsPage({
 
   function importData(file: File | undefined) {
     if (!file) return;
+    if (file.size > MAX_BACKUP_BYTES) {
+      window.alert("That backup is larger than VCC's 5 MB safety limit.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(String(reader.result || "{}"));
-        const imported = parsed.data || parsed;
-        if (!imported.sections || !imported.settings) throw new Error("Invalid VCC export");
-        onChange(normalizeAppData(imported));
-        if (parsed.smartFeatures) {
-          setFeaturePrefs(parsed.smartFeatures);
-          localStorage.setItem("vcc-os-smart-features", JSON.stringify(parsed.smartFeatures));
+        const imported = parseVccBackup(String(reader.result || "{}"));
+        saveRecoveryPoint(data, "Before backup import");
+        setRecoveryPoints(loadRecoveryPoints());
+        onChange(imported.data);
+        if (Object.keys(imported.smartFeatures).length) {
+          setFeaturePrefs(imported.smartFeatures);
+          localStorage.setItem("vcc-os-smart-features", JSON.stringify(imported.smartFeatures));
         }
+        setDataStatus("Backup restored. The previous workspace is available in recovery history.");
       } catch {
         window.alert("That file does not look like a valid VCC-OS export.");
       }
@@ -362,6 +365,23 @@ export default function SettingsPage({
                 </label>
               </div>
             </div>
+            {dataStatus && <p className="settings-data-status" role="status">{dataStatus}</p>}
+            <div className="settings-recovery-history">
+              <div><strong>Recovery history</strong><small>VCC keeps up to three local snapshots before imports, resets, and cloud restores.</small></div>
+              {recoveryPoints.length ? <ul>
+                {recoveryPoints.map((point) => <li key={point.id}>
+                  <span><strong>{point.reason}</strong><small>{new Date(point.createdAt).toLocaleString()}</small></span>
+                  <button type="button" onClick={() => {
+                    const recovered = restoreRecoveryPoint(point.id);
+                    if (!recovered) return;
+                    saveRecoveryPoint(data, "Before recovery restore");
+                    onChange(recovered);
+                    setRecoveryPoints(loadRecoveryPoints());
+                    setDataStatus("Recovery point restored.");
+                  }}>Restore</button>
+                </li>)}
+              </ul> : <small>No recovery points yet.</small>}
+            </div>
             <SettingFeatureRow title="Confirm before reset" description="Require a confirmation before destructive data actions." checked={data.settings.confirmBeforeReset} onChange={(confirmBeforeReset) => onChange({ ...data, settings: { ...data.settings, confirmBeforeReset } })} />
             <details className="settings-advanced">
               <summary><span><RotateCcw size={16} /> Advanced reset controls</span><ChevronDown size={17} aria-hidden="true" /></summary>
@@ -373,7 +393,9 @@ export default function SettingsPage({
                     type="button"
                     onClick={() => {
                       if (!data.settings.confirmBeforeReset || window.confirm(`Reset ${section.label} to zero rows?`)) {
-                        onChange(resetSection(data, section.key));
+                        saveRecoveryPoint(data, `Before ${section.label} reset`);
+                        setRecoveryPoints(loadRecoveryPoints());
+                        onResetSection(section.key);
                       }
                     }}
                   >
@@ -391,6 +413,8 @@ export default function SettingsPage({
                 type="button"
                 onClick={() => {
                   if (!data.settings.confirmBeforeReset || window.confirm("Reset all VCC OS data and settings to a blank state? This cannot be undone.")) {
+                    saveRecoveryPoint(data, "Before full reset");
+                    setRecoveryPoints(loadRecoveryPoints());
                     localStorage.removeItem("vcc-os-smart-features");
                     setFeaturePrefs(Object.fromEntries(smartFeatures.map((feature) => [feature.key, true])));
                     onChange(resetAllData());

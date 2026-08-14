@@ -133,7 +133,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    saveAppData(data);
     document.title = path === "/vitascan" ? "VitaScan — VCC Receipt Scanner" : "VCC-OS";
     applyVisualSettings(data.settings);
   }, [activeTheme, data, path]);
@@ -167,8 +166,7 @@ export default function App() {
   }
 
   function handleResetSection(section: SectionKey) {
-    const resetData = resetSection(data, section);
-    updateData(section === "transactions" ? syncTransactionTransfers(data, resetData.sections.transactions) : resetData);
+    updateData(resetSection(data, section));
   }
 
   if (path === "/vitascan") return (
@@ -202,7 +200,7 @@ export default function App() {
       {path === "/goals" && <GoalsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/reports" && <ReportsPage layoutView={data.settings.layoutViews.reports} transactions={data.sections.transactions.map(normalizeTransactionRow)} />}
       {path === "/missions" && <MissionsPage decisionState={decisionState} activity={data.activity} />}
-      {path === "/settings" && <SettingsPage data={data} onChange={updateData} onWallpaperPreviewChange={setWallpaperPreview} />}
+      {path === "/settings" && <SettingsPage data={data} onChange={updateData} onResetSection={handleResetSection} onWallpaperPreviewChange={setWallpaperPreview} />}
       {!isKnownPath && <NotFound />}
       </Suspense>
       <Suspense fallback={null}>

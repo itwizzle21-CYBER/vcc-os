@@ -7,16 +7,17 @@ import { migrateLegacyReceiptTaxRows } from "../engine/receiptTransactionEngine"
 import { createVerifiedCarLoanData } from "./carLoanReference";
 import { createZeroData, sectionConfigs } from "./defaultData";
 
-const STORAGE_KEY = "vcc-os:data:v2";
+export const APP_DATA_STORAGE_KEY = "vcc-os:data:v2";
 export const THEME_PREFERENCE_KEY = "vcc-os:theme-preference";
 const LEGACY_KEYS = ["vcc-os:data", "vcc_os_data", "vccData", "vcc-os-financial-state"];
 const BLANK_RESET_MARKER = "__vcc_blank_reset__";
 
 export function loadAppData(): AppData {
   if (typeof window === "undefined") return createZeroData();
-  const existing = readJson(window.localStorage.getItem(STORAGE_KEY));
+  const existing = readJson(window.localStorage.getItem(APP_DATA_STORAGE_KEY));
   if (existing) {
     const migrated = normalizeAppData(existing);
+    if (JSON.stringify(existing) !== JSON.stringify(migrated)) saveAppData(migrated);
     return withLocalThemePreference(migrated);
   }
 
@@ -36,7 +37,7 @@ export function loadAppData(): AppData {
 
 export function saveAppData(data: AppData) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, version: 5 }));
+  window.localStorage.setItem(APP_DATA_STORAGE_KEY, JSON.stringify({ ...data, version: 5 }));
 }
 
 export function loadThemePreference(fallback: ThemeMode): ThemeMode {

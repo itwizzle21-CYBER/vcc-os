@@ -159,3 +159,82 @@ Known constraint:
 
 - Persistence and section-reset contracts still need direct coverage before redundant local-storage writes or reset semantics are changed.
 
+## Sprint 0.11: Persistence and Reset Contracts
+
+Date: 2026-08-14
+
+Goal:
+
+- Remove proven duplicate application-state persistence without losing migration durability.
+- Define one consistent, testable section-reset contract.
+
+Completed:
+
+- Made explicit mutations the single owner of normal application-state saves.
+- Persisted current-key migrations during load and avoided rewrites for already-normalized snapshots.
+- Defined section reset as clearing only the selected table without replaying linked financial events.
+- Unified Settings and spreadsheet reset entry points and corrected the confirmation copy.
+- Added unit and desktop/mobile browser contract coverage.
+- Recorded evidence and rollback guidance in `docs/SPRINT_0_11_PERSISTENCE_RESET_CONTRACTS.md`.
+
+Validation:
+
+- Build, bundle budget, lint, TypeScript, 156 unit tests, 4 focused browser tests, 72 full-suite browser tests, dependency audit, and whitespace checks passed.
+- 10 full-suite browser cases were intentionally skipped by project; no failures remained.
+
+Release status:
+
+- GO for the persistence/reset objective.
+- Included in the combined Sprint 0.11–0.14 release candidate.
+
+Known constraint:
+
+- Same-field cloud conflict behavior is deterministic but still lacks explicit conflict-contract tests and user-visible resolution disclosure.
+
+## Sprint 0.12: Cloud Conflict Safety
+
+Date: 2026-08-14
+
+Completed:
+
+- Added structured same-field conflict diagnostics to the three-way merge.
+- Preserved newer-cloud-revision resolution and exposed the last conflict count in the sync dialog.
+- Added direct compatible-edit and same-field collision tests.
+
+Validation: focused cloud suite 6 passed; release build, lint, typecheck, unit, browser, audit, and whitespace gates completed with Sprint 0.14.
+
+Release status: GO; included in the combined production release.
+
+## Sprint 0.13: Backup and Recovery
+
+Date: 2026-08-14
+
+Completed:
+
+- Added versioned and validated exports with legacy import support and a 5 MB safety ceiling.
+- Added three local recovery points before imports, resets, explicit cloud restores, and recovery restores.
+- Added one-click recovery and desktop/mobile persistence recovery coverage.
+
+Validation: backup suite 7 passed; persistence/recovery browser coverage passed on desktop and mobile.
+
+Release status: GO; included in the combined production release.
+
+## Sprint 0.14: Security, Accessibility, and Release Hardening
+
+Date: 2026-08-14
+
+Completed:
+
+- Reviewed all release-diff surfaces against the financial-data, import, local-storage, and cloud-sync threat model.
+- Remediated the unbounded backup-file parsing risk.
+- Ran the built-in measurable accessibility auditor across all routes with zero failures and made the all-route audit permanent.
+- Added the release go/no-go record and rollback criteria.
+
+Validation:
+
+- Build and 450,778-byte application bundle: pass.
+- ESLint, TypeScript, 165 unit tests, production dependency audit, and whitespace checks: pass.
+- Browser matrix reached 69 passes and 10 intentional skips; all three infrastructure-timeout cases passed on exact isolated rerun.
+
+Release status: GO for commit, push, and official production deployment.
+

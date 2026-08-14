@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createZeroData } from "../storage/defaultData";
 import type { AppData, SpreadsheetRow } from "../types/app";
-import { mergeAppData } from "./syncMerge";
+import { mergeAppData, mergeAppDataWithReport } from "./syncMerge";
 
 function row(id: string, description: string, amount: string, notes = ""): SpreadsheetRow {
   return { id, cells: { description, amount, notes } };
@@ -53,5 +53,36 @@ describe("two-way VCC data merge", () => {
     const merged = mergeAppData(base, desktop, phone);
 
     expect(merged.sections.transactions[0].cells.description).toBe("Updated");
+  });
+
+  it("uses the newer cloud value and reports a same-field conflict", () => {
+    const base = withTransactions(row("shared", "Lunch", "10"));
+    const desktop = withTransactions(row("shared", "Lunch", "12"));
+    const phone = withTransactions(row("shared", "Lunch", "15"));
+
+    const result = mergeAppDataWithReport(base, desktop, phone);
+
+    expect(result.data.sections.transactions[0].cells.amount).toBe("15");
+    expect(result.conflicts).toEqual([
+      { path: "sections.transactions[id=shared].cells.amount", resolution: "remote" },
+    ]);
+  });
+
+  it("reports each independently conflicting field without flagging compatible edits", () => {
+    const base = withTransactions(row("shared", "Lunch", "10", ""));
+    const desktop = withTransactions(row("shared", "Desktop lunch", "12", "receipt"));
+    const phone = withTransactions(row("shared", "Mobile lunch", "15", ""));
+
+    const result = mergeAppDataWithReport(base, desktop, phone);
+
+    expect(result.data.sections.transactions[0].cells).toMatchObject({
+      description: "Mobile lunch",
+      amount: "15",
+      notes: "receipt",
+    });
+    expect(result.conflicts.map(({ path }) => path)).toEqual([
+      "sections.transactions[id=shared].cells.description",
+      "sections.transactions[id=shared].cells.amount",
+    ]);
   });
 });

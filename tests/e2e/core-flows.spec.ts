@@ -392,10 +392,16 @@ test("hides optional captions and hints for experienced users", async ({ page })
   await expect(page.getByRole("button", { name: "Post receipt to Transactions" })).toBeVisible();
 });
 
-test("has no measurable accessibility failures on the dashboard", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
-  const failures = await page.evaluate(() => {
+test("has no measurable accessibility failures across every application route", async ({ page }) => {
+  test.setTimeout(90_000);
+  const failures: string[] = [];
+  for (const path of [
+    "/", "/money", "/bills", "/income", "/transactions", "/debt", "/car-payment",
+    "/savings", "/inventory", "/goals", "/reports", "/missions", "/settings", "/vitascan", "/not-found",
+  ]) {
+    await page.goto(path);
+    if (path === "/") await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
+    const routeFailures = await page.evaluate(() => {
     const visible = (element: Element) => {
       const box = element.getBoundingClientRect();
       return box.width > 0 && box.height > 0 && getComputedStyle(element).visibility !== "hidden";
@@ -411,10 +417,21 @@ test("has no measurable accessibility failures on the dashboard", async ({ page 
       if (!name) issues.push("Visible control missing an accessible name");
       if (box.width < 24 || box.height < 24) issues.push(`Undersized target: ${Math.round(box.width)}x${Math.round(box.height)}`);
     });
+    document.querySelectorAll("input,select,textarea").forEach((control) => {
+      if (!visible(control) || (control as HTMLInputElement).type === "hidden") return;
+      const id = control.getAttribute("id");
+      const named = control.getAttribute("aria-label")
+        || control.getAttribute("aria-labelledby")
+        || (id && document.querySelector(`label[for="${CSS.escape(id)}"]`))
+        || control.closest("label");
+      if (!named) issues.push("Visible form control missing a label");
+    });
     if (document.querySelectorAll("h1").length !== 1) issues.push("Page must expose exactly one h1");
     if (!document.querySelector("main")) issues.push("Page missing main landmark");
     return issues;
-  });
+    });
+    failures.push(...routeFailures.map((issue) => `${path}: ${issue}`));
+  }
   expect(failures).toEqual([]);
 });
 

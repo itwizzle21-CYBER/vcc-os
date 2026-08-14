@@ -2,6 +2,20 @@ import type { AppData } from "../types/app";
 
 type JsonObject = Record<string, unknown>;
 
+export type CloudMergeConflict = {
+  path: string;
+  resolution: "remote";
+};
+
+export type CloudMergeResult = {
+  data: AppData;
+  conflicts: CloudMergeConflict[];
+};
+
+type MergeContext = {
+  conflicts: CloudMergeConflict[];
+};
+
 function isObject(value: unknown): value is JsonObject {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -25,7 +39,7 @@ function canMergeById(...arrays: unknown[][]): boolean {
   return values.length > 0 && values.every((value) => itemId(value) !== null);
 }
 
-function mergeById(base: unknown[], local: unknown[], remote: unknown[]): unknown[] {
+function mergeById(base: unknown[], local: unknown[], remote: unknown[], context: MergeContext, path: string): unknown[] {
   const baseMap = new Map(base.map((value) => [itemId(value)!, value]));
   const localMap = new Map(local.map((value) => [itemId(value)!, value]));
   const remoteMap = new Map(remote.map((value) => [itemId(value)!, value]));
@@ -45,12 +59,13 @@ function mergeById(base: unknown[], local: unknown[], remote: unknown[]): unknow
       if (baseValue === undefined || !isEqual(localValue, baseValue)) return [clone(localValue)];
       return [];
     }
-    if (baseValue === undefined) return [mergeValue({}, localValue, remoteValue)];
-    return [mergeValue(baseValue, localValue, remoteValue)];
+    const itemPath = `${path}[id=${id}]`;
+    if (baseValue === undefined) return [mergeValue({}, localValue, remoteValue, context, itemPath)];
+    return [mergeValue(baseValue, localValue, remoteValue, context, itemPath)];
   });
 }
 
-function mergeObjects(base: JsonObject, local: JsonObject, remote: JsonObject): JsonObject {
+function mergeObjects(base: JsonObject, local: JsonObject, remote: JsonObject, context: MergeContext, path: string): JsonObject {
   const result: JsonObject = {};
   const keys = new Set([...Object.keys(base), ...Object.keys(local), ...Object.keys(remote)]);
 
@@ -69,26 +84,29 @@ function mergeObjects(base: JsonObject, local: JsonObject, remote: JsonObject): 
       continue;
     }
 
-    result[key] = mergeValue(base[key], local[key], remote[key]);
+    result[key] = mergeValue(base[key], local[key], remote[key], context, path ? `${path}.${key}` : key);
   }
 
   return result;
 }
 
-function mergeValue(base: unknown, local: unknown, remote: unknown): unknown {
+function mergeValue(base: unknown, local: unknown, remote: unknown, context: MergeContext, path: string): unknown {
   if (isEqual(local, remote)) return clone(local);
   if (isEqual(local, base)) return clone(remote);
   if (isEqual(remote, base)) return clone(local);
 
   if (Array.isArray(base) && Array.isArray(local) && Array.isArray(remote)) {
-    return canMergeById(base, local, remote) ? mergeById(base, local, remote) : clone(remote);
+    if (canMergeById(base, local, remote)) return mergeById(base, local, remote, context, path);
+    context.conflicts.push({ path, resolution: "remote" });
+    return clone(remote);
   }
 
   if (isObject(base) && isObject(local) && isObject(remote)) {
-    return mergeObjects(base, local, remote);
+    return mergeObjects(base, local, remote, context, path);
   }
 
   // Without per-field timestamps, the newer server revision is the safest tie-breaker.
+  context.conflicts.push({ path, resolution: "remote" });
   return clone(remote);
 }
 
@@ -97,7 +115,15 @@ function mergeValue(base: unknown, local: unknown, remote: unknown): unknown {
  * Row additions, deletions, and independent cell edits are preserved by stable row id.
  */
 export function mergeAppData(base: AppData, local: AppData, remote: AppData): AppData {
-  return mergeValue(base, local, remote) as AppData;
+  return mergeAppDataWithReport(base, local, remote).data;
+}
+
+export function mergeAppDataWithReport(base: AppData, local: AppData, remote: AppData): CloudMergeResult {
+  const context: MergeContext = { conflicts: [] };
+  return {
+    data: mergeValue(base, local, remote, context, "") as AppData,
+    conflicts: context.conflicts,
+  };
 }
 
 export function appDataEqual(left: AppData, right: AppData): boolean {

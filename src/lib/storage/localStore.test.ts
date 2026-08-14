@@ -1,12 +1,26 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadAppData, loadThemePreference, normalizeAppData, resetAllData, saveThemePreference, THEME_PREFERENCE_KEY } from "./localStore";
+import { createStarterData } from "./defaultData";
+import {
+  APP_DATA_STORAGE_KEY,
+  loadAppData,
+  loadThemePreference,
+  normalizeAppData,
+  resetAllData,
+  resetSection,
+  saveAppData,
+  saveThemePreference,
+  THEME_PREFERENCE_KEY,
+} from "./localStore";
 
-function installLocalStorage() {
+function installLocalStorage(onSetItem?: (key: string, value: string) => void) {
   const values = new Map<string, string>();
   vi.stubGlobal("window", {
     localStorage: {
       getItem: (key: string) => values.get(key) ?? null,
-      setItem: (key: string, value: string) => values.set(key, value),
+      setItem: (key: string, value: string) => {
+        onSetItem?.(key, value);
+        values.set(key, value);
+      },
     },
   });
   return values;
@@ -38,6 +52,17 @@ describe("full VCC reset", () => {
     expect(reset.settings.profileLabel).toBe("");
     expect(reset.settings.notificationsEnabled).toBe(false);
   });
+
+  it("stays blank after persistence and reload", () => {
+    installLocalStorage();
+    saveAppData(resetAllData());
+
+    const reloaded = loadAppData();
+
+    expect(Object.values(reloaded.sections).every((rows) => rows.length === 0)).toBe(true);
+    expect(reloaded.settings.accountName).toBe("");
+    expect(reloaded.settings.hiddenWidgets).toContain("__vcc_blank_reset__");
+  });
 });
 
 describe("theme preference", () => {
@@ -68,6 +93,61 @@ describe("theme preference", () => {
     const values = installLocalStorage();
     values.set(THEME_PREFERENCE_KEY, "midnight");
     expect(loadThemePreference("light")).toBe("light");
+  });
+
+});
+
+describe("section reset contract", () => {
+  it("clears only the selected section without undoing linked domain state", () => {
+    const data = createStarterData();
+    const otherSections = Object.entries(data.sections).filter(([key]) => key !== "transactions");
+
+    const reset = resetSection(data, "transactions");
+
+    expect(reset.sections.transactions).toEqual([]);
+    for (const [key, rows] of otherSections) {
+      expect(reset.sections[key as keyof typeof reset.sections]).toBe(rows);
+    }
+    expect(reset.paycheckHistory).toBe(data.paycheckHistory);
+    expect(reset.activity).toBe(data.activity);
+    expect(reset.carLoan).toBe(data.carLoan);
+  });
+});
+
+describe("application persistence contract", () => {
+  it("writes one versioned snapshot for an explicit save", () => {
+    const writes: Array<{ key: string; value: string }> = [];
+    installLocalStorage((key, value) => writes.push({ key, value }));
+
+    saveAppData(createStarterData());
+
+    expect(writes).toHaveLength(1);
+    expect(writes[0].key).toBe(APP_DATA_STORAGE_KEY);
+    expect(JSON.parse(writes[0].value).version).toBe(5);
+  });
+
+  it("persists a current-key migration during load", () => {
+    const writes: Array<{ key: string; value: string }> = [];
+    const values = installLocalStorage((key, value) => writes.push({ key, value }));
+    values.set(APP_DATA_STORAGE_KEY, JSON.stringify({ version: 3, sections: {}, settings: { accountName: "Migrated" } }));
+
+    const loaded = loadAppData();
+
+    expect(loaded.version).toBe(5);
+    expect(loaded.settings.accountName).toBe("Migrated");
+    expect(writes.filter(({ key }) => key === APP_DATA_STORAGE_KEY)).toHaveLength(1);
+    expect(JSON.parse(values.get(APP_DATA_STORAGE_KEY) || "{}").version).toBe(5);
+  });
+
+  it("does not rewrite an already normalized current snapshot during load", () => {
+    const writes: string[] = [];
+    const values = installLocalStorage((key) => writes.push(key));
+    const current = normalizeAppData(createStarterData());
+    values.set(APP_DATA_STORAGE_KEY, JSON.stringify(current));
+
+    loadAppData();
+
+    expect(writes.filter((key) => key === APP_DATA_STORAGE_KEY)).toEqual([]);
   });
 });
 

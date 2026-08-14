@@ -223,7 +223,7 @@ export default function Spreadsheet({
   }
 
   function resetRows() {
-    if (!window.confirm(`Reset ${config.title} to its default rows? Your changes in this section will be replaced.`)) return;
+    if (!window.confirm(`Reset ${config.title} to zero rows? Other areas of VCC will remain unchanged.`)) return;
     onResetSection(config.key);
   }
 

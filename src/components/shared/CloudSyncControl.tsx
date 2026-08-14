@@ -195,10 +195,13 @@ export default function CloudSyncControl({ sync }: { sync: VccCloudSync }) {
         </> : sync.email ? <>
           <p id="cloud-sync-description">Signed in as <strong>{sync.email}</strong>. Changes from VitaScan, mobile, and desktop share one protected VCC account.</p>
           <div className="cloud-sync-state"><Check size={16}/>{sync.message || "Your data is synced."}</div>
+          {sync.conflicts > 0 && <p className="cloud-sync-conflict" role="status">
+            Last merge found {sync.conflicts} same-field {sync.conflicts === 1 ? "conflict" : "conflicts"}. VCC kept the value from the newer protected cloud revision.
+          </p>}
           <button className="cloud-sync-primary" type="button" data-autofocus disabled={busy} onClick={restoreCloudCopy}>
             {restoring ? <LoaderCircle className="spin" size={17}/> : <RefreshCw size={17}/>} Restore protected cloud copy
           </button>
-          <small>This reloads the latest protected VCC data onto this device. Every later cloud replacement is kept in recovery history.</small>
+          <small>This reloads the latest protected VCC data onto this device. The current local workspace is saved to recovery history first.</small>
           {error && <p className="cloud-sync-message" role="alert">{error}</p>}
           <button className="cloud-sync-secondary" type="button" disabled={busy} onClick={sync.signOut}><LogOut size={16}/> Sign out on this device</button>
         </> : sentEmail ? <>

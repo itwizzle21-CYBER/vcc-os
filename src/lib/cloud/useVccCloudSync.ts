@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel, Session } from "@supabase/supabase-js";
 import type { AppData } from "../types/app";
+import { saveRecoveryPoint } from "../storage/backup";
 import { mergeVitaReceipts, type VitaReceiptRecord } from "../vitascan/receiptSync";
 import { cloudConfigured, supabase } from "./client";
-import { appDataEqual, mergeAppData } from "./syncMerge";
+import { appDataEqual, mergeAppDataWithReport } from "./syncMerge";
 
 export type CloudSyncStatus = "offline" | "signed_out" | "connecting" | "synced" | "saving" | "error";
 export type VccCloudSync = {
@@ -11,6 +12,7 @@ export type VccCloudSync = {
   status: CloudSyncStatus;
   email: string;
   message: string;
+  conflicts: number;
   sendLoginCode: (email: string) => Promise<void>;
   verifyLoginCode: (email: string, token: string) => Promise<void>;
   restoreFromCloud: () => Promise<void>;
@@ -67,6 +69,7 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [status, setStatus] = useState<CloudSyncStatus>(cloudConfigured ? "connecting" : "offline");
   const [message, setMessage] = useState("");
+  const [conflicts, setConflicts] = useState(0);
   const dataRef = useRef(data);
   const lastSynced = useRef("");
   const baseRef = useRef<SyncBase | null>(null);
@@ -140,7 +143,9 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
       }
 
       const remoteData = mergeVitaReceipts(latest.data, receiptRowsRef.current);
-      localData = mergeAppData(base.data, localData, remoteData);
+      const reconciliation = mergeAppDataWithReport(base.data, localData, remoteData);
+      localData = reconciliation.data;
+      setConflicts(reconciliation.conflicts.length);
       const remoteBase = { data: remoteData, revision: Number(latest.revision) };
       rememberBase(userId, remoteBase);
       lastSynced.current = JSON.stringify(remoteData);
@@ -180,8 +185,10 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
     const base = { data: restored, revision: Number(stateResult.data.revision) };
     rememberBase(userId, base);
     lastSynced.current = JSON.stringify(restored);
+    if (!appDataEqual(dataRef.current, restored)) saveRecoveryPoint(dataRef.current, "Before cloud restore");
     dataRef.current = restored;
     applyRemoteData(restored);
+    setConflicts(0);
     ready.current = true;
     setStatus("synced");
     setMessage("Protected desktop data restored on this device.");
@@ -254,9 +261,11 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
         const storedBase = readSyncBase(userId);
         const localChangedOffline = storedBase && !appDataEqual(dataRef.current, storedBase.data);
         const currentData = dataRef.current;
-        const sharedData = localChangedOffline
-          ? mergeAppData(storedBase.data, dataRef.current, remoteData)
-          : remoteData;
+        const reconciliation = localChangedOffline
+          ? mergeAppDataWithReport(storedBase.data, dataRef.current, remoteData)
+          : { data: remoteData, conflicts: [] };
+        const sharedData = reconciliation.data;
+        setConflicts(reconciliation.conflicts.length);
         const remoteBase = { data: remoteData, revision: Number(remote.revision) };
         rememberBase(userId, remoteBase);
         lastSynced.current = JSON.stringify(remoteData);
@@ -282,9 +291,11 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
           const remoteData = mergeVitaReceipts(row.data, receiptRowsRef.current);
           const knownBase = baseRef.current;
           if (knownBase && Number(row.revision) <= knownBase.revision) return;
-          const nextData = knownBase
-            ? mergeAppData(knownBase.data, dataRef.current, remoteData)
-            : remoteData;
+          const reconciliation = knownBase
+            ? mergeAppDataWithReport(knownBase.data, dataRef.current, remoteData)
+            : { data: remoteData, conflicts: [] };
+          const nextData = reconciliation.data;
+          setConflicts(reconciliation.conflicts.length);
           const previousData = dataRef.current;
           const remoteBase = { data: remoteData, revision: Number(row.revision) };
           rememberBase(userId, remoteBase);
@@ -365,6 +376,7 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
     await supabase.auth.signOut();
     lastSynced.current = "";
     baseRef.current = null;
+    setConflicts(0);
     setStatus("signed_out");
     setMessage("Signed out. This device will keep its local copy.");
   }, []);
@@ -374,6 +386,7 @@ export function useVccCloudSync(data: AppData, applyRemoteData: (data: AppData) 
     status,
     email: isSharedAccount(session) ? session.user.email || "VCC account" : "",
     message,
+    conflicts,
     sendLoginCode,
     verifyLoginCode,
     restoreFromCloud,
