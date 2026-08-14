@@ -40,8 +40,8 @@ Rollback immediately if any of these occur after deployment:
 
 ## Deployment Record
 
-- Commit: pending
-- GitHub push: pending
-- Vercel deployment: pending
+- Release commit: `585b2b4f` (`feat: harden VCC data safety and release readiness`)
+- GitHub push: `main` synchronized with `origin/main`
+- Vercel deployment: `dpl_BU8qTK3RseKBmuzbFgc2FdgopqV6`
 - Official alias: `https://vcc-os.vercel.app`
-- Deployment status: pending
+- Deployment status: `READY` (production)
