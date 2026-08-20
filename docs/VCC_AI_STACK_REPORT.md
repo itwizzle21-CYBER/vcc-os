@@ -9,17 +9,17 @@
 
 ## Executive summary
 
-**Overall readiness: 86%**
+**Overall readiness: 88%**
 
-VCC's AI environment is production-capable for its current React/Vite/TypeScript stack. GitHub, Supabase, Playwright, the in-app Browser, and both Context7 routes passed live checks. Vercel is fully operational through the linked and authenticated CLI, while its connected-app project lookup is degraded. Google Chrome control is the only failed named integration because Google Chrome is not installed on this machine; the Browser plugin and native-host manifest themselves are present.
+VCC's AI environment is production-capable for its current React/Vite/TypeScript stack. GitHub, Supabase, Playwright, the in-app Browser, and both Context7 routes passed live checks. Vercel is fully operational through the linked and authenticated CLI, while its connected-app project lookup is degraded. Google Chrome control is the only failed named integration because Google Chrome is not installed on this machine; the Browser plugin and native-host manifest themselves are present. Sprint 0.15 closed the project-specific financial-calculation governance gap.
 
 | Readiness area | Weight | Score | Evidence |
 | --- | ---: | ---: | --- |
 | Named integrations | 50 | 43 | Six of seven are usable; Chrome is unavailable. Vercel has a working CLI path but degraded app-project visibility. |
-| Requested skill domains | 30 | 25 | Strong first-party coverage in nine domains; TypeScript, Tailwind, Framer Motion, and financial-calculation specialization can improve. |
+| Requested skill domains | 30 | 27 | Strong first-party coverage in ten domains; TypeScript, Tailwind, Framer Motion, and performance specialization can improve. |
 | Repository/tooling | 15 | 15 | Git, upstream reachability, Node/npm, Playwright, Vercel link, and commit prerequisites are healthy. |
 | Duplication/routing hygiene | 5 | 3 | Eight duplicate bare skill names, overlapping browser/deploy/security workflows, and two Context7 routes require routing discipline. |
-| **Total** | **100** | **86** | Ready for normal work with targeted remediation, not a broad plugin install. |
+| **Total** | **100** | **88** | Ready for normal work with targeted remediation, not a broad plugin install. |
 
 ## Named integration verification
 
@@ -92,10 +92,11 @@ The current desktop host exposes **24 app tool groups** through `codex_apps`. Th
 
 ## Installed skill inventory
 
-The current filesystem contains **208 installed skill records representing 201 distinct bare names**. The inventory includes local, system, current plugin-cache, runtime, and template skills. The active session catalog may intentionally expose a smaller subset.
+The current filesystem contains **209 installed skill records representing 202 distinct bare names**. The inventory includes repository-local, local, system, current plugin-cache, runtime, and template skills. The active session catalog may intentionally expose a smaller subset.
 
 ### Local and system
 
+- **VCC repository (1):** `vcc-financial-calculations`
 - **Agent (1):** `find-skills`
 - **Local Codex (39):** `a11y-pass`, `Accessibility Audit`, `animation-vocabulary`, `chatgpt-apps`, `component-states`, `data-viz`, `database-testing`, `define-goal`, `Design Critique & Evaluation`, `Design Systems`, `emil-design-eng`, `frontend-code-review`, `gh-address-comments`, `gh-fix-ci`, `jupyter-notebook`, `linear`, `micro-motion`, `notion-knowledge-capture`, `notion-meeting-intelligence`, `notion-research-documentation`, `pdf`, `performance-testing`, `playwright`, `playwright-automation`, `playwright-interactive`, `release-readiness`, `responsive-layout`, `review-animations`, `risk-based-testing`, `screenshot`, `security-best-practices`, `security-ownership-map`, `security-threat-model`, `sentry`, `speech`, `transcribe`, `vercel-deploy`, `visual-testing`, `yeet`
 - **System (6):** `imagegen`, `openai-docs`, `plugin-creator`, `review-agent`, `skill-creator`, `skill-installer`
@@ -175,15 +176,14 @@ No duplicate produced an application-code conflict during this sprint.
 | Accessibility | `Accessibility Audit`, `a11y-pass`, responsive/design review, Playwright checks | **No additional install.** Keep WCAG 2.2 AA and browser checks as release gates. |
 | Security | Local security skills, 13 Codex Security workflows, Vercel Firewall guidance | **No additional generic skill.** Existing coverage is deep; add a live monitoring connector only when operational telemetry is required. |
 | Performance | `performance-testing`, Vercel observability/caching guidance, Playwright | Add `addyosmani/web-quality-skills@performance` for Lighthouse/Core Web Vitals workflow depth. Registry evidence: 30K installs; source repo 2,643 stars, MIT. |
-| Financial calculations | Budget/forecast templates and application tests; no calculation-governance skill | Create a project-local `vcc-financial-calculations` skill with decimal-safe arithmetic, currency/rounding policy, amortization, double-entry invariants, reconciliation, property tests, and golden fixtures. Use the installed `skill-creator`; do not install low-reputation finance skills without code review. |
+| Financial calculations | Repository-local `vcc-financial-calculations`, budget/forecast templates, standards, ADRs, and application tests | **No additional install.** Keep the repository skill aligned with canonical engines and extend its contracts alongside new financial domains. |
 
 ### Recommended addition order
 
-1. Create the project-specific financial-calculations skill.
-2. Add the performance skill before the next optimization sprint.
-3. Add TypeScript and Tailwind specialization when those gaps enter active scope.
-4. Add Framer Motion specialization only after the dependency is adopted.
-5. Do not add more generic React, Next.js, shadcn/ui, Supabase, PostgreSQL, Vercel, accessibility, or security skills until duplicate routing is simplified.
+1. Add the performance skill before the next optimization sprint.
+2. Add TypeScript and Tailwind specialization when those gaps enter active scope.
+3. Add Framer Motion specialization only after the dependency is adopted.
+4. Do not add more generic React, Next.js, shadcn/ui, Supabase, PostgreSQL, Vercel, accessibility, security, or financial-calculation skills until duplicate routing is simplified.
 
 Skill-registry install counts were checked with `npx skills find`. Source reputation was checked against the GitHub repositories; packages from repositories below 100 stars were not recommended. Relevant registry pages: [TypeScript advanced types](https://skills.sh/wshobson/agents/typescript-advanced-types), [Tailwind design system](https://skills.sh/wshobson/agents/tailwind-design-system), [Motion/Framer](https://skills.sh/freshtechbro/claudedesignskills/motion-framer), and [web performance](https://skills.sh/addyosmani/web-quality-skills/performance).
 
@@ -194,7 +194,7 @@ Skill-registry install counts were checked with `npx skills find`. Source reputa
 - GitHub CLI `gh` is absent; Git and the GitHub app both work.
 - Supabase CLI is absent; the connected Supabase app works and the VCC project is healthy.
 - Atlassian Rovo remains in an authentication loop and is not connected.
-- Dedicated TypeScript, Tailwind, Framer Motion, performance/Web Vitals, and financial-calculation specialization is not uniformly installed; only the highest-value additions are recommended above.
+- Dedicated TypeScript, Tailwind, Framer Motion, and performance/Web Vitals specialization is not uniformly installed; only the highest-value additions are recommended above. VCC financial-calculation specialization is now repository-local.
 - The standalone Context7 MCP and Context7 app duplicate one another.
 
 ## Git repository health and commit readiness
@@ -217,7 +217,7 @@ No repository repair was required. The prior local commit remains valid and the 
 2. Reauthorize or repair the Vercel app connector's project scope; continue using the verified linked CLI meanwhile.
 3. Choose one primary Context7 route.
 4. Archive duplicate local GitHub, Notion, PDF, and `yeet` skills after reviewing local customizations.
-5. Create the VCC-specific financial-calculations skill before expanding financial rules.
+5. Keep the completed VCC financial-calculations skill aligned with future financial-engine contracts.
 6. Reconnect Atlassian only when Jira/Confluence work enters scope.
 
 ## Evidence boundary

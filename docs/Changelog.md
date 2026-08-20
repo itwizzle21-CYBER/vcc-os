@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added a repository-local VCC financial-calculations skill covering canonical ownership, cent-safe rounding, reconciliation, evidence, deterministic dates, and regression-test requirements.
+- Closed the Sprint 0.6 audit's highest-priority skill gap without changing application code, dependencies, or production data.
+
 - Added explicit same-field cloud-conflict reporting while retaining optimistic revision safety and the newer-cloud-revision tie-breaker.
 - Added versioned, validated VCC backups, legacy import compatibility, a 5 MB import ceiling, and three-point local recovery history before destructive actions.
 - Expanded measurable accessibility regression coverage from the dashboard to all application routes and completed a changed-surface security/release review.

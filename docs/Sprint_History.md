@@ -238,3 +238,29 @@ Validation:
 
 Release status: GO for commit, push, and official production deployment.
 
+## Sprint 0.15: Financial Calculation Governance Skill
+
+Date: 2026-08-20
+
+Goal:
+
+- Turn VCC's established financial calculation contracts into an automatically discoverable repository-local skill.
+- Close the highest-priority capability gap identified by the Sprint 0.6 AI-stack audit without changing application behavior.
+
+Completed:
+
+- Added a focused skill for formula ownership, cent-safe rounding, reconciliation, idempotence, reversal, date, evidence, and test requirements.
+- Added a project reference mapping each financial domain to its canonical implementation owner and regression-test matrix.
+- Reconciled the AI-stack inventory and remediation plan.
+- Recorded evidence and rollback guidance in `docs/SPRINT_0_15_FINANCIAL_CALCULATION_SKILL.md`.
+
+Validation:
+
+- Skill structure/frontmatter validation and whitespace checks passed.
+- No application code, dependencies, runtime configuration, database, or production data changed.
+
+Release status:
+
+- GO for commit.
+- No deployment is required for repository-local agent governance.
+
