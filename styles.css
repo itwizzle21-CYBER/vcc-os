@@ -12604,9 +12604,20 @@ body {
   min-width: 0;
 }
 
-.reports-period-tabs {
-  flex: 1 1 20rem;
+.reference-shell .reports-page .reports-period-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
   max-width: 100%;
+  flex: 0 1 auto;
+}
+
+@media (min-width: 48rem) {
+  .reference-shell .reports-page .reports-period-tabs {
+    display: inline-flex;
+    width: auto;
+    flex: 1 1 20rem;
+  }
 }
 
 .reports-page.layout-view-5 > .reports-grid {

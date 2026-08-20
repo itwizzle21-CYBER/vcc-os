@@ -12,17 +12,7 @@
     <link id="apple-touch-icon" rel="apple-touch-icon" sizes="180x180" href="/icons/vcc-apple-180.png?v=1" />
     <link id="app-icon" rel="icon" type="image/png" sizes="192x192" href="/icons/vcc-android-192.png?v=1" />
     <title>VCC-OS</title>
-    <script>
-      (() => {
-        if (!/^\/vitascan(?:\/|$)/.test(window.location.pathname)) return;
-        document.title = "VitaScan — VCC Receipt Scanner";
-        document.getElementById("application-name")?.setAttribute("content", "VitaScan");
-        document.getElementById("apple-app-title")?.setAttribute("content", "VitaScan");
-        document.getElementById("app-manifest")?.setAttribute("href", "/vitascan.webmanifest");
-        document.getElementById("apple-touch-icon")?.setAttribute("href", "/icons/vitascan-apple-180.png?v=2");
-        document.getElementById("app-icon")?.setAttribute("href", "/icons/vitascan-android-192.png?v=2");
-      })();
-    </script>
+    <script src="/app-identity.js"></script>
   </head>
   <body>
     <div id="root"></div>

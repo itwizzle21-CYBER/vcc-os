@@ -42,5 +42,6 @@
 :root[data-theme="light"] .vitascan-desktop-companion > a { color: #075985; }
 :root[data-theme="light"] .vitascan-footer { color: #475569; }
 :root[data-theme="light"] .vitascan-footer a { color: #075985; }
+:root[data-theme="light"] .vitascan-page .eyebrow { color: #1d4ed8; }
 @media (min-width: 23em) { .open-vcc-short { display: none; } .open-vcc-wide { display: inline; } }
 @media (min-width: 48em) { .vitascan-app-shell { padding: 18px; } .vitascan-app-header,.vitascan-footer { width: min(100%, 64rem); } .vitascan-hero > .collapsible-section-state { grid-column: 3; } }

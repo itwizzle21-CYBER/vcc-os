@@ -725,6 +725,38 @@ test("traps focus in the background picker and restores it on close", async ({ p
   await expect(manage).toBeFocused();
 });
 
+test("keeps narrow report controls compact and VitaScan upload targets full-size", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile"), "Narrow-layout regression coverage.");
+  await page.setViewportSize({ width: 320, height: 800 });
+
+  await page.goto("/reports");
+  const periodTabs = page.getByRole("group", { name: "Report period" });
+  const tabBox = await periodTabs.boundingBox();
+  expect(tabBox).not.toBeNull();
+  expect(tabBox!.height).toBeLessThanOrEqual(112);
+  for (const label of ["Weekly", "Monthly", "Yearly", "All Time"]) {
+    const buttonBox = await periodTabs.getByRole("button", { name: label }).boundingBox();
+    expect(buttonBox).not.toBeNull();
+    expect(buttonBox!.height).toBeGreaterThanOrEqual(24);
+    expect(buttonBox!.height).toBeLessThanOrEqual(56);
+  }
+
+  await page.addInitScript(() => localStorage.setItem("vcc-os:theme-preference", "light"));
+  await page.goto("/vitascan");
+  await expect(page.locator(".vitascan-page .eyebrow").first()).toHaveCSS("color", "rgb(29, 78, 216)");
+  for (const [inputName, labelSelector] of [
+    ["Open camera", ".scan-button"],
+    ["Use screenshot", ".scan-secondary"],
+  ] as const) {
+    const inputBox = await page.getByLabel(inputName).boundingBox();
+    const labelBox = await page.locator(labelSelector).boundingBox();
+    expect(inputBox).not.toBeNull();
+    expect(labelBox).not.toBeNull();
+    expect(inputBox!.width).toBeGreaterThanOrEqual(labelBox!.width - 2);
+    expect(inputBox!.height).toBeGreaterThanOrEqual(labelBox!.height - 2);
+  }
+});
+
 test("VitaScan saves to this VCC workspace and keeps light-theme actions readable", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "The OCR handoff only needs one browser execution.");
   test.setTimeout(120_000);
