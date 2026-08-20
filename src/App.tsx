@@ -22,7 +22,14 @@ import { formatCurrency, formatDateMDY, isBlankRow, todayIso, toNumber } from ".
 import { amountToCents, calculateReceiptLineAmounts, centsToAmount } from "./lib/calculations/receiptMath";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { computeFinancialState } from "./lib/engine/financialEngine";
-import { applyBillRowsEvent, deleteTransactionEvent } from "./lib/engine/financialEventEngine";
+import {
+  applyBillRowsEvent,
+  deleteBillEvent,
+  deleteTransactionEvent,
+  restoreDeletedBillEvent,
+  type DeletedBillSnapshot,
+} from "./lib/engine/financialEventEngine";
+import { effectiveBillStatus, hasBillPaymentEvidence, storedBillStatus } from "./lib/engine/billPaymentSync";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow, rankInventoryRows } from "./lib/engine/inventoryEngine";
 import { migrateLegacyReceiptTaxRows } from "./lib/engine/receiptTransactionEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
@@ -36,6 +43,7 @@ import { enforceChimeBalanceFloor } from "./lib/engine/chimeAccountingEngine";
 import { canonicalizeAccountRows, canonicalizeInventoryRows } from "./lib/engine/canonicalRecords";
 import { syncRecurringBillOccurrences } from "./lib/engine/recurringBillEngine";
 import { useVccCloudSync } from "./lib/cloud/useVccCloudSync";
+import { sortPaycheckHistory, type PaycheckHistorySortOrder } from "./lib/engine/paycheckHistory";
 
 const worldwideTransactionCategories = [
   "Income", "Housing", "Utilities", "Groceries", "Restaurants", "Transportation", "Fuel", "Travel", "Healthcare", "Insurance",
@@ -190,7 +198,7 @@ export default function App() {
       {path === "/money" && (
         <MoneyPage data={data} financialState={financialState} decisionState={decisionState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />
       )}
-      {path === "/bills" && <BillsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
+      {path === "/bills" && <BillsPage data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} onChange={updateData} />}
       {path === "/income" && <ModulePage section="income" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
       {path === "/transactions" && <TransactionsConceptPage data={data} onChange={updateData} />}
       {(path === "/debt" || path === "/debts") && <ModulePage section="debt" data={data} financialState={financialState} updateRows={updateRows} updateSort={updateSort} resetSection={handleResetSection} />}
@@ -339,6 +347,12 @@ function MoneyPaycheckHistory({
 }: {
   data: AppData;
 }) {
+  const [sortOrder, setSortOrder] = useState<PaycheckHistorySortOrder>("newest");
+  const sortedHistory = useMemo(
+    () => sortPaycheckHistory(data.paycheckHistory, sortOrder),
+    [data.paycheckHistory, sortOrder],
+  );
+
   return (
     <section className="money-history-panel" aria-label="Money Snapshot paycheck history">
       <div className="money-history-heading">
@@ -346,11 +360,24 @@ function MoneyPaycheckHistory({
           <p className="eyebrow">Paycheck History</p>
           <h2>Locked Paycheck Records</h2>
         </div>
-        <span>{data.paycheckHistory.length ? `${data.paycheckHistory.length} locked` : "No records yet"}</span>
+        <div className="money-history-controls">
+          <label>
+            <span>Sort</span>
+            <select
+              aria-label="Sort paycheck history"
+              value={sortOrder}
+              onChange={(event) => setSortOrder(event.target.value as PaycheckHistorySortOrder)}
+            >
+              <option value="newest">Newest to oldest</option>
+              <option value="oldest">Oldest to newest</option>
+            </select>
+          </label>
+          <span>{data.paycheckHistory.length ? `${data.paycheckHistory.length} locked` : "No records yet"}</span>
+        </div>
       </div>
 
       <div className="money-history-list">
-        {data.paycheckHistory.map((row) => (
+        {sortedHistory.map((row) => (
           <article className="money-history-record" key={row.id}>
             <div>
               <span>Locked Week</span>
@@ -404,16 +431,20 @@ function BillsPage({
   updateRows,
   updateSort,
   resetSection,
+  onChange,
 }: {
   data: AppData;
   financialState: ReturnType<typeof computeFinancialState>;
   updateRows: (section: SectionKey, rows: SpreadsheetRow[]) => void;
   updateSort: (section: SectionKey, sortBy: string) => void;
   resetSection: (section: SectionKey) => void;
+  onChange: (data: AppData) => void;
 }) {
   const [billSearch, setBillSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [billMessage, setBillMessage] = useState("");
+  const [deletedBill, setDeletedBill] = useState<{ name: string; snapshot: DeletedBillSnapshot } | null>(null);
+  const undoTimerRef = useRef<number | undefined>(undefined);
   const billRows = data.sections.bills.map(normalizeBillRow);
   const filledBillRows = billRows.filter((row) => !isBlankRow(row.cells));
   const visibleBillRows = billRows.filter((row) => {
@@ -441,30 +472,74 @@ function BillsPage({
     priority: rankedBills.filter((bill) => ["overdue", "late"].includes(bill.status) || bill.score >= 75).length,
   };
 
+  useEffect(() => () => {
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+  }, []);
+
   function updateVisibleBillRows(section: SectionKey, nextVisibleRows: SpreadsheetRow[]) {
-    const normalizedNextRows = nextVisibleRows.map(normalizeBillRow);
+    const normalizedNextRows: SpreadsheetRow[] = [];
+    for (const inputRow of nextVisibleRows) {
+      let nextRow = normalizeBillRow(inputRow);
+      const previousRow = billRows.find((row) => row.id === nextRow.id);
+      const previousStatus = storedBillStatus(previousRow);
+      const nextStatus = storedBillStatus(nextRow);
+
+      if (nextStatus === "paid" && !hasBillPaymentEvidence(nextRow)) {
+        if (!nextRow.cells.paymentAccount?.trim()) {
+          setBillMessage(`Choose the account that paid ${nextRow.cells.name || "this bill"} before marking it paid.`);
+          return;
+        }
+        const accountWasJustChosen = previousRow?.cells.paymentAccount !== nextRow.cells.paymentAccount;
+        if (!nextRow.cells.paidDate && (previousStatus !== "paid" || accountWasJustChosen)) {
+          nextRow = { ...nextRow, cells: { ...nextRow.cells, paidDate: todayIso() } };
+        }
+        if (!hasBillPaymentEvidence(nextRow)) {
+          setBillMessage(`Choose a valid paid date for ${nextRow.cells.name || "this bill"} before marking it paid.`);
+          return;
+        }
+      }
+
+      if (previousStatus === "paid" && nextStatus !== "paid") {
+        nextRow = {
+          ...nextRow,
+          cells: { ...nextRow.cells, paymentAccount: "", paidDate: "" },
+        };
+      }
+      normalizedNextRows.push(nextRow);
+    }
     const nextVisibleIds = new Set(normalizedNextRows.map((row) => row.id));
     const preservedRows = billRows.filter((row) => !visibleBillIds.has(row.id) || nextVisibleIds.has(row.id));
     const mergedRows = preservedRows.map((row) => normalizedNextRows.find((next) => next.id === row.id) || row);
     const addedRows = normalizedNextRows.filter((row) => !billRows.some((existing) => existing.id === row.id));
     const nextBillRows = [...mergedRows, ...addedRows];
-    for (const nextRow of normalizedNextRows) {
-      const previousRow = billRows.find((row) => row.id === nextRow.id);
-      const newlyPaid = billStatus(nextRow) === "paid" && billStatus(previousRow || { id: "", cells: {} }) !== "paid";
-      if (newlyPaid && !nextRow.cells.paymentAccount?.trim()) {
-        setBillMessage(`Choose the account that paid ${nextRow.cells.name || "this bill"} before marking it paid.`);
-        return;
-      }
-      if (newlyPaid && !nextRow.cells.paidDate) nextRow.cells.paidDate = todayIso();
-    }
     setBillMessage("");
     updateRows(section, nextBillRows);
   }
 
+  function handleDeleteBill(rowId: string) {
+    const result = deleteBillEvent(data, rowId);
+    if (!result.snapshot) return;
+    onChange(result.data);
+    setDeletedBill({ name: result.snapshot.bill.cells.name || "Bill", snapshot: result.snapshot });
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = window.setTimeout(() => setDeletedBill(null), 8_000);
+  }
+
+  function undoDeleteBill() {
+    if (!deletedBill) return;
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+    onChange(restoreDeletedBillEvent(data, deletedBill.snapshot));
+    setDeletedBill(null);
+    setBillMessage(`${deletedBill.name} was restored with its payment history and account effect.`);
+  }
+
+  const billColumnOrder = ["name", "category", "dueDate", "amount", "paymentAccount", "status", "paidDate", "autopay", "notes"];
   const billsTableConfig = {
     ...sectionConfigs.bills,
     title: "Bills",
-    columns: sectionConfigs.bills.columns.filter((column) => column.key !== "recurring"),
+    columns: billColumnOrder
+      .map((key) => sectionConfigs.bills.columns.find((column) => column.key === key))
+      .filter((column): column is NonNullable<typeof column> => Boolean(column)),
   };
 
   return (
@@ -571,16 +646,22 @@ function BillsPage({
         sortBy={data.sortBy.bills}
         onSortChange={updateSort}
         onRowsChange={updateVisibleBillRows}
+        onDeleteRow={handleDeleteBill}
         onResetSection={resetSection}
         getComputedCell={(row, columnKey) => computedCell("bills", row, columnKey)}
         selectOptions={{
-          status: ["unpaid", "upcoming", "overdue", "paid", "cancelled"].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) })),
           paymentAccount: transactionEndpointOptions(data)
             .filter((account) => account.kind === "money" && !account.isNew)
             .map((account) => ({ value: account.value, label: account.label })),
         }}
         addLabel="Add Bill"
       />
+      {deletedBill && (
+        <div className="bill-undo-notice" role="status" aria-live="polite">
+          <span><strong>{deletedBill.name}</strong> deleted. Linked payment and account effects were reversed.</span>
+          <button type="button" onClick={undoDeleteBill}>Undo</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -2249,17 +2330,7 @@ function savingsProjection(row: SpreadsheetRow, monthlyContribution: number): st
 }
 
 function billStatus(row: SpreadsheetRow): string {
-  const status = (row.cells.status || "").trim().toLowerCase();
-  if (status === "paid") return "paid";
-  if (status === "overdue" || status === "late") return "overdue";
-  const dueDate = row.cells.dueDate || row.cells.due_date || "";
-  if (dueDate) {
-    const due = new Date(`${dueDate}T12:00:00`);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (!Number.isNaN(due.getTime()) && due < today) return "overdue";
-  }
-  return "unpaid";
+  return effectiveBillStatus(row);
 }
 
 function isAffirmative(value: string | undefined): boolean {

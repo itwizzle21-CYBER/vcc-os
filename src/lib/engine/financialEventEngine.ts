@@ -1,7 +1,19 @@
 import { isBlankRow, toNumber } from "../calculations/currency";
 import type { AppData, SpreadsheetRow } from "../types/app";
-import { isCarPaymentTransaction, syncBillPaymentTransactions } from "./billPaymentSync";
+import {
+  hasBillPaymentEvidence,
+  isBillPaymentTransaction,
+  isCarPaymentTransaction,
+  storedBillStatus,
+  syncBillPaymentTransactions,
+} from "./billPaymentSync";
 import { syncTransactionTransfers } from "./savingsTransferEngine";
+
+export interface DeletedBillSnapshot {
+  bill: SpreadsheetRow;
+  billIndex: number;
+  linkedTransactions: Array<{ row: SpreadsheetRow; index: number }>;
+}
 
 export function applyBillRowsEvent(
   data: AppData,
@@ -68,6 +80,66 @@ export function deleteTransactionEvent(data: AppData, transactionId: string): Ap
   };
 }
 
+export function deleteBillEvent(
+  data: AppData,
+  billId: string,
+): { data: AppData; snapshot: DeletedBillSnapshot | null } {
+  const billIndex = data.sections.bills.findIndex((bill) => bill.id === billId);
+  if (billIndex === -1) return { data, snapshot: null };
+
+  const bill = data.sections.bills[billIndex];
+  const linkedTransactions = data.sections.transactions
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => row.cells.billId === billId && isBillPaymentTransaction(row));
+  const linkedIds = new Set(linkedTransactions.map(({ row }) => row.id));
+  const nextTransactions = data.sections.transactions.filter((row) => !linkedIds.has(row.id));
+  const carPayment = reconcileCarPaymentRows(
+    data.sections.transactions,
+    nextTransactions,
+    data.sections.carPayment,
+  );
+  const reconciled = syncTransactionTransfers(data, carPayment.transactions);
+
+  return {
+    data: {
+      ...reconciled,
+      sections: {
+        ...reconciled.sections,
+        bills: data.sections.bills.filter((row) => row.id !== billId),
+        carPayment: carPayment.carPayment,
+      },
+    },
+    snapshot: { bill, billIndex, linkedTransactions },
+  };
+}
+
+export function restoreDeletedBillEvent(data: AppData, snapshot: DeletedBillSnapshot): AppData {
+  if (data.sections.bills.some((bill) => bill.id === snapshot.bill.id)) return data;
+
+  const bills = [...data.sections.bills];
+  bills.splice(Math.min(snapshot.billIndex, bills.length), 0, snapshot.bill);
+  const transactions = [...data.sections.transactions];
+  for (const linked of [...snapshot.linkedTransactions].sort((a, b) => a.index - b.index)) {
+    if (transactions.some((row) => row.id === linked.row.id)) continue;
+    transactions.splice(Math.min(linked.index, transactions.length), 0, linked.row);
+  }
+  const carPayment = reconcileCarPaymentRows(
+    data.sections.transactions,
+    transactions,
+    data.sections.carPayment,
+  );
+  const reconciled = syncTransactionTransfers(data, carPayment.transactions);
+
+  return {
+    ...reconciled,
+    sections: {
+      ...reconciled.sections,
+      bills,
+      carPayment: carPayment.carPayment,
+    },
+  };
+}
+
 export function reconcileCarPaymentRows(
   previousTransactions: SpreadsheetRow[],
   nextTransactions: SpreadsheetRow[],
@@ -116,13 +188,12 @@ export function reconcileCarPaymentRows(
 function assertNewBillPaymentsHaveAccounts(previousBills: SpreadsheetRow[], nextBills: SpreadsheetRow[]): void {
   const previousById = new Map(previousBills.map((bill) => [bill.id, bill]));
   for (const bill of nextBills) {
-    if (!isPaid(bill) || isPaid(previousById.get(bill.id))) continue;
+    if (storedBillStatus(bill) !== "paid" || hasBillPaymentEvidence(previousById.get(bill.id))) continue;
     if (!bill.cells.paymentAccount?.trim()) {
       throw new Error(`Choose the account that paid ${bill.cells.name || "this bill"} before marking it paid.`);
     }
+    if (!hasBillPaymentEvidence(bill)) {
+      throw new Error(`Choose a valid paid date for ${bill.cells.name || "this bill"} before marking it paid.`);
+    }
   }
-}
-
-function isPaid(row: SpreadsheetRow | undefined): boolean {
-  return String(row?.cells.status || "").trim().toLowerCase() === "paid";
 }

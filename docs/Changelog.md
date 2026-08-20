@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Made bill payment status evidence-based, preserved every supported status, and cleared stale payment evidence when bills are reopened.
+- Replaced repetitive bill-delete confirmation with an eight-second Undo flow that atomically reverses and restores linked payments and account effects.
+- Added non-mutating chronological paycheck-history sorting and repaired multiline Inventory Notes editing without changing spreadsheet navigation elsewhere.
+- Added unit and desktop/mobile browser regression coverage for the four backlog fixes.
+
 - Installed reviewed performance and Core Web Vitals Codex skills, including the required companion link, before the next optimization sprint.
 - Verified the official VCC dashboard in the in-app Browser and reconciled the AI-stack inventory without changing application code or dependencies.
 

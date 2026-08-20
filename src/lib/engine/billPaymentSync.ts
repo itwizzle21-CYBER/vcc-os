@@ -1,7 +1,33 @@
 import type { SpreadsheetRow } from "../types/app";
+import { isValidIsoDate } from "../calculations/currency";
 
 const PAYMENT_ID_PREFIX = "bill-payment-";
 const CAR_PAYMENT_MARKER = "Car payment recorded from Bills.";
+
+export type BillStatus = "unpaid" | "upcoming" | "overdue" | "paid" | "cancelled";
+
+export function storedBillStatus(row: SpreadsheetRow | undefined): BillStatus {
+  const status = String(row?.cells.status || "").trim().toLowerCase();
+  if (status === "paid") return "paid";
+  if (status === "cancelled" || status === "canceled" || status === "inactive") return "cancelled";
+  if (status === "overdue" || status === "late") return "overdue";
+  if (status === "upcoming") return "upcoming";
+  return "unpaid";
+}
+
+export function hasBillPaymentEvidence(row: SpreadsheetRow | undefined): boolean {
+  return storedBillStatus(row) === "paid"
+    && Boolean(row?.cells.paymentAccount?.trim())
+    && isValidIsoDate(String(row?.cells.paidDate || ""));
+}
+
+export function effectiveBillStatus(row: SpreadsheetRow, referenceDate = new Date()): BillStatus {
+  const stored = storedBillStatus(row);
+  if (stored === "paid") return hasBillPaymentEvidence(row) ? "paid" : dueStatus(row, referenceDate);
+  if (stored === "cancelled" || stored === "overdue") return stored;
+  if (isPastDue(row, referenceDate)) return "overdue";
+  return stored;
+}
 
 export function syncBillPaymentTransactions(
   previousBills: SpreadsheetRow[],
@@ -83,7 +109,7 @@ function paymentTransactionId(billId: string): string {
 }
 
 function isPaid(row: SpreadsheetRow): boolean {
-  return String(row.cells.status || "").trim().toLowerCase() === "paid";
+  return hasBillPaymentEvidence(row);
 }
 
 function localDate(date: Date): string {
@@ -91,4 +117,17 @@ function localDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function dueStatus(row: SpreadsheetRow, referenceDate: Date): "unpaid" | "overdue" {
+  return isPastDue(row, referenceDate) ? "overdue" : "unpaid";
+}
+
+function isPastDue(row: SpreadsheetRow, referenceDate: Date): boolean {
+  const dueDate = row.cells.dueDate || row.cells.due_date || "";
+  if (!isValidIsoDate(dueDate)) return false;
+  const due = new Date(`${dueDate}T12:00:00`);
+  const today = new Date(referenceDate);
+  today.setHours(0, 0, 0, 0);
+  return due < today;
 }

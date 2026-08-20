@@ -163,17 +163,23 @@ test("keeps desktop navigation labels visible and navigates correctly", async ({
   await expect(page.getByRole("heading", { name: "Money Snapshot", exact: true })).toBeVisible();
 });
 
-test("requires confirmation before deleting a financial row", async ({ page }) => {
+test("deletes a bill immediately and offers undo without a confirmation dialog", async ({ page }) => {
   await page.goto("/bills");
   const rows = page.locator("table tbody tr");
   const initialCount = await rows.count();
-  page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("button", { name: "Delete Bills row 1" }).click();
-  await expect(rows).toHaveCount(initialCount);
+  let dialogCount = 0;
+  page.on("dialog", async (dialog) => {
+    dialogCount += 1;
+    await dialog.dismiss();
+  });
 
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete Bills row 1" }).click();
   await expect(rows).toHaveCount(initialCount - 1);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+  expect(dialogCount).toBe(0);
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(rows).toHaveCount(initialCount);
 });
 
 test("keeps every core domain page available without a page-level hide control", async ({ page }) => {
@@ -219,6 +225,102 @@ test("posting a paid bill debits one account and creates one linked transaction"
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
     return data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === data.sections.bills[0].id).length;
   })).toBe(1);
+
+  await page.getByRole("button", { name: "Delete Bills row 1" }).click();
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    const linked = data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === "bill-electric");
+    const account = data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking");
+    return { bill: data.sections.bills.some((row: { id: string }) => row.id === "bill-electric"), linked: linked.length, balance: Number.parseFloat(account.cells.amount) };
+  })).toEqual({ bill: false, linked: 0, balance: initial });
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    const bill = data.sections.bills.find((row: { id: string }) => row.id === "bill-electric");
+    const linked = data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === "bill-electric");
+    const account = data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking");
+    return { status: bill?.cells.status, paidFrom: bill?.cells.paymentAccount, linked: linked.length, balance: Number.parseFloat(account.cells.amount) };
+  })).toEqual({ status: "paid", paidFrom: "Chime Checking", linked: 1, balance: initial - 186.42 });
+});
+
+test("preserves supported bill statuses and clears payment evidence when a bill is reopened", async ({ page }) => {
+  await page.goto("/bills");
+  const status = page.getByRole("combobox", { name: /Status, Bills row 1/ });
+  const paidFrom = page.getByRole("combobox", { name: /Paid From, Bills row 1/ });
+
+  await status.selectOption("cancelled");
+  await expect(status).toHaveValue("cancelled");
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: /Status, Bills row 1/ })).toHaveValue("cancelled");
+
+  await paidFrom.selectOption("Chime Checking");
+  await status.selectOption("paid");
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return data.sections.bills[0].cells;
+  })).toMatchObject({ status: "paid", paymentAccount: "Chime Checking" });
+
+  await status.selectOption("unpaid");
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    const bill = data.sections.bills[0];
+    return {
+      status: bill.cells.status,
+      paymentAccount: bill.cells.paymentAccount,
+      paidDate: bill.cells.paidDate,
+      linked: data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === bill.id).length,
+    };
+  })).toEqual({ status: "unpaid", paymentAccount: "", paidDate: "", linked: 0 });
+});
+
+test("sorts paycheck history chronologically without rewriting stored records", async ({ page }) => {
+  await page.goto("/money");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}").paycheckPlanner?.depositApplied)).toBe(true);
+  const storedOrder = ["middle", "oldest", "newest"];
+  await page.evaluate((history) => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    data.paycheckHistory = history;
+    localStorage.setItem("vcc-os:data:v2", JSON.stringify(data));
+  }, [
+    { id: "middle", payDate: "2026-08-15", income: "800", spotMe: "0", myPay: "0", remaining: "800", weekStart: "2026-08-10", weekEnd: "2026-08-16", locked: true },
+    { id: "oldest", payDate: "2026-08-01", income: "700", spotMe: "0", myPay: "0", remaining: "700", weekStart: "2026-07-27", weekEnd: "2026-08-02", locked: true },
+    { id: "newest", payDate: "2026-08-22", income: "900", spotMe: "0", myPay: "0", remaining: "900", weekStart: "2026-08-17", weekEnd: "2026-08-23", locked: true },
+  ]);
+  await page.reload();
+
+  const records = page.locator(".money-history-record");
+  await expect(records).toHaveCount(3);
+  await expect(records.locator("small")).toHaveText(["08-22-2026", "08-15-2026", "08-01-2026"]);
+  await page.getByRole("combobox", { name: "Sort paycheck history" }).selectOption("oldest");
+  await expect(records.locator("small")).toHaveText(["08-01-2026", "08-15-2026", "08-22-2026"]);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}").paycheckHistory.map((row: { id: string }) => row.id))).toEqual(storedOrder);
+});
+
+test("edits and persists multiline Inventory Notes without hijacking caret keys", async ({ page }) => {
+  await page.goto("/inventory");
+  const notes = page.locator('textarea[data-column-key="notes"]').first();
+  const rowId = await notes.getAttribute("data-row-id");
+  const value = "Restock after payday\nUse warehouse coupon";
+
+  await notes.click();
+  await notes.fill(value);
+  await notes.evaluate((element) => {
+    const textarea = element as HTMLTextAreaElement;
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  });
+  await page.keyboard.press("ArrowLeft");
+  expect(await notes.evaluate((element) => (element as HTMLTextAreaElement).selectionStart)).toBe(value.length - 1);
+  await notes.blur();
+  await expect.poll(() => page.evaluate(({ id, expected }) => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return data.sections.inventory.find((row: { id: string }) => row.id === id)?.cells.notes === expected;
+  }, { id: rowId, expected: value })).toBe(true);
+
+  await page.reload();
+  await expect(page.locator(`textarea[data-row-id="${rowId}"][data-column-key="notes"]`)).toHaveValue(value);
+  const viewportFits = await page.locator(".inventory-page").evaluate((element) => element.scrollWidth <= element.clientWidth + 1);
+  expect(viewportFits).toBe(true);
 });
 
 test("mobile swipe intentionally reveals transaction deletion and requires confirmation", async ({ page }, testInfo) => {

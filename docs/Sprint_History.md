@@ -293,3 +293,29 @@ Release status:
 - GO for commit.
 - No application deployment is required for user-level agent capabilities.
 
+## Sprint 0.17: Bills, Paycheck History, and Inventory Notes
+
+Date: 2026-08-20
+
+Goal:
+
+- Repair four reported backlog workflows without weakening financial or persistence guarantees.
+
+Completed:
+
+- Made paid-bill truth depend on stored status, Paid From, and a valid Paid Date; preserved upcoming, overdue, and cancelled states across UI, persistence, and decision logic.
+- Made bill deletion immediate with a temporary Undo action, including atomic reversal and exact restoration of the linked payment transaction and account balance effect.
+- Added Newest to Oldest and Oldest to Newest paycheck-history sorting without changing stored paycheck order.
+- Restored native multiline and caret-key behavior to Inventory Notes while retaining spreadsheet keyboard navigation in other cells.
+- Added targeted unit and desktop/mobile browser coverage for every repaired workflow.
+
+Validation:
+
+- Build, bundle budget, lint, TypeScript, 170 unit tests, and 79 applicable Playwright tests passed.
+- Eleven browser cases were intentionally skipped by their desktop/mobile project conditions; no failures remained.
+- No schema, RLS, authentication, migration, dependency, or production-data changes were required.
+
+Release status:
+
+- GO for the focused sprint commit and official production deployment.
+

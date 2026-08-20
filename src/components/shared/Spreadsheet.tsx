@@ -12,6 +12,7 @@ interface SpreadsheetProps {
   sortBy?: string;
   onSortChange: (section: SectionKey, sortBy: string) => void;
   onRowsChange: (section: SectionKey, rows: SpreadsheetRow[]) => void;
+  onDeleteRow?: (rowId: string) => void;
   onResetSection: (section: SectionKey) => void;
   getComputedCell?: (row: SpreadsheetRow, columnKey: string) => string | undefined;
   inputLists?: Partial<Record<string, string>>;
@@ -33,6 +34,7 @@ export default function Spreadsheet({
   sortBy,
   onSortChange,
   onRowsChange,
+  onDeleteRow,
   onResetSection,
   getComputedCell,
   inputLists,
@@ -218,6 +220,10 @@ export default function Spreadsheet({
   }
 
   function deleteRow(rowId: string) {
+    if (onDeleteRow) {
+      onDeleteRow(rowId);
+      return;
+    }
     if (!window.confirm(`Delete this ${config.title.toLowerCase()} row? This cannot be undone.`)) return;
     onRowsChange(config.key, rows.filter((row) => row.id !== rowId));
   }
@@ -259,6 +265,11 @@ export default function Spreadsheet({
         if (rowId && columnKey) commitCell(rowId, columnKey, currentValue);
         setEditingCell(null);
         setCellStatus(`${columnLabel(columnKey || "")} selected. Editing stopped.`);
+      } else if (config.key === "inventory"
+        && columnKey === "notes"
+        && event.currentTarget instanceof HTMLTextAreaElement
+        && ["Enter", "ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+        return;
       } else if (event.key === "Enter") {
         event.preventDefault();
         if (rowId && columnKey) commitCell(rowId, columnKey, currentValue);
@@ -531,8 +542,10 @@ export default function Spreadsheet({
                             onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
                           >
                             <option value="unpaid">Unpaid</option>
+                            <option value="upcoming">Upcoming</option>
                             <option value="paid">Paid</option>
                             <option value="overdue">Overdue</option>
+                            <option value="cancelled">Cancelled</option>
                           </select>
                         </div>
                       </td>
@@ -576,7 +589,7 @@ export default function Spreadsheet({
                     return (
                       <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key, "wrapping-text-cell")}>
                         <BufferedTextArea
-                          rows={1}
+                          rows={config.key === "inventory" && column.key === "notes" ? 2 : 1}
                           data-row-index={rowIndex}
                           data-column-index={columnIndex}
                           data-row-id={row.id}
@@ -679,10 +692,12 @@ function numericCellValue(value: string): number {
   return Number(value.replace(/[$€£,%\s]/g, ""));
 }
 
-function billStatusValue(value: string): "paid" | "unpaid" | "overdue" {
+function billStatusValue(value: string): "paid" | "unpaid" | "upcoming" | "overdue" | "cancelled" {
   const normalized = value.trim().toLowerCase();
   if (normalized === "paid") return "paid";
   if (normalized === "overdue" || normalized === "late") return "overdue";
+  if (normalized === "upcoming") return "upcoming";
+  if (normalized === "cancelled" || normalized === "canceled" || normalized === "inactive") return "cancelled";
   return "unpaid";
 }
 

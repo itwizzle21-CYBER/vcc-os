@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { SpreadsheetRow } from "../types/app";
-import { isCarPaymentTransaction, syncBillPaymentTransactions } from "./billPaymentSync";
+import {
+  effectiveBillStatus,
+  hasBillPaymentEvidence,
+  isCarPaymentTransaction,
+  syncBillPaymentTransactions,
+} from "./billPaymentSync";
 
 function bill(status: string): SpreadsheetRow {
   return {
@@ -18,6 +23,26 @@ function bill(status: string): SpreadsheetRow {
 }
 
 describe("paid bill transaction sync", () => {
+  it("requires stored account and date evidence before a bill is effectively paid", () => {
+    const unsupported = bill("paid");
+    unsupported.cells.paymentAccount = "";
+    unsupported.cells.paidDate = "";
+
+    expect(hasBillPaymentEvidence(unsupported)).toBe(false);
+    expect(effectiveBillStatus(unsupported, new Date("2026-07-01T12:00:00"))).toBe("unpaid");
+    expect(effectiveBillStatus(bill("paid"), new Date("2026-07-01T12:00:00"))).toBe("paid");
+  });
+
+  it("preserves cancelled and upcoming status while deriving overdue dates", () => {
+    const cancelled = bill("cancelled");
+    const upcoming = bill("upcoming");
+    upcoming.cells.dueDate = "2026-07-16";
+
+    expect(effectiveBillStatus(cancelled, new Date("2026-08-01T12:00:00"))).toBe("cancelled");
+    expect(effectiveBillStatus(upcoming, new Date("2026-07-01T12:00:00"))).toBe("upcoming");
+    expect(effectiveBillStatus(upcoming, new Date("2026-08-01T12:00:00"))).toBe("overdue");
+  });
+
   it("records an overdue bill as one expense when it is marked paid", () => {
     const transactions = syncBillPaymentTransactions([bill("overdue")], [bill("paid")], [], "2026-07-16");
 
@@ -67,7 +92,10 @@ describe("paid bill transaction sync", () => {
     carNote.cells.name = "Car note";
     carNote.cells.category = "Loans";
 
-    const [transaction] = syncBillPaymentTransactions([carNote], [{ ...carNote, cells: { ...carNote.cells, status: "paid" } }], [], "2026-07-16");
+    const [transaction] = syncBillPaymentTransactions([carNote], [{
+      ...carNote,
+      cells: { ...carNote.cells, status: "paid", paymentAccount: "Chime", paidDate: "2026-07-16" },
+    }], [], "2026-07-16");
 
     expect(isCarPaymentTransaction(transaction)).toBe(true);
     expect(transaction.cells).toMatchObject({

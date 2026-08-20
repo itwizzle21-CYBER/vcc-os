@@ -1,5 +1,6 @@
 import { formatCurrency, toNumber } from "../calculations/currency";
 import type { AppData, DecisionState, FinancialState, SpreadsheetRow } from "../types/app";
+import { effectiveBillStatus } from "./billPaymentSync";
 
 export interface RankedBillRow {
   row: SpreadsheetRow;
@@ -250,16 +251,15 @@ export function rankBillRows(rows: SpreadsheetRow[], today = new Date()): Ranked
   return rows
     .filter((row) => {
       const name = row.cells.name?.trim();
-      const status = normalizeStatus(row.cells.status);
+      const status = effectiveBillStatus(row, today);
       return Boolean(name) && status !== "paid" && status !== "cancelled";
     })
     .map((row) => {
-      const status = normalizeStatus(row.cells.status);
+      const status = effectiveBillStatus(row, today);
       const priority = normalizePriority(row.cells.priority);
       const amount = toNumber(row.cells.amount);
       const daysUntilDue = daysBetween(row.cells.dueDate, today);
-      const effectiveStatus = daysUntilDue < 0 && status === "upcoming" ? "overdue" : status;
-      const urgencyScore = billUrgencyScore(daysUntilDue, effectiveStatus);
+      const urgencyScore = billUrgencyScore(daysUntilDue, status);
       const impactScore = billImpactScore(priority, amount);
       const score = Math.min(100, Math.round((urgencyScore * 0.58) + (impactScore * 0.32) + Math.min(amount / 20, 10)));
       const dueLabel = describeBillDueDate(daysUntilDue);
@@ -271,13 +271,13 @@ export function rankBillRows(rows: SpreadsheetRow[], today = new Date()): Ranked
         amount,
         dueDate: row.cells.dueDate || "",
         dueLabel,
-        status: effectiveStatus,
+        status,
         priority,
         daysUntilDue,
         urgencyScore,
         impactScore,
         score,
-        reason: buildBillReason(row.cells.name, dueLabel, priority, amount, effectiveStatus),
+        reason: buildBillReason(row.cells.name, dueLabel, priority, amount, status),
       };
     })
     .sort((a, b) => b.score - a.score || a.daysUntilDue - b.daysUntilDue || b.amount - a.amount);
@@ -388,11 +388,6 @@ function chooseTodayMission(financialState: FinancialState): DecisionState["toda
 
 function mergedSpendable(financialState: FinancialState): number {
   return Math.min(financialState.spendableCash, financialState.safeToSpend);
-}
-
-function normalizeStatus(status: string | undefined): string {
-  const value = String(status || "").trim().toLowerCase();
-  return value || "upcoming";
 }
 
 function normalizePriority(priority: string | undefined): string {

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createZeroData } from "../storage/defaultData";
 import type { SpreadsheetRow } from "../types/app";
-import { applyBillRowsEvent, deleteTransactionEvent } from "./financialEventEngine";
+import {
+  applyBillRowsEvent,
+  deleteBillEvent,
+  deleteTransactionEvent,
+  restoreDeletedBillEvent,
+} from "./financialEventEngine";
 
 function row(id: string, cells: Record<string, string>): SpreadsheetRow {
   return { id, cells };
@@ -74,6 +79,29 @@ describe("canonical financial events", () => {
       paymentAccount: "",
       paidDate: "",
     });
+  });
+
+  it("deletes a paid bill and its linked payment atomically, then restores both exactly", () => {
+    const data = createZeroData();
+    data.sections.money = [row("chime", { label: "Chime", section: "cash", amount: "100.00" })];
+    data.sections.bills = [bill("unpaid")];
+    const paid = applyBillRowsEvent(data, [bill("paid", "Chime")]);
+    const originalBill = paid.sections.bills[0];
+    const originalTransaction = paid.sections.transactions[0];
+
+    const deleted = deleteBillEvent(paid, "phone");
+
+    expect(deleted.data.sections.bills).toEqual([]);
+    expect(deleted.data.sections.transactions).toEqual([]);
+    expect(deleted.data.sections.money[0].cells.amount).toBe("100.00");
+    expect(deleted.snapshot).not.toBeNull();
+
+    const restored = restoreDeletedBillEvent(deleted.data, deleted.snapshot!);
+
+    expect(restored.sections.bills[0]).toEqual(originalBill);
+    expect(restored.sections.transactions[0]).toMatchObject(originalTransaction);
+    expect(restored.sections.money[0].cells.amount).toBe("75.00");
+    expect(restoreDeletedBillEvent(restored, deleted.snapshot!)).toEqual(restored);
   });
 
   it("deleting an ordinary applied transaction reverses its account effect", () => {

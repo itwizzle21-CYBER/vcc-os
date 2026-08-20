@@ -3,6 +3,7 @@ import { identifyTransactionCategory, signedTransactionAmount, transactionType }
 import { summarizeCarLoan } from "./carLoanEngine";
 import { isBalanceAppliedTransaction } from "./savingsTransferEngine";
 import { isChimeAccount } from "./chimeAccountingEngine";
+import { hasBillPaymentEvidence, storedBillStatus } from "./billPaymentSync";
 import { isBlankRow, isValidIsoDate, todayIso, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
@@ -263,11 +264,11 @@ function includesAny(value: string, needles: string[]): boolean {
 }
 
 function isPaid(row: SpreadsheetRow): boolean {
-  return (row.cells.status || "").trim().toLowerCase() === "paid";
+  return hasBillPaymentEvidence(row);
 }
 
 function isOpenBill(row: SpreadsheetRow): boolean {
-  return !["paid", "cancelled", "canceled", "inactive"].includes((row.cells.status || "").trim().toLowerCase());
+  return !hasBillPaymentEvidence(row) && storedBillStatus(row) !== "cancelled";
 }
 
 function parseDate(value: string): Date | null {
