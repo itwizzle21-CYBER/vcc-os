@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Installed reviewed performance and Core Web Vitals Codex skills, including the required companion link, before the next optimization sprint.
+- Verified the official VCC dashboard in the in-app Browser and reconciled the AI-stack inventory without changing application code or dependencies.
+
 - Added a repository-local VCC financial-calculations skill covering canonical ownership, cent-safe rounding, reconciliation, evidence, deterministic dates, and regression-test requirements.
 - Closed the Sprint 0.6 audit's highest-priority skill gap without changing application code, dependencies, or production data.
 

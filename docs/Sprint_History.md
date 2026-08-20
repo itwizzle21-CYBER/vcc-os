@@ -264,3 +264,32 @@ Release status:
 - GO for commit.
 - No deployment is required for repository-local agent governance.
 
+## Sprint 0.16: Performance and Core Web Vitals Skills
+
+Date: 2026-08-20
+
+Goal:
+
+- Close the AI-stack audit's performance-specialization gap before the next application optimization sprint.
+- Preserve the recommended skill's direct Core Web Vitals reference by installing the companion skill with it.
+
+Completed:
+
+- Reviewed and installed the Markdown-only `performance` and `core-web-vitals` skills from `addyosmani/web-quality-skills`.
+- Validated both skill structures and their reciprocal local references.
+- Verified the official VCC dashboard in the in-app Browser with no observed console errors.
+- Reconciled the AI-stack inventory, readiness score, recommendations, and missing-capability record.
+- Recorded the evidence and rollback path in `docs/SPRINT_0_16_PERFORMANCE_SKILLS.md`.
+
+Validation:
+
+- Both official skill-structure validations passed.
+- The official deployment rendered `VCC-OS Dashboard` with no observed browser console errors.
+- Repository whitespace checks passed.
+- No application code, dependencies, runtime configuration, database, or production data changed.
+
+Release status:
+
+- GO for commit.
+- No application deployment is required for user-level agent capabilities.
+

@@ -9,17 +9,17 @@
 
 ## Executive summary
 
-**Overall readiness: 88%**
+**Overall readiness: 90%**
 
-VCC's AI environment is production-capable for its current React/Vite/TypeScript stack. GitHub, Supabase, Playwright, the in-app Browser, and both Context7 routes passed live checks. Vercel is fully operational through the linked and authenticated CLI, while its connected-app project lookup is degraded. Google Chrome control is the only failed named integration because Google Chrome is not installed on this machine; the Browser plugin and native-host manifest themselves are present. Sprint 0.15 closed the project-specific financial-calculation governance gap.
+VCC's AI environment is production-capable for its current React/Vite/TypeScript stack. GitHub, Supabase, Playwright, the in-app Browser, and both Context7 routes passed live checks. Vercel is fully operational through the linked and authenticated CLI, while its connected-app project lookup is degraded. Google Chrome control is the only failed named integration because Google Chrome is not installed on this machine; the Browser plugin and native-host manifest themselves are present. Sprint 0.15 closed the project-specific financial-calculation governance gap, and Sprint 0.16 added reviewed performance and Core Web Vitals specialization.
 
 | Readiness area | Weight | Score | Evidence |
 | --- | ---: | ---: | --- |
 | Named integrations | 50 | 43 | Six of seven are usable; Chrome is unavailable. Vercel has a working CLI path but degraded app-project visibility. |
-| Requested skill domains | 30 | 27 | Strong first-party coverage in ten domains; TypeScript, Tailwind, Framer Motion, and performance specialization can improve. |
+| Requested skill domains | 30 | 29 | Strong coverage in eleven domains; TypeScript, Tailwind, and Framer Motion specialization can improve when those technologies enter active scope. |
 | Repository/tooling | 15 | 15 | Git, upstream reachability, Node/npm, Playwright, Vercel link, and commit prerequisites are healthy. |
 | Duplication/routing hygiene | 5 | 3 | Eight duplicate bare skill names, overlapping browser/deploy/security workflows, and two Context7 routes require routing discipline. |
-| **Total** | **100** | **88** | Ready for normal work with targeted remediation, not a broad plugin install. |
+| **Total** | **100** | **90** | Ready for normal work with targeted remediation, not a broad plugin install. |
 
 ## Named integration verification
 
@@ -92,13 +92,13 @@ The current desktop host exposes **24 app tool groups** through `codex_apps`. Th
 
 ## Installed skill inventory
 
-The current filesystem contains **209 installed skill records representing 202 distinct bare names**. The inventory includes repository-local, local, system, current plugin-cache, runtime, and template skills. The active session catalog may intentionally expose a smaller subset.
+The current filesystem contains **211 installed skill records representing 204 distinct bare names**. The inventory includes repository-local, local, system, current plugin-cache, runtime, and template skills. The active session catalog may intentionally expose a smaller subset.
 
 ### Local and system
 
 - **VCC repository (1):** `vcc-financial-calculations`
 - **Agent (1):** `find-skills`
-- **Local Codex (39):** `a11y-pass`, `Accessibility Audit`, `animation-vocabulary`, `chatgpt-apps`, `component-states`, `data-viz`, `database-testing`, `define-goal`, `Design Critique & Evaluation`, `Design Systems`, `emil-design-eng`, `frontend-code-review`, `gh-address-comments`, `gh-fix-ci`, `jupyter-notebook`, `linear`, `micro-motion`, `notion-knowledge-capture`, `notion-meeting-intelligence`, `notion-research-documentation`, `pdf`, `performance-testing`, `playwright`, `playwright-automation`, `playwright-interactive`, `release-readiness`, `responsive-layout`, `review-animations`, `risk-based-testing`, `screenshot`, `security-best-practices`, `security-ownership-map`, `security-threat-model`, `sentry`, `speech`, `transcribe`, `vercel-deploy`, `visual-testing`, `yeet`
+- **Local Codex (41):** `a11y-pass`, `Accessibility Audit`, `animation-vocabulary`, `chatgpt-apps`, `component-states`, `core-web-vitals`, `data-viz`, `database-testing`, `define-goal`, `Design Critique & Evaluation`, `Design Systems`, `emil-design-eng`, `frontend-code-review`, `gh-address-comments`, `gh-fix-ci`, `jupyter-notebook`, `linear`, `micro-motion`, `notion-knowledge-capture`, `notion-meeting-intelligence`, `notion-research-documentation`, `pdf`, `performance`, `performance-testing`, `playwright`, `playwright-automation`, `playwright-interactive`, `release-readiness`, `responsive-layout`, `review-animations`, `risk-based-testing`, `screenshot`, `security-best-practices`, `security-ownership-map`, `security-threat-model`, `sentry`, `speech`, `transcribe`, `vercel-deploy`, `visual-testing`, `yeet`
 - **System (6):** `imagegen`, `openai-docs`, `plugin-creator`, `review-agent`, `skill-creator`, `skill-installer`
 
 ### OpenAI bundled plugins
@@ -175,15 +175,14 @@ No duplicate produced an application-code conflict during this sprint.
 | Vercel | 54 Vercel skills, authenticated CLI, linked project, connected app | **No additional install.** Repair connector project scope and reduce overlap instead. |
 | Accessibility | `Accessibility Audit`, `a11y-pass`, responsive/design review, Playwright checks | **No additional install.** Keep WCAG 2.2 AA and browser checks as release gates. |
 | Security | Local security skills, 13 Codex Security workflows, Vercel Firewall guidance | **No additional generic skill.** Existing coverage is deep; add a live monitoring connector only when operational telemetry is required. |
-| Performance | `performance-testing`, Vercel observability/caching guidance, Playwright | Add `addyosmani/web-quality-skills@performance` for Lighthouse/Core Web Vitals workflow depth. Registry evidence: 30K installs; source repo 2,643 stars, MIT. |
+| Performance | `performance`, `core-web-vitals`, `performance-testing`, Vercel observability/caching guidance, Playwright | **No additional install.** Use the reviewed performance pair for Lighthouse budgets and LCP/INP/CLS depth; retain existing test and platform guidance. |
 | Financial calculations | Repository-local `vcc-financial-calculations`, budget/forecast templates, standards, ADRs, and application tests | **No additional install.** Keep the repository skill aligned with canonical engines and extend its contracts alongside new financial domains. |
 
 ### Recommended addition order
 
-1. Add the performance skill before the next optimization sprint.
-2. Add TypeScript and Tailwind specialization when those gaps enter active scope.
-3. Add Framer Motion specialization only after the dependency is adopted.
-4. Do not add more generic React, Next.js, shadcn/ui, Supabase, PostgreSQL, Vercel, accessibility, security, or financial-calculation skills until duplicate routing is simplified.
+1. Add TypeScript and Tailwind specialization when those gaps enter active scope.
+2. Add Framer Motion specialization only after the dependency is adopted.
+3. Do not add more generic React, Next.js, shadcn/ui, Supabase, PostgreSQL, Vercel, accessibility, security, performance, or financial-calculation skills until duplicate routing is simplified.
 
 Skill-registry install counts were checked with `npx skills find`. Source reputation was checked against the GitHub repositories; packages from repositories below 100 stars were not recommended. Relevant registry pages: [TypeScript advanced types](https://skills.sh/wshobson/agents/typescript-advanced-types), [Tailwind design system](https://skills.sh/wshobson/agents/tailwind-design-system), [Motion/Framer](https://skills.sh/freshtechbro/claudedesignskills/motion-framer), and [web performance](https://skills.sh/addyosmani/web-quality-skills/performance).
 
@@ -194,7 +193,7 @@ Skill-registry install counts were checked with `npx skills find`. Source reputa
 - GitHub CLI `gh` is absent; Git and the GitHub app both work.
 - Supabase CLI is absent; the connected Supabase app works and the VCC project is healthy.
 - Atlassian Rovo remains in an authentication loop and is not connected.
-- Dedicated TypeScript, Tailwind, Framer Motion, and performance/Web Vitals specialization is not uniformly installed; only the highest-value additions are recommended above. VCC financial-calculation specialization is now repository-local.
+- Dedicated TypeScript, Tailwind, and Framer Motion specialization is not uniformly installed; only the highest-value additions are recommended above. VCC financial-calculation specialization is repository-local, and performance/Web Vitals specialization is installed at user scope.
 - The standalone Context7 MCP and Context7 app duplicate one another.
 
 ## Git repository health and commit readiness
