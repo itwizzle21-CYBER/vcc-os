@@ -75,9 +75,9 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
   const missionStack = buildSystemPriorityStack(financialState, recentlyCompletedMissionIds);
 
   return {
-    todayBriefing: data.paycheckPlanner.locked
-      ? `This week is locked. ${formatCurrency(spendableSafe)} is spendable after repayments and bill pressure.`
-      : `Plan the week before spending. Spendable / Safe is ${formatCurrency(spendableSafe)} before the next locked paycheck.`,
+    todayBriefing: data.paycheckPlanner.depositApplied
+      ? `Your latest paycheck is recorded. ${formatCurrency(spendableSafe)} is spendable after repayments and bill pressure.`
+      : `Plan the week before spending. Spendable / Safe is ${formatCurrency(spendableSafe)} before the next paycheck.`,
     recommendedMove,
     todayMission: chooseTodayMission(financialState),
     priorityAlerts: alerts.slice(0, 4),

@@ -587,9 +587,9 @@ function AccentPicker({ value, onChange }: { value: string; onChange: (value: st
 
 const wallpaperOptions: Array<{ value: AppData["settings"]["wallpaper"]; label: string; image?: string }> = [
   { value: "default", label: "Default" },
-  { value: "modern", label: "Modern", image: "/wallpapers/modern.png" },
-  { value: "anime", label: "Anime", image: "/wallpapers/anime.png" },
-  { value: "animation", label: "Animation", image: "/wallpapers/animation.png" },
+  { value: "modern", label: "Modern", image: "/wallpapers/modern.webp" },
+  { value: "anime", label: "Anime", image: "/wallpapers/anime.webp" },
+  { value: "animation", label: "Animation", image: "/wallpapers/animation.webp" },
   { value: "upload", label: "Upload" },
 ];
 

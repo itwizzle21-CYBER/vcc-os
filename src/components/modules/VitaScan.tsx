@@ -182,7 +182,7 @@ export default function VitaScan({ data, onChange }: { data: AppData; onChange: 
   return <main className="vitascan-app-shell">
     <header className="vitascan-app-header">
       <a className="vitascan-brand" href="/vitascan" aria-label="VitaScan home">
-        <img src="/vitascan-logo.png" alt="" />
+        <img src="/vitascan-logo-ui.webp" alt="" width="256" height="256" decoding="async" />
         <span><strong>VitaScan</strong><small>by VCC</small></span>
       </a>
       <a className="open-vcc" href={VCC_TRANSACTIONS_PATH} aria-label="Open VCC Transactions">

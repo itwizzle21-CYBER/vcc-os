@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { createZeroData } from "../storage/defaultData";
 import { computeFinancialState } from "./financialEngine";
-import { applyPendingPaycheckDeposit, depositAccountOptions, eligibleDepositAccounts, lockPaycheckWeek } from "./paycheckPlannerEngine";
+import {
+  applyPendingPaycheckDeposit,
+  deletePaycheckHistoryRecord,
+  depositAccountOptions,
+  eligibleDepositAccounts,
+  lockPaycheckWeek,
+  setPaycheckHistoryLock,
+  updatePaycheckHistoryRecord,
+} from "./paycheckPlannerEngine";
 import { applySavingsTransfer } from "./savingsTransferEngine";
 
 describe("connected paycheck planner", () => {
@@ -151,6 +159,7 @@ describe("connected paycheck planner", () => {
     };
 
     const first = lockPaycheckWeek(data);
+    first.paycheckHistory[0] = { ...first.paycheckHistory[0], locked: false };
     first.paycheckPlanner = { ...first.paycheckPlanner, paycheckAmount: "600", locked: false };
     const second = lockPaycheckWeek(first);
 
@@ -179,6 +188,7 @@ describe("connected paycheck planner", () => {
     };
 
     const first = lockPaycheckWeek(data);
+    first.paycheckHistory[0] = { ...first.paycheckHistory[0], locked: false };
     first.paycheckPlanner = { ...first.paycheckPlanner, spotMeRepayment: "100", locked: false };
     const second = lockPaycheckWeek(first);
 
@@ -210,8 +220,10 @@ describe("connected paycheck planner", () => {
 
     expect(next.sections.money.find((row) => row.id === "chime")?.cells.amount).toBe("35.00");
     expect(next.sections.money.find((row) => row.id === "mypay")?.cells.amount).toBe("0.00");
-    expect(next.paycheckHistory[0]).toMatchObject({ spotMe: "40.00", myPay: "25", remaining: "35.00", depositAppliedAmount: "75.00" });
+    expect(next.paycheckHistory[0]).toMatchObject({ spotMe: "40.00", myPay: "25.00", remaining: "35.00", depositAppliedAmount: "75.00" });
+    expect(lockPaycheckWeek(next)).toBe(next);
 
+    next.paycheckHistory[0] = { ...next.paycheckHistory[0], locked: false };
     next.paycheckPlanner = { ...next.paycheckPlanner, locked: false };
     const relocked = lockPaycheckWeek(next);
     expect(relocked.sections.money.find((row) => row.id === "chime")?.cells.amount).toBe("35.00");
@@ -238,5 +250,158 @@ describe("connected paycheck planner", () => {
     data.paycheckPlanner.spotMeRepayment = "0";
     data.paycheckPlanner.payDate = "2026-02-30";
     expect(() => lockPaycheckWeek(data)).toThrow("valid paycheck date");
+  });
+
+  it("requires unlock and reverses the exact prior effects before editing a paycheck", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      { id: "checking", cells: { label: "Checking", section: "cash", amount: "100.00" } },
+      { id: "spotme", cells: { label: "SpotMe", section: "borrowed", amount: "80.00" } },
+    ];
+    data.paycheckPlanner = {
+      incomeSource: "Work",
+      depositAccountId: "checking",
+      paycheckAmount: "500.00",
+      payDate: "2026-08-21",
+      weekStart: "2026-08-16",
+      weekEnd: "2026-08-22",
+      spotMeRepayment: "50.00",
+      myPayRepayment: "0",
+      depositApplied: false,
+      locked: false,
+    };
+    const recorded = lockPaycheckWeek(data);
+    const historyId = recorded.paycheckHistory[0].id;
+
+    expect(() => updatePaycheckHistoryRecord(recorded, historyId, {
+      ...recorded.paycheckPlanner,
+      paycheckAmount: "600.00",
+    })).toThrow("Unlock");
+
+    const unlocked = setPaycheckHistoryLock(recorded, historyId, false);
+    const edited = updatePaycheckHistoryRecord(unlocked, historyId, {
+      incomeSource: "Updated Work",
+      depositAccountId: "checking",
+      paycheckAmount: "600.00",
+      payDate: "2026-08-22",
+      weekStart: "2026-08-16",
+      weekEnd: "2026-08-22",
+      spotMeRepayment: "80.00",
+      myPayRepayment: "0",
+    });
+
+    expect(edited.sections.money.find((row) => row.id === "checking")?.cells.amount).toBe("620.00");
+    expect(edited.sections.money.find((row) => row.id === "spotme")?.cells.amount).toBe("0.00");
+    expect(edited.paycheckHistory).toHaveLength(1);
+    expect(edited.paycheckHistory[0]).toMatchObject({
+      id: historyId,
+      incomeSource: "Updated Work",
+      payDate: "2026-08-22",
+      remaining: "520.00",
+      locked: true,
+    });
+    expect(edited.sections.transactions).toHaveLength(1);
+    expect(edited.sections.transactions[0].cells.paycheckHistoryId).toBe(historyId);
+  });
+
+  it("does not let the current planner overwrite a locked history record", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "0.00" } }];
+    data.paycheckPlanner = {
+      incomeSource: "Work",
+      depositAccountId: "checking",
+      paycheckAmount: "100.00",
+      payDate: "2026-08-21",
+      weekStart: "2026-08-16",
+      weekEnd: "2026-08-22",
+      spotMeRepayment: "0",
+      myPayRepayment: "0",
+      depositApplied: false,
+      locked: false,
+    };
+    const recorded = lockPaycheckWeek(data);
+    expect(lockPaycheckWeek(recorded)).toBe(recorded);
+
+    const changedPlanner = {
+      ...recorded,
+      paycheckPlanner: { ...recorded.paycheckPlanner, paycheckAmount: "125.00", depositApplied: false },
+    };
+    expect(() => lockPaycheckWeek(changedPlanner)).toThrow("Unlock the matching paycheck");
+    expect(recorded.sections.money[0].cells.amount).toBe("100.00");
+  });
+
+  it("deletes only an unlocked paycheck and restores its complete balance effects", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      { id: "checking", cells: { label: "Checking", section: "cash", amount: "25.00" } },
+      { id: "mypay", cells: { label: "MyPay", section: "borrowed", amount: "40.00" } },
+    ];
+    data.paycheckPlanner = {
+      incomeSource: "Work",
+      depositAccountId: "checking",
+      paycheckAmount: "100.00",
+      payDate: "2026-08-21",
+      weekStart: "2026-08-16",
+      weekEnd: "2026-08-22",
+      spotMeRepayment: "0",
+      myPayRepayment: "40.00",
+      depositApplied: false,
+      locked: false,
+    };
+    const recorded = lockPaycheckWeek(data);
+    const historyId = recorded.paycheckHistory[0].id;
+
+    expect(() => deletePaycheckHistoryRecord(recorded, historyId)).toThrow("Unlock");
+    const deleted = deletePaycheckHistoryRecord(setPaycheckHistoryLock(recorded, historyId, false), historyId);
+
+    expect(deleted.sections.money.find((row) => row.id === "checking")?.cells.amount).toBe("25.00");
+    expect(deleted.sections.money.find((row) => row.id === "mypay")?.cells.amount).toBe("40.00");
+    expect(deleted.paycheckHistory).toEqual([]);
+    expect(deleted.sections.transactions).toEqual([]);
+    expect(deleted.paycheckPlanner.depositApplied).toBe(false);
+  });
+
+  it("refuses reversal when an original linked balance row is missing", () => {
+    const data = createZeroData();
+    data.paycheckHistory = [{
+      id: "history",
+      incomeSource: "Work",
+      depositAccountId: "missing-account",
+      depositAccountLabel: "Missing",
+      depositAppliedAmount: "10.00",
+      payDate: "2026-08-21",
+      income: "10.00",
+      spotMe: "0.00",
+      myPay: "0.00",
+      remaining: "10.00",
+      weekStart: "2026-08-16",
+      weekEnd: "2026-08-22",
+      locked: false,
+    }];
+
+    expect(() => deletePaycheckHistoryRecord(data, "history")).toThrow("original deposit account is missing");
+    expect(data.paycheckHistory).toHaveLength(1);
+  });
+
+  it("rounds a paycheck once to cents and preserves the cent on delete reversal", () => {
+    const data = createZeroData();
+    data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "0.00" } }];
+    data.paycheckPlanner = {
+      incomeSource: "Work",
+      depositAccountId: "checking",
+      paycheckAmount: "10.005",
+      payDate: "2026-08-21",
+      weekStart: "2026-08-16",
+      weekEnd: "2026-08-22",
+      spotMeRepayment: "0",
+      myPayRepayment: "0",
+      depositApplied: false,
+      locked: false,
+    };
+
+    const recorded = lockPaycheckWeek(data);
+    expect(recorded.sections.money[0].cells.amount).toBe("10.01");
+    const unlocked = setPaycheckHistoryLock(recorded, recorded.paycheckHistory[0].id, false);
+    expect(deletePaycheckHistoryRecord(unlocked, recorded.paycheckHistory[0].id).sections.money[0].cells.amount).toBe("0.00");
   });
 });

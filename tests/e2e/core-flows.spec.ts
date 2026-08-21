@@ -302,6 +302,64 @@ test("sorts paycheck history chronologically without rewriting stored records", 
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}").paycheckHistory.map((row: { id: string }) => row.id))).toEqual(storedOrder);
 });
 
+test("edits, locks, unlocks, and deletes paycheck history with exact balance reconciliation", async ({ page }) => {
+  await page.goto("/money");
+  const planner = page.locator(".planner-form");
+  const deposit = planner.getByLabel("Deposit To");
+  await deposit.selectOption({ index: 1 });
+  const accountId = await deposit.inputValue();
+  const initialBalance = await page.evaluate((id) => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return Number(data.sections.money.find((row: { id: string }) => row.id === id)?.cells.amount || 0);
+  }, accountId);
+
+  await planner.getByLabel("Income Source").fill("Sprint QA");
+  await planner.getByLabel("Income Source").press("Tab");
+  await planner.getByLabel("Paycheck Amount").fill("321.09");
+  await planner.getByLabel("Paycheck Amount").press("Tab");
+  await planner.getByLabel("Pay Date").fill("2031-12-31");
+  await planner.getByLabel("Pay Date").press("Tab");
+  await planner.getByLabel("MyPay Repayment").fill("0");
+  await planner.getByLabel("MyPay Repayment").press("Tab");
+  await planner.getByRole("button", { name: "Record Paycheck" }).click();
+
+  const record = page.locator(".money-history-record").filter({ hasText: "12-31-2031" });
+  await expect(record).toHaveCount(1);
+  await expect(record.getByText("Locked", { exact: true })).toBeVisible();
+  const historyId = await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return data.paycheckHistory.find((row: { payDate: string }) => row.payDate === "2031-12-31")?.id;
+  });
+  expect(historyId).toBeTruthy();
+
+  await record.getByRole("button", { name: "Unlock" }).click();
+  await record.getByLabel("Edit income source").fill("Updated Sprint QA");
+  await record.getByLabel("Edit paycheck amount").fill("421.10");
+  await record.getByRole("button", { name: "Save & Lock" }).click();
+  await expect(record.getByText("Updated Sprint QA", { exact: true })).toBeVisible();
+  await expect(record.getByText("Locked", { exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate((id) => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return data.paycheckHistory.find((row: { id: string }) => row.id === id)?.income;
+  }, historyId)).toBe("421.10");
+
+  await record.getByRole("button", { name: "Unlock" }).click();
+  await record.getByRole("button", { name: "Delete" }).click();
+  await expect(record).toHaveCount(0);
+  await expect.poll(() => page.evaluate(({ id, paycheckId }) => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return {
+      balance: Number(data.sections.money.find((row: { id: string }) => row.id === id)?.cells.amount || 0),
+      historyExists: data.paycheckHistory.some((row: { id: string }) => row.id === paycheckId),
+      linkedTransactions: data.sections.transactions.filter((row: { cells: { paycheckHistoryId?: string } }) => row.cells.paycheckHistoryId === paycheckId).length,
+    };
+  }, { id: accountId, paycheckId: historyId })).toEqual({
+    balance: initialBalance,
+    historyExists: false,
+    linkedTransactions: 0,
+  });
+});
+
 test("edits and persists multiline Inventory Notes without hijacking caret keys", async ({ page }) => {
   await page.goto("/inventory");
   const notes = page.locator('textarea[data-column-key="notes"]').first();

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatCurrency, formatDateMDY, toNumber, weekBounds } from "../../lib/calculations/currency";
-import { applyPendingPaycheckDeposit, depositAccountOptions, lockPaycheckWeek, paycheckBreakdown } from "../../lib/engine/paycheckPlannerEngine";
+import { applyPendingPaycheckDeposit, depositAccountOptions, paycheckBreakdown, recordPaycheck } from "../../lib/engine/paycheckPlannerEngine";
 import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner } from "../../lib/types/app";
 import BufferedTextInput from "../shared/BufferedTextInput";
 
@@ -17,7 +17,6 @@ export default function PaycheckPlanner({
   const [plannerMessage, setPlannerMessage] = useState("");
   const planner = data.paycheckPlanner;
   const depositAccounts = depositAccountOptions(data);
-  const linkageMissing = !planner.incomeSource.trim() || !planner.depositAccountId;
   const breakdown = paycheckBreakdown(data);
   const remaining = breakdown.remaining;
 
@@ -34,20 +33,20 @@ export default function PaycheckPlanner({
   function updatePlanner(updates: Partial<Planner>) {
     setPlannerMessage("");
     const next = { ...planner, ...updates };
-    if (updates.payDate && !planner.locked) {
+    if (updates.payDate) {
       const bounds = weekBounds(updates.payDate);
       next.weekStart = bounds.start;
       next.weekEnd = bounds.end;
     }
-    onChange({ ...data, paycheckPlanner: next });
+    onChange({ ...data, paycheckPlanner: { ...next, locked: false, depositApplied: false } });
   }
 
-  function lockWeek() {
+  function savePaycheck() {
     try {
-      onChange(lockPaycheckWeek(data));
-      setPlannerMessage(`${formatCurrency(remaining)} remaining was automatically added to the selected Money Snapshot account.`);
+      onChange(recordPaycheck(data));
+      setPlannerMessage(`${formatCurrency(remaining)} remaining was recorded and added to the selected Money Snapshot account.`);
     } catch (error) {
-      setPlannerMessage(error instanceof Error ? error.message : "The paycheck could not be locked.");
+      setPlannerMessage(error instanceof Error ? error.message : "The paycheck could not be recorded.");
     }
   }
 
@@ -58,27 +57,21 @@ export default function PaycheckPlanner({
           <p className="eyebrow">Current Week Planner</p>
           <h2>Weekly Paycheck</h2>
         </div>
-        <PlannerInput label="Income Source" value={planner.incomeSource} disabled={planner.locked && !linkageMissing} onChange={(value) => updatePlanner({ incomeSource: value, locked: false })} />
-        <PlannerSelect label="Deposit To" value={planner.depositAccountId} disabled={planner.locked && !linkageMissing} onChange={(value) => updatePlanner({ depositAccountId: value, locked: false })} options={depositAccounts.map((account) => ({ value: account.id, label: account.isNew ? `${account.label} · add account` : `${account.label} · ${formatCurrency(account.balance)}` }))} />
-        <PlannerInput label="Paycheck Amount" value={planner.paycheckAmount} disabled={planner.locked} onChange={(value) => updatePlanner({ paycheckAmount: value })} />
-        <PlannerInput label="Pay Date" type="date" value={planner.payDate} disabled={planner.locked} onChange={(value) => updatePlanner({ payDate: value })} />
-        <PlannerInput label="Week Start" type="date" value={planner.weekStart} disabled={planner.locked} onChange={(value) => updatePlanner({ weekStart: value })} />
-        <PlannerInput label="Week End" type="date" value={planner.weekEnd} disabled={planner.locked} onChange={(value) => updatePlanner({ weekEnd: value })} />
-        <PlannerInput label={breakdown.spotMeAutomatic ? "SpotMe Auto-Repayment" : "SpotMe Repayment"} value={breakdown.spotMeAutomatic ? breakdown.spotMeRepayment.toFixed(2) : planner.spotMeRepayment} disabled={planner.locked || breakdown.spotMeAutomatic} onChange={(value) => updatePlanner({ spotMeRepayment: value })} />
-        <PlannerInput label="MyPay Repayment" value={planner.myPayRepayment} disabled={planner.locked} onChange={(value) => updatePlanner({ myPayRepayment: value })} />
+        <PlannerInput label="Income Source" value={planner.incomeSource} onChange={(value) => updatePlanner({ incomeSource: value })} />
+        <PlannerSelect label="Deposit To" value={planner.depositAccountId} onChange={(value) => updatePlanner({ depositAccountId: value })} options={depositAccounts.map((account) => ({ value: account.id, label: account.isNew ? `${account.label} · add account` : `${account.label} · ${formatCurrency(account.balance)}` }))} />
+        <PlannerInput label="Paycheck Amount" value={planner.paycheckAmount} onChange={(value) => updatePlanner({ paycheckAmount: value })} />
+        <PlannerInput label="Pay Date" type="date" value={planner.payDate} onChange={(value) => updatePlanner({ payDate: value })} />
+        <PlannerInput label="Week Start" type="date" value={planner.weekStart} onChange={(value) => updatePlanner({ weekStart: value })} />
+        <PlannerInput label="Week End" type="date" value={planner.weekEnd} onChange={(value) => updatePlanner({ weekEnd: value })} />
+        <PlannerInput label={breakdown.spotMeAutomatic ? "SpotMe Auto-Repayment" : "SpotMe Repayment"} value={breakdown.spotMeAutomatic ? breakdown.spotMeRepayment.toFixed(2) : planner.spotMeRepayment} disabled={breakdown.spotMeAutomatic} onChange={(value) => updatePlanner({ spotMeRepayment: value })} />
+        <PlannerInput label="MyPay Repayment" value={planner.myPayRepayment} onChange={(value) => updatePlanner({ myPayRepayment: value })} />
         <div className="planner-result">
           <span>Remaining After Repayment</span>
           <strong>{formatCurrency(remaining)}</strong>
         </div>
-        {planner.locked ? (
-          <button type="button" onClick={() => updatePlanner({ locked: false })}>
-            Unlock/Edit
-          </button>
-        ) : (
-          <button type="button" onClick={lockWeek}>
-            Enable / Lock Week
-          </button>
-        )}
+        <button type="button" onClick={savePaycheck}>
+          Record Paycheck
+        </button>
         {plannerMessage && <p className="planner-message" role="status">{plannerMessage}</p>}
       </div>
 
@@ -93,7 +86,7 @@ export default function PaycheckPlanner({
                 <small>{row.incomeSource || "Income source not recorded"} · {formatCurrency(toNumber(row.remaining))} remaining</small>
               </button>
             ))}
-            {data.paycheckHistory.length === 0 && <p className="empty-copy">No locked weeks yet.</p>}
+            {data.paycheckHistory.length === 0 && <p className="empty-copy">No recorded paychecks yet.</p>}
           </div>
           {selected && (
             <div className="week-detail">

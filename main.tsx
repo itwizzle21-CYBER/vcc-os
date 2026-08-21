@@ -5,11 +5,12 @@ import { loadAppData } from "@/lib/storage/localStore";
 import { applyVisualSettings } from "@/lib/theme/themePreference";
 import "@/index.css";
 
-applyVisualSettings(loadAppData().settings);
+const initialData = loadAppData();
+applyVisualSettings(initialData.settings);
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    <App initialData={initialData} />
   </React.StrictMode>
 );
 

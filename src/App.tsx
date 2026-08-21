@@ -4,8 +4,12 @@ import {
   BrainCircuit,
   CalendarClock,
   Check,
+  Lock,
+  LockOpen,
+  Pencil,
   Plus,
   ReceiptText,
+  Save,
   Trash2,
   X,
 } from "lucide-react";
@@ -18,7 +22,7 @@ import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import BufferedTextInput from "./components/shared/BufferedTextInput";
 import type { TransactionLayoutVariant } from "./components/transactions/TransactionHistoryConcepts";
-import { formatCurrency, formatDateMDY, isBlankRow, todayIso, toNumber } from "./lib/calculations/currency";
+import { formatCurrency, formatDateMDY, isBlankRow, todayIso, toNumber, weekBounds } from "./lib/calculations/currency";
 import { amountToCents, calculateReceiptLineAmounts, centsToAmount } from "./lib/calculations/receiptMath";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { computeFinancialState } from "./lib/engine/financialEngine";
@@ -35,7 +39,15 @@ import { categorizeItem, getInventoryAlert, normalizeInventoryRow, rankInventory
 import { migrateLegacyReceiptTaxRows } from "./lib/engine/receiptTransactionEngine";
 import { identifyTransactionCategory, signedTransactionAmount, transactionKind, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
 import { applySavingsTransfer, syncTransactionEndpointLabels, syncTransactionTransfers, transactionEndpointOptions, type TransactionShortfallSource } from "./lib/engine/savingsTransferEngine";
-import { depositAccountOptions, eligibleDepositAccounts, type DepositAccountOption } from "./lib/engine/paycheckPlannerEngine";
+import {
+  deletePaycheckHistoryRecord,
+  depositAccountOptions,
+  eligibleDepositAccounts,
+  setPaycheckHistoryLock,
+  updatePaycheckHistoryRecord,
+  type DepositAccountOption,
+  type PaycheckRecordInput,
+} from "./lib/engine/paycheckPlannerEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
 import { loadAppData, resetSection, saveAppData, saveThemePreference } from "./lib/storage/localStore";
 import { applyVisualSettings, getSystemTheme } from "./lib/theme/themePreference";
@@ -62,8 +74,8 @@ const SettingsPage = lazy(() => import("./components/settings/SettingsPage"));
 const TransactionHistoryConcepts = lazy(() => import("./components/transactions/TransactionHistoryConcepts"));
 const VitaScan = lazy(() => import("./components/modules/VitaScan"));
 
-export default function App() {
-  const [data, setData] = useState<AppData>(() => loadAppData());
+export default function App({ initialData }: { initialData?: AppData }) {
+  const [data, setData] = useState<AppData>(() => initialData ?? loadAppData());
   const themePreferenceRef = useRef<ThemeMode>(data.settings.theme);
   const [wallpaperPreview, setWallpaperPreview] = useState<WallpaperPreviewSettings | null>(null);
   const [systemTheme, setSystemTheme] = useState<"dark" | "light">(() => getSystemTheme());
@@ -157,7 +169,7 @@ export default function App() {
 
   function updateRows(section: SectionKey, rows: SpreadsheetRow[]) {
     const nextRows = section === "money"
-      ? canonicalizeAccountRows(enforceChimeBalanceFloor(autoFillMoneyWeek(rows, data)))
+      ? canonicalizeAccountRows(enforceChimeBalanceFloor(rows))
       : section === "inventory"
         ? canonicalizeInventoryRows(rows)
         : rows;
@@ -310,7 +322,7 @@ function MoneyPage({
         />
       </section>
 
-      <MoneyPaycheckHistory data={data} />
+      <MoneyPaycheckHistory data={data} onChange={onChange} />
     </div>
   );
 }
@@ -345,21 +357,98 @@ function MoneyAccountOverview({ accounts }: { accounts: DepositAccountOption[] }
 
 function MoneyPaycheckHistory({
   data,
+  onChange,
 }: {
   data: AppData;
+  onChange: (data: AppData) => void;
 }) {
   const [sortOrder, setSortOrder] = useState<PaycheckHistorySortOrder>("newest");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<PaycheckRecordInput | null>(null);
+  const [historyMessage, setHistoryMessage] = useState("");
   const sortedHistory = useMemo(
     () => sortPaycheckHistory(data.paycheckHistory, sortOrder),
     [data.paycheckHistory, sortOrder],
   );
+  const accounts = depositAccountOptions(data);
+
+  function beginEdit(row: AppData["paycheckHistory"][number]) {
+    setEditingId(row.id);
+    setDraft({
+      incomeSource: row.incomeSource || "",
+      depositAccountId: row.depositAccountId || "",
+      paycheckAmount: row.income,
+      payDate: row.payDate,
+      weekStart: row.weekStart,
+      weekEnd: row.weekEnd,
+      spotMeRepayment: row.spotMe,
+      myPayRepayment: row.myPay,
+    });
+    setHistoryMessage("");
+  }
+
+  function unlockAndEdit(row: AppData["paycheckHistory"][number]) {
+    try {
+      onChange(setPaycheckHistoryLock(data, row.id, false));
+      beginEdit(row);
+    } catch (error) {
+      setHistoryMessage(historyError(error));
+    }
+  }
+
+  function lockRecord(historyId: string) {
+    try {
+      onChange(setPaycheckHistoryLock(data, historyId, true));
+      if (editingId === historyId) {
+        setEditingId(null);
+        setDraft(null);
+      }
+      setHistoryMessage("Paycheck record locked.");
+    } catch (error) {
+      setHistoryMessage(historyError(error));
+    }
+  }
+
+  function saveEdit(historyId: string) {
+    if (!draft) return;
+    try {
+      onChange(updatePaycheckHistoryRecord(data, historyId, draft));
+      setEditingId(null);
+      setDraft(null);
+      setHistoryMessage("Paycheck changes saved and locked. Account balances and repayments were reconciled.");
+    } catch (error) {
+      setHistoryMessage(historyError(error));
+    }
+  }
+
+  function deleteRecord(historyId: string) {
+    try {
+      onChange(deletePaycheckHistoryRecord(data, historyId));
+      if (editingId === historyId) {
+        setEditingId(null);
+        setDraft(null);
+      }
+      setHistoryMessage("Paycheck deleted. Its exact deposit and repayment effects were reversed.");
+    } catch (error) {
+      setHistoryMessage(historyError(error));
+    }
+  }
+
+  function updateDraft(key: keyof PaycheckRecordInput, value: string) {
+    setDraft((current) => {
+      if (!current) return current;
+      if (key !== "payDate") return { ...current, [key]: value };
+      const bounds = weekBounds(value);
+      return { ...current, payDate: value, weekStart: bounds.start, weekEnd: bounds.end };
+    });
+  }
 
   return (
     <section className="money-history-panel" aria-label="Money Snapshot paycheck history">
       <div className="money-history-heading">
         <div>
           <p className="eyebrow">Paycheck History</p>
-          <h2>Locked Paycheck Records</h2>
+          <h2>Paycheck Records</h2>
         </div>
         <div className="money-history-controls">
           <label>
@@ -373,57 +462,109 @@ function MoneyPaycheckHistory({
               <option value="oldest">Oldest to newest</option>
             </select>
           </label>
-          <span>{data.paycheckHistory.length ? `${data.paycheckHistory.length} locked` : "No records yet"}</span>
+          <span>{data.paycheckHistory.length ? `${data.paycheckHistory.length} recorded` : "No records yet"}</span>
         </div>
       </div>
 
+      {historyMessage && <p className="money-history-message" role="status">{historyMessage}</p>}
+
       <div className="money-history-list">
         {sortedHistory.map((row) => (
-          <article className="money-history-record" key={row.id}>
-            <div>
-              <span>Locked Week</span>
+          <article className={`money-history-record ${row.locked ? "is-locked" : "is-unlocked"}`} key={row.id}>
+            <header className="money-history-record-summary">
+              <span className="money-history-lock-state">
+                {row.locked ? <Lock size={14} aria-hidden="true" /> : <LockOpen size={14} aria-hidden="true" />}
+                {row.locked ? "Locked" : "Unlocked"}
+              </span>
               <strong>{formatCurrency(toNumber(row.remaining))}</strong>
               <small>{row.payDate ? formatDateMDY(row.payDate) : "No pay date"}</small>
-            </div>
-            <dl>
-              <div>
-                <dt>Income Source</dt>
-                <dd>{row.incomeSource || "Not recorded"}</dd>
+              <div className="money-history-actions">
+                {row.locked ? (
+                  <button type="button" className="ghost-button" onClick={() => unlockAndEdit(row)}>
+                    <LockOpen size={16} aria-hidden="true" /> Unlock
+                  </button>
+                ) : editingId === row.id ? (
+                  <>
+                    <button type="button" onClick={() => saveEdit(row.id)}>
+                      <Save size={16} aria-hidden="true" /> Save &amp; Lock
+                    </button>
+                    <button type="button" className="ghost-button" onClick={() => { setEditingId(null); setDraft(null); }}>
+                      <X size={16} aria-hidden="true" /> Cancel
+                    </button>
+                    <button type="button" className="danger-button" onClick={() => deleteRecord(row.id)}>
+                      <Trash2 size={16} aria-hidden="true" /> Delete
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="ghost-button" onClick={() => beginEdit(row)}>
+                      <Pencil size={16} aria-hidden="true" /> Edit
+                    </button>
+                    <button type="button" className="ghost-button" onClick={() => lockRecord(row.id)}>
+                      <Lock size={16} aria-hidden="true" /> Lock
+                    </button>
+                    <button type="button" className="danger-button" onClick={() => deleteRecord(row.id)}>
+                      <Trash2 size={16} aria-hidden="true" /> Delete
+                    </button>
+                  </>
+                )}
               </div>
-              <div>
-                <dt>Deposited To</dt>
-                <dd>{row.depositAccountLabel || "Not recorded"}</dd>
+            </header>
+            {editingId === row.id && draft ? (
+              <div className="money-history-edit-grid">
+                <HistoryEditInput label="Income Source" value={draft.incomeSource} onChange={(value) => updateDraft("incomeSource", value)} />
+                <label>
+                  <span>Deposit To</span>
+                  <select aria-label="Edit deposit account" value={draft.depositAccountId} onChange={(event) => updateDraft("depositAccountId", event.target.value)}>
+                    <option value="">Select card or account</option>
+                    {accounts.map((account) => <option key={account.id} value={account.id}>{account.label}</option>)}
+                  </select>
+                </label>
+                <HistoryEditInput label="Paycheck Amount" value={draft.paycheckAmount} onChange={(value) => updateDraft("paycheckAmount", value)} />
+                <HistoryEditInput label="Pay Date" type="date" value={draft.payDate} onChange={(value) => updateDraft("payDate", value)} />
+                <HistoryEditInput label="Week Start" type="date" value={draft.weekStart} onChange={(value) => updateDraft("weekStart", value)} />
+                <HistoryEditInput label="Week End" type="date" value={draft.weekEnd} onChange={(value) => updateDraft("weekEnd", value)} />
+                <HistoryEditInput label="SpotMe Repayment" value={draft.spotMeRepayment} onChange={(value) => updateDraft("spotMeRepayment", value)} />
+                <HistoryEditInput label="MyPay Repayment" value={draft.myPayRepayment} onChange={(value) => updateDraft("myPayRepayment", value)} />
               </div>
-              <div>
-                <dt>Paycheck</dt>
-                <dd>{formatCurrency(toNumber(row.income))}</dd>
-              </div>
-              <div>
-                <dt>SpotMe</dt>
-                <dd>{formatCurrency(toNumber(row.spotMe))}</dd>
-              </div>
-              <div>
-                <dt>MyPay</dt>
-                <dd>{formatCurrency(toNumber(row.myPay))}</dd>
-              </div>
-              <div>
-                <dt>Remaining</dt>
-                <dd>{formatCurrency(toNumber(row.remaining))}</dd>
-              </div>
-              <div>
-                <dt>Week</dt>
-                <dd>{row.weekStart && row.weekEnd ? `${formatDateMDY(row.weekStart)} to ${formatDateMDY(row.weekEnd)}` : "Not set"}</dd>
-              </div>
-            </dl>
+            ) : (
+              <dl>
+                <div><dt>Income Source</dt><dd>{row.incomeSource || "Not recorded"}</dd></div>
+                <div><dt>Deposited To</dt><dd>{row.depositAccountLabel || "Not recorded"}</dd></div>
+                <div><dt>Paycheck</dt><dd>{formatCurrency(toNumber(row.income))}</dd></div>
+                <div><dt>SpotMe</dt><dd>{formatCurrency(toNumber(row.spotMe))}</dd></div>
+                <div><dt>MyPay</dt><dd>{formatCurrency(toNumber(row.myPay))}</dd></div>
+                <div><dt>Remaining</dt><dd>{formatCurrency(toNumber(row.remaining))}</dd></div>
+                <div><dt>Week</dt><dd>{row.weekStart && row.weekEnd ? `${formatDateMDY(row.weekStart)} to ${formatDateMDY(row.weekEnd)}` : "Not set"}</dd></div>
+              </dl>
+            )}
           </article>
         ))}
 
         {data.paycheckHistory.length === 0 && (
-          <p className="empty-copy">Lock a paycheck week to create read-only payment history records.</p>
+          <p className="empty-copy">Record a paycheck in the Current Week Planner to start your history.</p>
         )}
       </div>
     </section>
   );
+}
+
+function HistoryEditInput({ label, value, onChange, type = "text" }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+}) {
+  return (
+    <label>
+      <span>{label}</span>
+      <input aria-label={`Edit ${label.toLowerCase()}`} type={type} value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function historyError(error: unknown): string {
+  return error instanceof Error ? error.message : "The paycheck history change could not be saved.";
 }
 
 function BillsPage({
@@ -2221,14 +2362,6 @@ function computedCell(section: SectionKey, row: SpreadsheetRow, columnKey: strin
     return current >= target ? "Complete" : `${Math.max(0, Math.round((current / target) * 100))}%`;
   }
   return undefined;
-}
-
-function autoFillMoneyWeek(rows: SpreadsheetRow[], data: AppData): SpreadsheetRow[] {
-  if (!data.paycheckPlanner.locked) return rows;
-  return rows.map((row) => {
-    if (row.cells.weekStart || row.cells.weekEnd) return row;
-    return { ...row, cells: { ...row.cells, weekStart: data.paycheckPlanner.weekStart, weekEnd: data.paycheckPlanner.weekEnd } };
-  });
 }
 
 function normalizeBillRow(row: SpreadsheetRow): SpreadsheetRow {

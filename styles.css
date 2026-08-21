@@ -4411,6 +4411,17 @@ td textarea[readonly] {
   gap: 0.75rem;
 }
 
+.money-history-message {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: 0.7rem;
+  background: var(--accent-soft);
+  color: var(--text);
+  padding: 0.7rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
 .money-history-record {
   display: grid;
   grid-template-columns: minmax(10rem, 0.75fr) minmax(0, 1fr);
@@ -4419,6 +4430,58 @@ td textarea[readonly] {
   border-radius: 0.85rem;
   background: var(--surface-2);
   padding: 0.85rem;
+}
+
+.money-history-record.is-unlocked {
+  border-color: color-mix(in srgb, var(--warn) 52%, var(--border));
+}
+
+.money-history-record-summary {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+}
+
+.money-history-lock-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+}
+
+.money-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.money-history-actions button {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.6rem;
+  background: var(--accent);
+  color: white;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.money-history-actions button.ghost-button {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--text);
+}
+
+.money-history-actions button.danger-button {
+  border-color: color-mix(in srgb, var(--bad) 65%, var(--border));
+  background: color-mix(in srgb, var(--bad) 14%, var(--surface));
+  color: var(--bad);
 }
 
 .money-history-record > div:first-child,
@@ -4453,6 +4516,34 @@ td textarea[readonly] {
   font-size: 0.86rem;
   font-weight: 850;
   overflow-wrap: anywhere;
+}
+
+.money-history-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.money-history-edit-grid label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.money-history-edit-grid label span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.money-history-edit-grid input,
+.money-history-edit-grid select {
+  width: 100%;
+  min-height: 2.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.55rem 0.65rem;
 }
 
 .bill-undo-notice {
@@ -7574,10 +7665,13 @@ td textarea[readonly] {
   }
 
   .money-history-heading {
+    display: grid;
     align-items: start;
   }
 
   .money-history-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     width: 100%;
     align-items: stretch;
     justify-content: space-between;
@@ -7594,6 +7688,14 @@ td textarea[readonly] {
 
   .money-history-record dl {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .money-history-edit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .money-history-actions button {
+    min-height: 2.75rem;
   }
 
   .bill-undo-notice {

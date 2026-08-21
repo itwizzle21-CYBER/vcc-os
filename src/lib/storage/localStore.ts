@@ -190,7 +190,11 @@ export function normalizeAppData(raw: unknown): AppData {
     sortBy: { ...starter.sortBy, ...(typeof source.sortBy === "object" ? source.sortBy : {}) },
     paycheckPlanner: { ...starter.paycheckPlanner, ...(typeof source.paycheckPlanner === "object" ? source.paycheckPlanner : {}) },
     paycheckHistory: (Array.isArray(source.paycheckHistory) ? source.paycheckHistory : starter.paycheckHistory)
-      .map((row) => ({ ...row, depositAccountLabel: displayAccountLabel(row.depositAccountLabel) })),
+      .map((row) => ({
+        ...row,
+        depositAccountLabel: displayAccountLabel(row.depositAccountLabel),
+        locked: row.locked !== false,
+      })),
     activity: Array.isArray(source.activity) ? source.activity : starter.activity,
     settings: { ...starter.settings, ...sourceSettings, theme, appearanceTheme, vccCompanionId, layoutViews },
   } as AppData;

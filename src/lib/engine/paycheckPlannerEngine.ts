@@ -9,6 +9,17 @@ export interface DepositAccountOption {
   isNew: boolean;
 }
 
+export interface PaycheckRecordInput {
+  incomeSource: string;
+  depositAccountId: string;
+  paycheckAmount: string;
+  payDate: string;
+  weekStart: string;
+  weekEnd: string;
+  spotMeRepayment: string;
+  myPayRepayment: string;
+}
+
 const suggestedAccounts = [
   { id: "money-account-chime", label: "Chime" },
   { id: "money-account-apple-cash", label: "Apple Cash" },
@@ -49,62 +60,96 @@ export function applyPendingPaycheckDeposit(data: AppData): AppData {
   const selectedAccountExists = depositAccountOptions(data)
     .some((account) => account.id === data.paycheckPlanner.depositAccountId);
   const fallbackAccountId = eligibleDepositAccounts(data)[0]?.id || suggestedAccounts[0].id;
-  return lockPaycheckWeek({
+  const normalized = {
     ...data,
     paycheckPlanner: {
       ...data.paycheckPlanner,
       incomeSource: data.paycheckPlanner.incomeSource.trim() || "Paycheck",
       depositAccountId: selectedAccountExists ? data.paycheckPlanner.depositAccountId : fallbackAccountId,
     },
-  });
+  };
+  const existing = normalized.paycheckHistory.find((row) => row.payDate === normalized.paycheckPlanner.payDate);
+  return applyPaycheckRecord(normalized, normalized.paycheckPlanner, existing?.id);
 }
 
-export function lockPaycheckWeek(data: AppData): AppData {
-  const planner = data.paycheckPlanner;
-  const incomeSource = planner.incomeSource.trim();
-  const existingDepositAccount = eligibleDepositAccounts(data).find((row) => row.id === planner.depositAccountId);
-  const suggestedDepositAccount = suggestedAccounts.find((account) => account.id === planner.depositAccountId);
+export function recordPaycheck(data: AppData): AppData {
+  const existing = data.paycheckHistory.find((row) => row.payDate === data.paycheckPlanner.payDate);
+  if (existing?.locked) {
+    if (recordInputMatchesHistory(data.paycheckPlanner, existing) && data.paycheckPlanner.depositApplied) return data;
+    throw new Error("Unlock the matching paycheck in History before changing it.");
+  }
+  return applyPaycheckRecord(data, data.paycheckPlanner, existing?.id);
+}
+
+/** @deprecated Kept for compatibility with older callers. Recording no longer locks the planner. */
+export const lockPaycheckWeek = recordPaycheck;
+
+export function setPaycheckHistoryLock(data: AppData, historyId: string, locked: boolean): AppData {
+  const existing = requireHistoryRow(data, historyId);
+  if (existing.locked === locked) return data;
+  return {
+    ...data,
+    paycheckHistory: data.paycheckHistory.map((row) => row.id === historyId ? { ...row, locked } : row),
+  };
+}
+
+export function updatePaycheckHistoryRecord(
+  data: AppData,
+  historyId: string,
+  input: PaycheckRecordInput,
+): AppData {
+  const existing = requireHistoryRow(data, historyId);
+  if (existing.locked) throw new Error("Unlock this paycheck record before editing it.");
+  const conflictingDate = data.paycheckHistory.some((row) => row.id !== historyId && row.payDate === input.payDate);
+  if (conflictingDate) throw new Error("Another paycheck is already recorded for that pay date.");
+  return applyPaycheckRecord(data, input, historyId);
+}
+
+export function deletePaycheckHistoryRecord(data: AppData, historyId: string): AppData {
+  const existing = requireHistoryRow(data, historyId);
+  if (existing.locked) throw new Error("Unlock this paycheck record before deleting it.");
+  const reversed = reversePaycheckEffects(data, existing);
+  const plannerMatches = data.paycheckPlanner.payDate === existing.payDate;
+  return {
+    ...reversed,
+    paycheckPlanner: plannerMatches
+      ? { ...reversed.paycheckPlanner, depositApplied: false, locked: false }
+      : reversed.paycheckPlanner,
+    paycheckHistory: reversed.paycheckHistory.filter((row) => row.id !== historyId),
+  };
+}
+
+function applyPaycheckRecord(data: AppData, input: PaycheckRecordInput, replaceHistoryId?: string): AppData {
+  const existing = replaceHistoryId ? requireHistoryRow(data, replaceHistoryId) : undefined;
+  const base = existing ? reversePaycheckEffects(data, existing) : data;
+  const incomeSource = input.incomeSource.trim();
+  const existingDepositAccount = eligibleDepositAccounts(base).find((row) => row.id === input.depositAccountId);
+  const suggestedDepositAccount = suggestedAccounts.find((account) => account.id === input.depositAccountId);
   const depositAccount = existingDepositAccount || (suggestedDepositAccount ? createMoneyAccount(suggestedDepositAccount.id, suggestedDepositAccount.label) : undefined);
-  const existing = data.paycheckHistory.find((row) => row.payDate === planner.payDate);
-  const income = toNumber(planner.paycheckAmount);
-  const requestedSpotMeRepayment = toNumber(planner.spotMeRepayment);
-  const myPayRepayment = toNumber(planner.myPayRepayment);
-  const accountBeforeExistingDeposit = existingDepositAccount && existing?.depositAccountId === existingDepositAccount.id
-    ? {
-      ...existingDepositAccount,
-      cells: {
-        ...existingDepositAccount.cells,
-        amount: currencyValue(toNumber(existingDepositAccount.cells.amount) - toNumber(existing.depositAppliedAmount ?? existing.remaining)),
-      },
-    }
-    : existingDepositAccount;
-  const embeddedSpotMeRepayment = automaticSpotMeRepayment(accountBeforeExistingDeposit || depositAccount, income);
-  const spotMeIsEmbedded = isChimeAccount(depositAccount) && embeddedSpotMeRepayment > 0;
-  const spotMeRepayment = spotMeIsEmbedded ? embeddedSpotMeRepayment : requestedSpotMeRepayment;
-  const repayments = spotMeRepayment + myPayRepayment;
-  const remaining = Math.round((income - repayments) * 100) / 100;
-  const depositAppliedAmount = Math.round((income - myPayRepayment - (spotMeIsEmbedded ? 0 : spotMeRepayment)) * 100) / 100;
+  const incomeCents = toCents(input.paycheckAmount);
+  const requestedSpotMeRepaymentCents = toCents(input.spotMeRepayment);
+  const myPayRepaymentCents = toCents(input.myPayRepayment);
+  const embeddedSpotMeRepaymentCents = toCents(automaticSpotMeRepayment(depositAccount, incomeCents / 100));
+  const spotMeIsEmbedded = isChimeAccount(depositAccount) && embeddedSpotMeRepaymentCents > 0;
+  const spotMeRepaymentCents = spotMeIsEmbedded ? embeddedSpotMeRepaymentCents : requestedSpotMeRepaymentCents;
+  const remainingCents = incomeCents - spotMeRepaymentCents - myPayRepaymentCents;
+  const depositAppliedCents = incomeCents - myPayRepaymentCents - (spotMeIsEmbedded ? 0 : spotMeRepaymentCents);
 
-  if (!incomeSource) throw new Error("Add the source of this income before locking the week.");
+  if (!incomeSource) throw new Error("Add the source of this income before recording the paycheck.");
   if (!depositAccount) throw new Error("Choose the card or account receiving this paycheck.");
-  if (!isValidIsoDate(planner.payDate)) throw new Error("Choose a valid paycheck date before locking the week.");
-  if (income <= 0) throw new Error("Enter a paycheck amount greater than $0.");
-  if (requestedSpotMeRepayment < 0 || myPayRepayment < 0) throw new Error("Repayment amounts cannot be negative.");
-  if (remaining < 0) throw new Error("Repayments cannot exceed the paycheck amount.");
+  if (!isValidIsoDate(input.payDate)) throw new Error("Choose a valid paycheck date before recording the paycheck.");
+  if (incomeCents <= 0) throw new Error("Enter a paycheck amount greater than $0.");
+  if (requestedSpotMeRepaymentCents < 0 || myPayRepaymentCents < 0) throw new Error("Repayment amounts cannot be negative.");
+  if (remainingCents < 0) throw new Error("Repayments cannot exceed the paycheck amount.");
 
-  const historyId = existing?.id || `paycheck-${planner.payDate}-${Date.now()}`;
-  const restoredMoney = data.sections.money.map((row) => {
-    const previousRepayment = existing?.borrowedRepayments
-      ?.filter((item) => item.rowId === row.id)
-      .reduce((sum, item) => sum + item.amount, 0) || 0;
-    return previousRepayment > 0
-      ? { ...row, cells: { ...row.cells, amount: currencyValue(toNumber(row.cells.amount) + previousRepayment) } }
-      : row;
-  });
+  const historyId = existing?.id || `paycheck-${input.payDate}-${Date.now()}`;
+  const moneyBeforeDeposit = existingDepositAccount || !depositAccount
+    ? base.sections.money
+    : [...base.sections.money, depositAccount];
   const borrowedRepayments = allocateBorrowedRepayments(
-    restoredMoney,
-    spotMeIsEmbedded ? 0 : spotMeRepayment,
-    myPayRepayment,
+    moneyBeforeDeposit,
+    spotMeIsEmbedded ? 0 : spotMeRepaymentCents,
+    myPayRepaymentCents,
   );
   const historyRow: PaycheckHistoryRow = {
     id: historyId,
@@ -112,51 +157,102 @@ export function lockPaycheckWeek(data: AppData): AppData {
     depositAccountId: depositAccount.id,
     depositAccountLabel: depositAccount.cells.label,
     borrowedRepayments,
-    depositAppliedAmount: currencyValue(depositAppliedAmount),
-    payDate: planner.payDate,
-    income: planner.paycheckAmount,
-    spotMe: currencyValue(spotMeRepayment),
-    myPay: planner.myPayRepayment,
-    remaining: currencyValue(remaining),
-    weekStart: planner.weekStart,
-    weekEnd: planner.weekEnd,
+    depositAppliedAmount: centsValue(depositAppliedCents),
+    payDate: input.payDate,
+    income: centsValue(incomeCents),
+    spotMe: centsValue(spotMeRepaymentCents),
+    myPay: centsValue(myPayRepaymentCents),
+    remaining: centsValue(remainingCents),
+    weekStart: input.weekStart,
+    weekEnd: input.weekEnd,
     locked: true,
   };
 
   const accountAdjustments = new Map<string, number>();
-  if (existing?.depositAccountId) {
-    accountAdjustments.set(existing.depositAccountId, -toNumber(existing.depositAppliedAmount ?? existing.remaining));
-  }
-  accountAdjustments.set(depositAccount.id, (accountAdjustments.get(depositAccount.id) || 0) + depositAppliedAmount);
+  accountAdjustments.set(depositAccount.id, depositAppliedCents);
   borrowedRepayments.forEach((repayment) => {
-    accountAdjustments.set(repayment.rowId, (accountAdjustments.get(repayment.rowId) || 0) - repayment.amount);
+    accountAdjustments.set(repayment.rowId, (accountAdjustments.get(repayment.rowId) || 0) - toCents(repayment.amount));
   });
 
-  const moneyRows = existingDepositAccount || !depositAccount
-    ? restoredMoney
-    : [...restoredMoney, depositAccount];
-  const money = moneyRows.map((row) => {
+  const money = moneyBeforeDeposit.map((row) => {
     const adjustment = accountAdjustments.get(row.id);
     const cells = {
       ...row.cells,
-      weekStart: row.cells.weekStart || planner.weekStart,
-      weekEnd: row.cells.weekEnd || planner.weekEnd,
+      weekStart: row.cells.weekStart || input.weekStart,
+      weekEnd: row.cells.weekEnd || input.weekEnd,
     };
     if (adjustment === undefined) return { ...row, cells };
-    return { ...row, cells: { ...cells, amount: currencyValue(toNumber(row.cells.amount) + adjustment) } };
+    return { ...row, cells: { ...cells, amount: centsValue(toCents(row.cells.amount) + adjustment) } };
   });
   const transaction = paycheckTransaction(historyRow, depositAccount);
   const transactions = [
-    ...data.sections.transactions.filter((row) => row.cells.paycheckHistoryId !== historyId),
+    ...base.sections.transactions.filter((row) => row.cells.paycheckHistoryId !== historyId),
     transaction,
   ];
 
   return {
-    ...data,
-    paycheckPlanner: { ...planner, locked: true, depositApplied: true },
-    paycheckHistory: [historyRow, ...data.paycheckHistory.filter((row) => row.payDate !== planner.payDate)],
-    sections: { ...data.sections, money, transactions },
+    ...base,
+    paycheckPlanner: {
+      ...base.paycheckPlanner,
+      ...input,
+      paycheckAmount: historyRow.income,
+      spotMeRepayment: historyRow.spotMe,
+      myPayRepayment: historyRow.myPay,
+      locked: false,
+      depositApplied: true,
+    },
+    paycheckHistory: [historyRow, ...base.paycheckHistory.filter((row) => row.id !== historyId)],
+    sections: { ...base.sections, money, transactions },
   };
+}
+
+function reversePaycheckEffects(data: AppData, history: PaycheckHistoryRow): AppData {
+  const accountAdjustments = new Map<string, number>();
+  const depositCents = history.depositAccountId ? toCents(history.depositAppliedAmount ?? history.remaining) : 0;
+  if (history.depositAccountId && depositCents !== 0) {
+    if (!data.sections.money.some((row) => row.id === history.depositAccountId)) {
+      throw new Error("The original deposit account is missing. Restore it before changing this paycheck.");
+    }
+    accountAdjustments.set(history.depositAccountId, -depositCents);
+  }
+  for (const repayment of history.borrowedRepayments || []) {
+    const repaymentCents = toCents(repayment.amount);
+    if (!repaymentCents) continue;
+    if (!data.sections.money.some((row) => row.id === repayment.rowId)) {
+      throw new Error(`The original ${repayment.label} repayment row is missing. Restore it before changing this paycheck.`);
+    }
+    accountAdjustments.set(repayment.rowId, (accountAdjustments.get(repayment.rowId) || 0) + repaymentCents);
+  }
+  const money = data.sections.money.map((row) => {
+    const adjustment = accountAdjustments.get(row.id);
+    if (adjustment === undefined) return row;
+    return { ...row, cells: { ...row.cells, amount: centsValue(toCents(row.cells.amount) + adjustment) } };
+  });
+  return {
+    ...data,
+    sections: {
+      ...data.sections,
+      money,
+      transactions: data.sections.transactions.filter((row) => row.cells.paycheckHistoryId !== history.id),
+    },
+  };
+}
+
+function requireHistoryRow(data: AppData, historyId: string): PaycheckHistoryRow {
+  const history = data.paycheckHistory.find((row) => row.id === historyId);
+  if (!history) throw new Error("That paycheck history record no longer exists.");
+  return history;
+}
+
+function recordInputMatchesHistory(input: PaycheckRecordInput, history: PaycheckHistoryRow): boolean {
+  return input.incomeSource.trim() === (history.incomeSource || "").trim()
+    && input.depositAccountId === (history.depositAccountId || "")
+    && toCents(input.paycheckAmount) === toCents(history.income)
+    && input.payDate === history.payDate
+    && input.weekStart === history.weekStart
+    && input.weekEnd === history.weekEnd
+    && toCents(input.spotMeRepayment) === toCents(history.spotMe)
+    && toCents(input.myPayRepayment) === toCents(history.myPay);
 }
 
 function paycheckTransaction(history: PaycheckHistoryRow, depositAccount: SpreadsheetRow): SpreadsheetRow {
@@ -193,8 +289,16 @@ export function paycheckBreakdown(data: AppData): { spotMeRepayment: number; myP
   return { spotMeRepayment, myPayRepayment, remaining: income - spotMeRepayment - myPayRepayment, spotMeAutomatic };
 }
 
+function toCents(value: string | number | undefined): number {
+  return Math.round(toNumber(value) * 100);
+}
+
+function centsValue(cents: number): string {
+  return (Math.round(cents) / 100).toFixed(2);
+}
+
 function currencyValue(value: number): string {
-  return value.toFixed(2);
+  return centsValue(toCents(value));
 }
 
 function createMoneyAccount(id: string, label: string): SpreadsheetRow {
@@ -232,14 +336,14 @@ function canonicalAccountLabel(value: string | undefined): string {
 
 function allocateBorrowedRepayments(
   rows: SpreadsheetRow[],
-  spotMeAmount: number,
-  myPayAmount: number,
+  spotMeCents: number,
+  myPayCents: number,
 ): Array<{ rowId: string; label: string; amount: number }> {
   const borrowedRows = rows.filter((row) => {
     const value = `${row.cells.section || ""} ${row.cells.label || ""} ${row.cells.notes || ""}`.toLowerCase();
     return ["borrow", "spotme", "spot me", "mypay", "my pay", "advance", "owed"].some((term) => value.includes(term));
   });
-  const balances = new Map(borrowedRows.map((row) => [row.id, Math.max(0, toNumber(row.cells.amount))]));
+  const balances = new Map(borrowedRows.map((row) => [row.id, Math.max(0, toCents(row.cells.amount))]));
   const allocated = new Map<string, number>();
 
   const apply = (amount: number, matches: (row: SpreadsheetRow) => boolean) => {
@@ -256,11 +360,11 @@ function allocateBorrowedRepayments(
     return remaining;
   };
 
-  const spotRemaining = apply(spotMeAmount, (row) => /spot\s?me/i.test(`${row.cells.label} ${row.cells.notes}`));
-  const myPayRemaining = apply(myPayAmount, (row) => /my\s?pay/i.test(`${row.cells.label} ${row.cells.notes}`));
+  const spotRemaining = apply(spotMeCents, (row) => /spot\s?me/i.test(`${row.cells.label} ${row.cells.notes}`));
+  const myPayRemaining = apply(myPayCents, (row) => /my\s?pay/i.test(`${row.cells.label} ${row.cells.notes}`));
   apply(spotRemaining + myPayRemaining, () => true);
 
   return borrowedRows
     .filter((row) => (allocated.get(row.id) || 0) > 0)
-    .map((row) => ({ rowId: row.id, label: row.cells.label || "Borrowed money", amount: allocated.get(row.id) || 0 }));
+    .map((row) => ({ rowId: row.id, label: row.cells.label || "Borrowed money", amount: (allocated.get(row.id) || 0) / 100 }));
 }

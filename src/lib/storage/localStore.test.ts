@@ -223,6 +223,23 @@ describe("import normalization", () => {
     expect(imported.paycheckHistory[0].depositAccountLabel).toBe("Cash");
   });
 
+  it("keeps legacy paycheck history protected when its lock field is absent", () => {
+    const imported = normalizeAppData({
+      paycheckHistory: [{
+        id: "legacy-paycheck",
+        payDate: "2026-08-21",
+        income: "100.00",
+        spotMe: "0.00",
+        myPay: "0.00",
+        remaining: "100.00",
+        weekStart: "2026-08-16",
+        weekEnd: "2026-08-22",
+      }],
+    });
+
+    expect(imported.paycheckHistory[0].locked).toBe(true);
+  });
+
   it("migrates receipt tax rows into cent-accurate item totals", () => {
     const imported = normalizeAppData({
       version: 3,
