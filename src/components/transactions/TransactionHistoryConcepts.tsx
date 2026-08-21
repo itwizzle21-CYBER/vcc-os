@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { formatCurrency, formatDateMDY, todayIso, toNumber } from "../../lib/calculations/currency";
-import { signedTransactionAmount, transactionMatchesPeriod, transactionType } from "../../lib/engine/transactionEngine";
+import { signedTransactionAmount, transactionKind, transactionMatchesPeriod, transactionType, type TransactionKind } from "../../lib/engine/transactionEngine";
 import type { SpreadsheetRow } from "../../lib/types/app";
 
 export type TransactionLayoutVariant = 1 | 2 | 3 | 4 | 5;
@@ -28,10 +28,19 @@ interface AccountOption {
   isNew: boolean;
 }
 
+interface BillPaymentOption {
+  id: string;
+  name: string;
+  amount: string;
+  category: string;
+  status: string;
+}
+
 interface TransactionHistoryConceptsProps {
   variant: TransactionLayoutVariant;
   rows: SpreadsheetRow[];
   accounts: AccountOption[];
+  bills: BillPaymentOption[];
   incomeTotal: number;
   expenseTotal: number;
   transferTotal: number;
@@ -45,6 +54,7 @@ export default function TransactionHistoryConcepts({
   variant,
   rows,
   accounts,
+  bills,
   incomeTotal,
   expenseTotal,
   transferTotal,
@@ -92,6 +102,7 @@ export default function TransactionHistoryConcepts({
         description: "",
         merchant: "",
         type: "expense",
+        transactionKind: "general",
         category: "",
         quantity: "",
         unitCost: "",
@@ -134,6 +145,7 @@ export default function TransactionHistoryConcepts({
           rows={filteredRows}
           editingRow={editingRow}
           accounts={accounts}
+          bills={bills}
           incomeTotal={incomeTotal}
           expenseTotal={expenseTotal}
           transferTotal={transferTotal}
@@ -151,6 +163,7 @@ export default function TransactionHistoryConcepts({
           rows={filteredRows}
           editingRow={editingRow}
           accounts={accounts}
+          bills={bills}
           selectedAccount={accountFilter}
           incomeTotal={incomeTotal}
           expenseTotal={expenseTotal}
@@ -170,6 +183,7 @@ export default function TransactionHistoryConcepts({
           allRows={rows}
           editingRow={editingRow}
           accounts={accounts}
+          bills={bills}
           incomeTotal={incomeTotal}
           expenseTotal={expenseTotal}
           message={message}
@@ -186,6 +200,7 @@ export default function TransactionHistoryConcepts({
           rows={filteredRows}
           editingRow={editingRow}
           accounts={accounts}
+          bills={bills}
           incomeTotal={incomeTotal}
           expenseTotal={expenseTotal}
           transferTotal={transferTotal}
@@ -203,6 +218,7 @@ export default function TransactionHistoryConcepts({
           rows={filteredRows}
           editingRow={editingRow}
           accounts={accounts}
+          bills={bills}
           incomeTotal={incomeTotal}
           expenseTotal={expenseTotal}
           message={message}
@@ -307,6 +323,7 @@ function CalmLedger({
   rows,
   editingRow,
   accounts,
+  bills,
   incomeTotal,
   expenseTotal,
   transferTotal,
@@ -342,7 +359,7 @@ function CalmLedger({
         </div>
         {editingRow && (
           <aside className="transaction-editor-drawer" aria-label="Transaction details">
-            <TransactionEditor row={editingRow} accounts={accounts} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} />
+            <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} />
           </aside>
         )}
       </div>
@@ -354,6 +371,7 @@ function AccountLens({
   rows,
   editingRow,
   accounts,
+  bills,
   selectedAccount,
   incomeTotal,
   expenseTotal,
@@ -400,7 +418,7 @@ function AccountLens({
             </div>
             {editingRow && (
               <aside className="transaction-editor-drawer" aria-label="Transaction details">
-                <TransactionEditor row={editingRow} accounts={accounts} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} />
+                <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} />
               </aside>
             )}
           </div>
@@ -415,6 +433,7 @@ function MoneyTimeline({
   allRows,
   editingRow,
   accounts,
+  bills,
   incomeTotal,
   expenseTotal,
   message,
@@ -441,7 +460,7 @@ function MoneyTimeline({
         <div className="transaction-timeline-list">
           {editingRow && !editingRowIsVisible && (
             <div className="transaction-inline-editor transaction-inline-editor-new">
-              <TransactionEditor row={editingRow} accounts={accounts} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} compact />
+              <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} compact />
             </div>
           )}
           {buckets.map((bucket) => (
@@ -452,7 +471,7 @@ function MoneyTimeline({
                   <TransactionRow row={row} selected={editingRow?.id === row.id} onEdit={onEdit} onDelete={onDelete} timeline />
                   {editingRow?.id === row.id && (
                     <div className="transaction-inline-editor">
-                      <TransactionEditor row={editingRow} accounts={accounts} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} compact />
+                      <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} compact />
                     </div>
                   )}
                 </div>
@@ -491,6 +510,7 @@ function CashflowFocus({
   rows,
   editingRow,
   accounts,
+  bills,
   incomeTotal,
   expenseTotal,
   transferTotal,
@@ -523,7 +543,7 @@ function CashflowFocus({
       </div>
       {editingRow && (
         <aside className="transaction-bottom-sheet" aria-label="Selected transaction details">
-          <TransactionEditor row={editingRow} accounts={accounts} message={message} compact onClose={onClose} onSave={onSave} onDelete={onDelete} />
+          <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} compact onClose={onClose} onSave={onSave} onDelete={onDelete} />
         </aside>
       )}
     </section>
@@ -534,6 +554,7 @@ function ReviewQueue({
   rows,
   editingRow,
   accounts,
+  bills,
   incomeTotal,
   expenseTotal,
   message,
@@ -594,7 +615,7 @@ function ReviewQueue({
               </div>
               {editingRow?.id === current.id && (
                 <div className="transaction-review-editor">
-                  <TransactionEditor row={editingRow} accounts={accounts} message={message} compact onClose={onClose} onSave={onSave} onDelete={onDelete} />
+                  <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} compact onClose={onClose} onSave={onSave} onDelete={onDelete} />
                 </div>
               )}
             </>
@@ -618,6 +639,7 @@ interface ConceptBodyProps {
   rows: SpreadsheetRow[];
   editingRow: SpreadsheetRow | null;
   accounts: AccountOption[];
+  bills: BillPaymentOption[];
   incomeTotal: number;
   expenseTotal: number;
   message: string;
@@ -698,7 +720,7 @@ function TransactionRow({ row, selected, compact = false, timeline = false, onEd
       <time dateTime={row.cells.date}>{row.cells.date ? formatDateMDY(row.cells.date) : "No date"}</time>
       <span className="transaction-row-main">
         <strong>{row.cells.description || row.cells.merchant || "Untitled transaction"}</strong>
-        <small>{receipt || row.cells.merchant || accountPath(row)}</small>
+        <small>{transactionKindLabel(row)} · {receipt || row.cells.merchant || accountPath(row)}</small>
         <small className="transaction-row-mobile-meta">{row.cells.category || "Uncategorized"} · {accountPath(row)}</small>
       </span>
       <span className="transaction-row-category">{row.cells.category || "Uncategorized"}</span>
@@ -727,7 +749,7 @@ interface TransactionLineItem {
   cost: string;
 }
 
-function TransactionEditor({ row, accounts, message, compact = false, onClose, onSave, onDelete }: { row: SpreadsheetRow; accounts: AccountOption[]; message: string; compact?: boolean; onClose: () => void; onSave: (rows: SpreadsheetRow | SpreadsheetRow[]) => void; onDelete: (rowId: string) => void }) {
+function TransactionEditor({ row, accounts, bills, message, compact = false, onClose, onSave, onDelete }: { row: SpreadsheetRow; accounts: AccountOption[]; bills: BillPaymentOption[]; message: string; compact?: boolean; onClose: () => void; onSave: (rows: SpreadsheetRow | SpreadsheetRow[]) => void; onDelete: (rowId: string) => void }) {
   const [draft, setDraft] = useState<SpreadsheetRow>(() => ({
     ...row,
     cells: { ...row.cells, amount: String(Math.abs(toNumber(row.cells.amount)) || "") },
@@ -740,8 +762,11 @@ function TransactionEditor({ row, accounts, message, compact = false, onClose, o
     cost: String(Math.abs(toNumber(row.cells.amount)) || ""),
   }]);
   const type = transactionType(draft);
+  const kind = transactionKind(draft);
   const isNew = row.id.startsWith("concept-transaction-");
-  const usesLineItems = isNew && type === "expense";
+  const usesLineItems = isNew && type === "expense" && kind === "purchase";
+  const isBillPayment = isNew && kind === "bill_payment";
+  const availableAccounts = isBillPayment ? accounts.filter((account) => account.kind === "money" && !account.isNew) : accounts;
 
   function updateCell(key: string, value: string) {
     setDraft((current) => ({ ...current, cells: { ...current.cells, [key]: value } }));
@@ -754,6 +779,7 @@ function TransactionEditor({ row, accounts, message, compact = false, onClose, o
     if (!draft.cells.date) return setValidation("Choose a date.");
     if (!draft.cells.account) return setValidation("Choose the account the money came from or went to.");
     if (type === "transfer" && !draft.cells.transferDestination) return setValidation("Choose where the transfer went.");
+    if (isBillPayment && !draft.cells.billId?.trim()) return setValidation("Choose the bill that was paid.");
     if (usesLineItems) {
       const filledItems = lineItems.filter((item) => item.description.trim() || toNumber(item.cost));
       if (!filledItems.length) return setValidation("Add at least one item and cost.");
@@ -767,6 +793,7 @@ function TransactionEditor({ row, accounts, message, compact = false, onClose, o
           cells: {
             ...draft.cells,
             description: item.description.trim(),
+            transactionKind: "purchase",
             quantity: "1",
             unitCost: itemMagnitude.toFixed(2),
             amount: (-itemMagnitude).toFixed(2),
@@ -784,11 +811,66 @@ function TransactionEditor({ row, accounts, message, compact = false, onClose, o
       cells: {
         ...draft.cells,
         type,
+        transactionKind: kind,
         amount: (type === "income" ? magnitude : -magnitude).toFixed(2),
         transferDestination: type === "transfer" ? draft.cells.transferDestination : "",
         shortfallSource: type === "expense" ? (draft.cells.shortfallSource || "overdraft") : "",
       },
     });
+  }
+
+  function updateKind(value: TransactionKind) {
+    if (kind === "purchase" && value !== "purchase") {
+      const firstItem = lineItems[0];
+      setDraft((current) => ({
+        ...current,
+        cells: {
+          ...current.cells,
+          transactionKind: value,
+          type: value === "bill_payment" ? "expense" : current.cells.type,
+          description: current.cells.description || firstItem?.description || "",
+          amount: current.cells.amount || firstItem?.cost || "",
+          billId: "",
+          account: value === "bill_payment" ? "" : current.cells.account,
+          category: value === "investment" ? "Investments" : current.cells.category,
+        },
+      }));
+    } else {
+      setDraft((current) => ({
+        ...current,
+        cells: {
+          ...current.cells,
+          transactionKind: value,
+          type: value === "purchase" || value === "bill_payment" ? "expense" : current.cells.type,
+          billId: value === "bill_payment" ? current.cells.billId || "" : "",
+          account: value === "bill_payment" ? "" : current.cells.account,
+          category: value === "investment" ? "Investments" : current.cells.category,
+        },
+      }));
+      if (value === "purchase") {
+        setLineItems((items) => items.map((item, index) => index === 0
+          ? { ...item, description: draft.cells.description || item.description, cost: draft.cells.amount || item.cost }
+          : item));
+      }
+    }
+    setValidation("");
+  }
+
+  function selectBill(billId: string) {
+    const bill = bills.find((option) => option.id === billId);
+    setDraft((current) => ({
+      ...current,
+      cells: {
+        ...current.cells,
+        billId,
+        type: "expense",
+        transactionKind: "bill_payment",
+        description: bill ? `${bill.name} bill payment` : "",
+        amount: bill ? String(Math.abs(toNumber(bill.amount)) || "") : "",
+        category: bill?.category || "",
+      },
+    }));
+    setValidation("");
   }
 
   function updateLineItem(id: string, key: "description" | "cost", value: string) {
@@ -811,17 +893,19 @@ function TransactionEditor({ row, accounts, message, compact = false, onClose, o
   return (
     <form className={`transaction-detail-editor ${compact ? "compact" : ""}`} onSubmit={submit}>
       <header>
-        <div><p className="eyebrow">{isNew ? "New transaction" : "Transaction details"}</p><h3>{isNew ? "Add one or more items" : draft.cells.description || "Untitled transaction"}</h3></div>
+        <div><p className="eyebrow">{isNew ? "New transaction" : "Transaction details"}</p><h3>{isNew ? "Record money activity" : draft.cells.description || "Untitled transaction"}</h3></div>
         <button type="button" aria-label="Close transaction details" onClick={onClose}><X size={18} /></button>
       </header>
       <div className="transaction-editor-fields">
-        <label><span>Type</span><select value={type} onChange={(event) => updateCell("type", event.target.value)}><option value="expense">Expense</option><option value="income">Income</option><option value="transfer">Transfer</option></select></label>
-        <label><span>Date</span><input type="date" value={draft.cells.date || ""} onChange={(event) => updateCell("date", event.target.value)} /></label>
+        {isNew && <label><span>Purpose</span><select aria-label="Purpose" value={kind} onChange={(event) => updateKind(event.target.value as TransactionKind)}><option value="general">General</option><option value="purchase">Purchase / buy</option><option value="bill_payment" disabled={!bills.length}>Bill payment</option><option value="investment">Investment</option></select></label>}
+        <label><span>Type</span><select aria-label="Type" value={type} disabled={kind === "purchase" || isBillPayment} onChange={(event) => updateCell("type", event.target.value)}><option value="expense">Expense</option><option value="income">Income</option><option value="transfer">Transfer</option></select></label>
+        <label><span>{isBillPayment ? "Paid Date" : "Date"}</span><input aria-label={isBillPayment ? "Paid Date" : "Date"} type="date" value={draft.cells.date || ""} onChange={(event) => updateCell("date", event.target.value)} /></label>
+        {isBillPayment && <label className="wide"><span>Bill</span><select aria-label="Bill" value={draft.cells.billId || ""} onChange={(event) => selectBill(event.target.value)}><option value="">Choose unpaid or overdue bill</option>{bills.map((bill) => <option key={bill.id} value={bill.id}>{bill.name} · {formatCurrency(Math.abs(toNumber(bill.amount)))} · {bill.status}</option>)}</select></label>}
         {!usesLineItems && <label className="wide"><span>Description</span><input value={draft.cells.description || ""} onChange={(event) => updateCell("description", event.target.value)} /></label>}
-        <label><span>{type === "transfer" ? "From" : "Account"}</span><select value={draft.cells.account || ""} onChange={(event) => updateCell("account", event.target.value)}><option value="">Choose account</option>{accounts.map((account) => <option key={`${account.kind}-${account.value}`} value={account.value}>{accountName(account)}</option>)}</select></label>
+        <label><span>{type === "transfer" ? "From" : isBillPayment ? "Paid From" : "Account"}</span><select aria-label={type === "transfer" ? "From" : isBillPayment ? "Paid From" : "Account"} value={draft.cells.account || ""} onChange={(event) => updateCell("account", event.target.value)}><option value="">Choose account</option>{availableAccounts.map((account) => <option key={`${account.kind}-${account.value}`} value={account.value}>{accountName(account)}</option>)}</select></label>
         {type === "transfer" && <label><span>To</span><select value={draft.cells.transferDestination || ""} onChange={(event) => updateCell("transferDestination", event.target.value)}><option value="">Choose destination</option>{accounts.map((account) => <option key={`${account.kind}-${account.value}`} value={account.value}>{accountName(account)}</option>)}</select></label>}
-        {!usesLineItems && <label><span>Amount</span><input inputMode="decimal" value={draft.cells.amount || ""} onChange={(event) => updateCell("amount", event.target.value)} placeholder="0.00" /></label>}
-        {type === "expense" && <label><span>If account is short</span><select value={draft.cells.shortfallSource || "overdraft"} onChange={(event) => updateCell("shortfallSource", event.target.value)}><option value="overdraft">Let account go negative</option><option value="borrowed">Borrowed money</option><option value="unreconciled">Unaccounted cash</option></select></label>}
+        {!usesLineItems && <label><span>Amount</span><input inputMode="decimal" readOnly={isBillPayment} value={draft.cells.amount || ""} onChange={(event) => updateCell("amount", event.target.value)} placeholder="0.00" /></label>}
+        {type === "expense" && !isBillPayment && <label><span>If account is short</span><select value={draft.cells.shortfallSource || "overdraft"} onChange={(event) => updateCell("shortfallSource", event.target.value)}><option value="overdraft">Let account go negative</option><option value="borrowed">Borrowed money</option><option value="unreconciled">Unaccounted cash</option></select></label>}
       </div>
       {usesLineItems && (
         <fieldset className="transaction-line-items">
@@ -844,10 +928,10 @@ function TransactionEditor({ row, accounts, message, compact = false, onClose, o
       {advancedOpen && (
         <div className="transaction-editor-fields advanced">
           <label><span>Category</span><input value={draft.cells.category || ""} onChange={(event) => updateCell("category", event.target.value)} /></label>
-          <label><span>Merchant</span><input value={draft.cells.merchant || ""} onChange={(event) => updateCell("merchant", event.target.value)} /></label>
+          {kind === "purchase" && <><label><span>Merchant</span><input value={draft.cells.merchant || ""} onChange={(event) => updateCell("merchant", event.target.value)} /></label>
           <label><span>Quantity</span><input inputMode="decimal" value={draft.cells.quantity || ""} onChange={(event) => updateCell("quantity", event.target.value)} /></label>
           <label><span>Each</span><input inputMode="decimal" value={draft.cells.unitCost || ""} onChange={(event) => updateCell("unitCost", event.target.value)} /></label>
-          <label><span>Sales tax</span><input inputMode="decimal" value={draft.cells.salesTax || ""} onChange={(event) => updateCell("salesTax", event.target.value)} placeholder="Blank when none" /></label>
+          <label><span>Sales tax</span><input inputMode="decimal" value={draft.cells.salesTax || ""} onChange={(event) => updateCell("salesTax", event.target.value)} placeholder="Blank when none" /></label></>}
           <label className="wide"><span>Notes</span><textarea value={draft.cells.notes || ""} onChange={(event) => updateCell("notes", event.target.value)} /></label>
         </div>
       )}
@@ -856,7 +940,7 @@ function TransactionEditor({ row, accounts, message, compact = false, onClose, o
         {!isNew && <button type="button" className="transaction-delete-button" onClick={() => onDelete(row.id)}><Trash2 size={15} aria-hidden="true" /> Delete</button>}
         <span />
         <button type="button" onClick={onClose}>Cancel</button>
-        <button type="submit" className="transaction-save-button">{usesLineItems && lineItems.length > 1 ? `Save ${lineItems.length} items` : "Save changes"}</button>
+        <button type="submit" className="transaction-save-button">{isBillPayment ? "Record bill payment" : usesLineItems && lineItems.length > 1 ? `Save ${lineItems.length} items` : "Save changes"}</button>
       </footer>
     </form>
   );
@@ -903,6 +987,16 @@ function accountPath(row: SpreadsheetRow) {
   return transactionType(row) === "transfer"
     ? `${row.cells.account || "Choose source"} → ${row.cells.transferDestination || "Choose destination"}`
     : row.cells.account || "No account selected";
+}
+
+function transactionKindLabel(row: SpreadsheetRow) {
+  const labels: Record<TransactionKind, string> = {
+    general: "General",
+    purchase: "Purchase",
+    bill_payment: "Bill payment",
+    investment: "Investment",
+  };
+  return labels[transactionKind(row)];
 }
 
 function shortfallLabel(row: SpreadsheetRow) {

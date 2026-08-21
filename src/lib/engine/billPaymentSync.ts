@@ -80,6 +80,7 @@ function createBillPaymentTransaction(bill: SpreadsheetRow, paymentDate: string,
       date: bill.cells.paidDate || existing?.cells.date || paymentDate,
       account: bill.cells.paymentAccount || existing?.cells.account || "",
       billId: bill.id,
+      transactionKind: "bill_payment",
       financialEventType: "bill_payment",
       notes: carPayment
         ? `${CAR_PAYMENT_MARKER} Recorded automatically when ${name} was marked paid.`

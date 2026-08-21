@@ -319,3 +319,30 @@ Release status:
 
 - GO for the focused sprint commit and official production deployment.
 
+## Sprint 0.18: Accessible Bill Payment and Transaction Purposes
+
+Date: 2026-08-21
+
+Goal:
+
+- Make bill payment accessible from both Bills and Transactions without weakening stored payment evidence or account reconciliation.
+- Let Transactions record general activity, purchases, bill payments, and investments without forcing every expense into retail item rows.
+
+Completed:
+
+- Added a status-first Bills payment dialog requiring Paid From and Paid Date before the bill can become financially paid.
+- Added a persisted transaction purpose separate from accounting type: General, Purchase / buy, Bill payment, and Investment.
+- Limited line-item entry to Purchase while retaining single-record General and Investment workflows.
+- Added outstanding-bill selection to Transactions and routed it through the same canonical, idempotent bill-payment event used by Bills.
+- Added focused engine and desktop/mobile browser regression coverage.
+
+Validation:
+
+- Build, bundle budget, lint, TypeScript, 174 unit tests, 83 applicable browser tests, and whitespace checks passed.
+- Eleven browser cases were intentionally skipped by their desktop/mobile project conditions; no failures remained.
+- No schema, RLS, authentication, dependency, migration, or production-data changes were required.
+
+Release status:
+
+- GO for the focused commit and official production deployment; production smoke remains the post-deploy gate.
+

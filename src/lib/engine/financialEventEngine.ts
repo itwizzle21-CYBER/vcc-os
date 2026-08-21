@@ -15,6 +15,31 @@ export interface DeletedBillSnapshot {
   linkedTransactions: Array<{ row: SpreadsheetRow; index: number }>;
 }
 
+export interface PayBillInput {
+  billId: string;
+  paymentAccount: string;
+  paidDate: string;
+}
+
+export function payBillEvent(data: AppData, input: PayBillInput): AppData {
+  const bill = data.sections.bills.find((row) => row.id === input.billId);
+  if (!bill) throw new Error("Choose an existing bill to pay.");
+
+  const nextBills = data.sections.bills.map((row) => row.id === input.billId
+    ? {
+        ...row,
+        cells: {
+          ...row.cells,
+          status: "paid",
+          paymentAccount: input.paymentAccount.trim(),
+          paidDate: input.paidDate.trim(),
+        },
+      }
+    : row);
+
+  return applyBillRowsEvent(data, nextBills, input.paidDate);
+}
+
 export function applyBillRowsEvent(
   data: AppData,
   nextBills: SpreadsheetRow[],

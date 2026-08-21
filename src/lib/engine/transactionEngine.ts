@@ -141,9 +141,23 @@ const categoryRules: Array<{ category: string; keywords: string[] }> = [
   },
 ];
 
+export type TransactionKind = "general" | "purchase" | "bill_payment" | "investment";
+
+export function transactionKind(row: SpreadsheetRow): TransactionKind {
+  const explicit = String(row.cells.transactionKind || "").trim().toLowerCase();
+  if (explicit === "purchase" || explicit === "bill_payment" || explicit === "investment" || explicit === "general") return explicit;
+  if (row.cells.financialEventType === "bill_payment" || row.cells.billId?.trim()) return "bill_payment";
+  if (String(row.cells.category || "").trim().toLowerCase() === "investments") return "investment";
+  if ([row.cells.receiptId, row.cells.quantity, row.cells.unitCost, row.cells.salesTax].some((value) => String(value || "").trim())) return "purchase";
+  return "general";
+}
+
 export function identifyTransactionCategory(row: SpreadsheetRow): string {
   const explicitCategory = String(row.cells.category || "").trim();
   const explicitType = String(row.cells.type || "").trim().toLowerCase();
+  const kind = transactionKind(row);
+  if (kind === "investment") return "Investments";
+  if (kind === "bill_payment" && explicitCategory) return explicitCategory;
   if (includesAny(explicitType, ["income", "credit", "deposit", "refund", "inflow"])) return "Income";
   if (includesAny(explicitType, ["transfer", "move"])) {
     return explicitCategory === "Savings" ? "Savings" : "Transfers";

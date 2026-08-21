@@ -4485,6 +4485,95 @@ td textarea[readonly] {
   font-weight: 900;
 }
 
+.bill-payment-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  background: rgb(2 6 23 / 68%);
+  padding: 1rem;
+}
+
+.bill-payment-dialog {
+  display: grid;
+  gap: 1rem;
+  width: min(34rem, 100%);
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+}
+
+.bill-payment-dialog > header,
+.bill-payment-dialog footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.bill-payment-dialog h2,
+.bill-payment-dialog p {
+  margin: 0;
+}
+
+.bill-payment-dialog > header > button {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.bill-payment-dialog form,
+.bill-payment-dialog label {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.bill-payment-dialog label > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.bill-payment-dialog select,
+.bill-payment-dialog input {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.55rem 0.65rem;
+}
+
+.bill-payment-dialog footer {
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+.bill-payment-dialog footer button {
+  min-height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0.5rem 0.8rem;
+  font-weight: 850;
+}
+
+.bill-payment-dialog footer .transaction-save-button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--button-text, #07101f);
+}
+
 .bills-command-panel {
   display: grid;
   gap: 1rem;

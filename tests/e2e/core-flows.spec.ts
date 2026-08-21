@@ -209,8 +209,13 @@ test("posting a paid bill debits one account and creates one linked transaction"
     return Number.parseFloat(data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking").cells.amount.replace(/[^0-9.-]/g, ""));
   });
 
-  await page.getByRole("combobox", { name: /Paid From, Bills row 1/ }).selectOption("Chime Checking");
   await page.getByRole("combobox", { name: /Status, Bills row 1/ }).selectOption("paid");
+  const paymentDialog = page.getByRole("dialog", { name: /Mark Electric bill paid/i });
+  await expect(paymentDialog).toBeVisible();
+  await paymentDialog.getByLabel("Paid From").selectOption("Chime Checking");
+  await expect(paymentDialog.getByLabel("Paid Date")).not.toHaveValue("");
+  await paymentDialog.getByRole("button", { name: "Record payment" }).click();
+  await expect(paymentDialog).toBeHidden();
 
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -983,6 +988,7 @@ test("adds multiple item-and-cost rows from one transaction entry", async ({ pag
   await page.goto("/transactions");
   await page.getByRole("button", { name: "Add transaction" }).click();
   const editor = page.locator(".transaction-detail-editor");
+  await editor.getByLabel("Purpose").selectOption("purchase");
   await editor.getByLabel("Description").fill("Lunch");
   await editor.getByLabel("Amount").fill("12.50");
   await editor.getByRole("button", { name: "Add another item" }).click();
@@ -994,6 +1000,61 @@ test("adds multiple item-and-cost rows from one transaction entry", async ({ pag
   await expect(page.getByText("2 transactions saved and account balances updated.")).toBeVisible();
   await expect(page.locator(".transaction-simple-row").filter({ hasText: "Lunch" })).toBeVisible();
   await expect(page.locator(".transaction-simple-row").filter({ hasText: "Coffee" })).toBeVisible();
+});
+
+test("records an existing bill as paid from the Transactions page", async ({ page }) => {
+  await page.goto("/transactions");
+  const initial = await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return Number.parseFloat(data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking").cells.amount.replace(/[^0-9.-]/g, ""));
+  });
+
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  const editor = page.locator(".transaction-detail-editor");
+  await editor.getByLabel("Purpose").selectOption("bill_payment");
+  await editor.getByLabel("Bill", { exact: true }).selectOption("bill-electric");
+  await editor.getByLabel("Paid From").selectOption("Chime Checking");
+  await editor.getByRole("button", { name: "Record bill payment" }).click();
+
+  await expect(page.getByText(/Electric bill was marked paid/i)).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    const bill = data.sections.bills.find((row: { id: string }) => row.id === "bill-electric");
+    const payments = data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === "bill-electric");
+    const account = data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking");
+    return { status: bill.cells.status, paidFrom: bill.cells.paymentAccount, paymentKind: payments[0]?.cells.transactionKind, payments: payments.length, balance: Number.parseFloat(account.cells.amount) };
+  })).toEqual({ status: "paid", paidFrom: "Chime Checking", paymentKind: "bill_payment", payments: 1, balance: initial - 186.42 });
+});
+
+test("supports general and investment transactions without forcing retail items", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  let editor = page.locator(".transaction-detail-editor");
+  await expect(editor.getByLabel("Purpose")).toHaveValue("general");
+  await expect(editor.getByText("Items and cost")).toHaveCount(0);
+  await editor.getByLabel("Description").fill("Annual insurance filing");
+  await editor.getByLabel("Amount").fill("20");
+  await editor.getByLabel("Account", { exact: true }).selectOption("Cash App");
+  await editor.getByRole("button", { name: "Save changes" }).click();
+
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  editor = page.locator(".transaction-detail-editor");
+  await editor.getByLabel("Purpose").selectOption("investment");
+  await expect(editor.getByText("Items and cost")).toHaveCount(0);
+  await editor.getByLabel("Description").fill("Brokerage contribution");
+  await editor.getByLabel("Amount").fill("100");
+  await editor.getByLabel("Account", { exact: true }).selectOption("Cash App");
+  await editor.getByRole("button", { name: "Save changes" }).click();
+
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return data.sections.transactions
+      .filter((row: { cells: { description?: string } }) => ["Annual insurance filing", "Brokerage contribution"].includes(row.cells.description || ""))
+      .map((row: { cells: Record<string, string> }) => ({ description: row.cells.description, kind: row.cells.transactionKind, category: row.cells.category, quantity: row.cells.quantity }));
+  })).toEqual([
+    { description: "Annual insurance filing", kind: "general", category: "Insurance", quantity: "" },
+    { description: "Brokerage contribution", kind: "investment", category: "Investments", quantity: "" },
+  ]);
 });
 
 test("posts a multi-item manual receipt as itemized transaction rows", async ({ page }) => {

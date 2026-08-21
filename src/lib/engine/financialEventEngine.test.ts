@@ -5,6 +5,7 @@ import {
   applyBillRowsEvent,
   deleteBillEvent,
   deleteTransactionEvent,
+  payBillEvent,
   restoreDeletedBillEvent,
 } from "./financialEventEngine";
 
@@ -43,6 +44,29 @@ describe("canonical financial events", () => {
         balanceApplied: "yes",
       },
     });
+  });
+
+  it("records a bill payment from either UI through one idempotent canonical event", () => {
+    const data = createZeroData();
+    data.sections.money = [row("chime", { label: "Chime", section: "cash", amount: "100.00" })];
+    data.sections.bills = [bill("overdue")];
+
+    const paid = payBillEvent(data, { billId: "phone", paymentAccount: "Chime", paidDate: "2026-08-08" });
+    const retried = payBillEvent(paid, { billId: "phone", paymentAccount: "Chime", paidDate: "2026-08-08" });
+
+    expect(paid.sections.bills[0].cells).toMatchObject({ status: "paid", paymentAccount: "Chime", paidDate: "2026-08-08" });
+    expect(paid.sections.transactions[0].cells).toMatchObject({ transactionKind: "bill_payment", billId: "phone" });
+    expect(retried.sections.money[0].cells.amount).toBe("75.00");
+    expect(retried.sections.transactions).toHaveLength(1);
+  });
+
+  it("rejects incomplete payment requests without changing the source data", () => {
+    const data = createZeroData();
+    data.sections.bills = [bill("overdue")];
+
+    expect(() => payBillEvent(data, { billId: "phone", paymentAccount: "", paidDate: "2026-08-08" })).toThrow(/Choose the account/);
+    expect(() => payBillEvent(data, { billId: "phone", paymentAccount: "Chime", paidDate: "2026-02-30" })).toThrow(/valid paid date/);
+    expect(data.sections.bills[0].cells.status).toBe("overdue");
   });
 
   it("is idempotent when an already-paid bill is saved again", () => {

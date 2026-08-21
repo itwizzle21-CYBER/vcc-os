@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   BrainCircuit,
@@ -26,13 +26,14 @@ import {
   applyBillRowsEvent,
   deleteBillEvent,
   deleteTransactionEvent,
+  payBillEvent,
   restoreDeletedBillEvent,
   type DeletedBillSnapshot,
 } from "./lib/engine/financialEventEngine";
 import { effectiveBillStatus, hasBillPaymentEvidence, storedBillStatus } from "./lib/engine/billPaymentSync";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow, rankInventoryRows } from "./lib/engine/inventoryEngine";
 import { migrateLegacyReceiptTaxRows } from "./lib/engine/receiptTransactionEngine";
-import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
+import { identifyTransactionCategory, signedTransactionAmount, transactionKind, transactionMatchesPeriod, transactionType, type TransactionPeriod } from "./lib/engine/transactionEngine";
 import { applySavingsTransfer, syncTransactionEndpointLabels, syncTransactionTransfers, transactionEndpointOptions, type TransactionShortfallSource } from "./lib/engine/savingsTransferEngine";
 import { depositAccountOptions, eligibleDepositAccounts, type DepositAccountOption } from "./lib/engine/paycheckPlannerEngine";
 import { sectionConfigs } from "./lib/storage/defaultData";
@@ -443,6 +444,7 @@ function BillsPage({
   const [billSearch, setBillSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [billMessage, setBillMessage] = useState("");
+  const [pendingBillPayment, setPendingBillPayment] = useState<{ billId: string; paymentAccount: string; paidDate: string } | null>(null);
   const [deletedBill, setDeletedBill] = useState<{ name: string; snapshot: DeletedBillSnapshot } | null>(null);
   const undoTimerRef = useRef<number | undefined>(undefined);
   const billRows = data.sections.bills.map(normalizeBillRow);
@@ -461,6 +463,8 @@ function BillsPage({
   const visibleBillIds = new Set(visibleBillRows.map((row) => row.id));
   const rankedBills = rankBillRows(filledBillRows);
   const dueBill = rankedBills[0];
+  const billPaymentAccounts = transactionEndpointOptions(data)
+    .filter((account) => account.kind === "money" && !account.isNew);
   const billStats = {
     shown: visibleBillRows.filter((row) => !isBlankRow(row.cells)).length,
     total: filledBillRows.length,
@@ -486,7 +490,8 @@ function BillsPage({
 
       if (nextStatus === "paid" && !hasBillPaymentEvidence(nextRow)) {
         if (!nextRow.cells.paymentAccount?.trim()) {
-          setBillMessage(`Choose the account that paid ${nextRow.cells.name || "this bill"} before marking it paid.`);
+          setPendingBillPayment({ billId: nextRow.id, paymentAccount: "", paidDate: nextRow.cells.paidDate || todayIso() });
+          setBillMessage(`Complete the payment details for ${nextRow.cells.name || "this bill"}.`);
           return;
         }
         const accountWasJustChosen = previousRow?.cells.paymentAccount !== nextRow.cells.paymentAccount;
@@ -494,7 +499,8 @@ function BillsPage({
           nextRow = { ...nextRow, cells: { ...nextRow.cells, paidDate: todayIso() } };
         }
         if (!hasBillPaymentEvidence(nextRow)) {
-          setBillMessage(`Choose a valid paid date for ${nextRow.cells.name || "this bill"} before marking it paid.`);
+          setPendingBillPayment({ billId: nextRow.id, paymentAccount: nextRow.cells.paymentAccount, paidDate: nextRow.cells.paidDate || todayIso() });
+          setBillMessage(`Choose a valid paid date for ${nextRow.cells.name || "this bill"}.`);
           return;
         }
       }
@@ -514,6 +520,19 @@ function BillsPage({
     const nextBillRows = [...mergedRows, ...addedRows];
     setBillMessage("");
     updateRows(section, nextBillRows);
+  }
+
+  function submitBillPayment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!pendingBillPayment) return;
+    const bill = billRows.find((row) => row.id === pendingBillPayment.billId);
+    try {
+      onChange(payBillEvent(data, pendingBillPayment));
+      setPendingBillPayment(null);
+      setBillMessage(`${bill?.cells.name || "Bill"} was marked paid and recorded in Transactions.`);
+    } catch (error) {
+      setBillMessage(error instanceof Error ? error.message : "The bill payment could not be recorded.");
+    }
   }
 
   function handleDeleteBill(rowId: string) {
@@ -650,12 +669,50 @@ function BillsPage({
         onResetSection={resetSection}
         getComputedCell={(row, columnKey) => computedCell("bills", row, columnKey)}
         selectOptions={{
-          paymentAccount: transactionEndpointOptions(data)
-            .filter((account) => account.kind === "money" && !account.isNew)
-            .map((account) => ({ value: account.value, label: account.label })),
+          paymentAccount: billPaymentAccounts.map((account) => ({ value: account.value, label: account.label })),
         }}
         addLabel="Add Bill"
       />
+      {pendingBillPayment && (
+        <div className="bill-payment-dialog-backdrop">
+          <section className="bill-payment-dialog panel" role="dialog" aria-modal="true" aria-labelledby="bill-payment-dialog-title">
+            <header>
+              <div>
+                <p className="eyebrow">Record payment</p>
+                <h2 id="bill-payment-dialog-title">Mark {billRows.find((row) => row.id === pendingBillPayment.billId)?.cells.name || "bill"} paid</h2>
+              </div>
+              <button type="button" aria-label="Cancel bill payment" onClick={() => setPendingBillPayment(null)}><X size={18} aria-hidden="true" /></button>
+            </header>
+            <form onSubmit={submitBillPayment}>
+              <label>
+                <span>Paid From</span>
+                <select
+                  autoFocus
+                  required
+                  value={pendingBillPayment.paymentAccount}
+                  onChange={(event) => setPendingBillPayment((current) => current ? { ...current, paymentAccount: event.target.value } : current)}
+                >
+                  <option value="">Choose account</option>
+                  {billPaymentAccounts.map((account) => <option key={account.value} value={account.value}>{account.label}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Paid Date</span>
+                <input
+                  required
+                  type="date"
+                  value={pendingBillPayment.paidDate}
+                  onChange={(event) => setPendingBillPayment((current) => current ? { ...current, paidDate: event.target.value } : current)}
+                />
+              </label>
+              <footer>
+                <button type="button" onClick={() => setPendingBillPayment(null)}>Cancel</button>
+                <button type="submit" className="transaction-save-button">Record payment</button>
+              </footer>
+            </form>
+          </section>
+        </div>
+      )}
       {deletedBill && (
         <div className="bill-undo-notice" role="status" aria-live="polite">
           <span><strong>{deletedBill.name}</strong> deleted. Linked payment and account effects were reversed.</span>
@@ -924,6 +981,16 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
   const [message, setMessage] = useState("");
   const transactionEndpoints = useMemo(() => transactionEndpointOptions(data), [data]);
   const transactionRows = data.sections.transactions.map(normalizeTransactionRow).filter((row) => !isBlankRow(row.cells));
+  const payableBills = data.sections.bills
+    .map(normalizeBillRow)
+    .filter((bill) => !isBlankRow(bill.cells) && !["paid", "cancelled"].includes(effectiveBillStatus(bill)))
+    .map((bill) => ({
+      id: bill.id,
+      name: bill.cells.name || "Unnamed bill",
+      amount: bill.cells.amount || "",
+      category: bill.cells.category || "",
+      status: effectiveBillStatus(bill),
+    }));
   const incomeTotal = transactionRows
     .filter((row) => transactionType(row) === "income")
     .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
@@ -941,6 +1008,26 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
     if (linkedPayment) {
       setMessage("Edit this payment from Bills so the bill, transaction, and paying account remain one event.");
       return false;
+    }
+    const billPaymentRequest = rows.find((row) => row.id.startsWith("concept-transaction-") && transactionKind(row) === "bill_payment");
+    if (billPaymentRequest) {
+      if (rows.length !== 1 || !billPaymentRequest.cells.billId?.trim()) {
+        setMessage("Choose one bill to record as paid.");
+        return false;
+      }
+      try {
+        const bill = data.sections.bills.find((row) => row.id === billPaymentRequest.cells.billId);
+        onChange(payBillEvent(data, {
+          billId: billPaymentRequest.cells.billId,
+          paymentAccount: billPaymentRequest.cells.account || "",
+          paidDate: billPaymentRequest.cells.date || "",
+        }));
+        setMessage(`${bill?.cells.name || "Bill"} was marked paid and its linked transaction was recorded.`);
+        return true;
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "The bill payment could not be saved.");
+        return false;
+      }
     }
     const normalizedRows = rows.map(normalizeTransactionRow);
     const savedIds = new Set(normalizedRows.map((row) => row.id));
@@ -993,6 +1080,7 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
         variant={layoutVariant}
         rows={transactionRows}
         accounts={transactionEndpoints}
+        bills={payableBills}
         incomeTotal={incomeTotal}
         expenseTotal={expenseTotal}
         transferTotal={transferTotal}
@@ -2168,6 +2256,7 @@ function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
   const cells = { ...row.cells };
   delete cells.recurring;
   delete cells.is_recurring;
+  const kind = transactionKind({ ...row, cells });
   const normalizedRow = {
     ...row,
     cells: {
@@ -2175,6 +2264,7 @@ function normalizeTransactionRow(row: SpreadsheetRow): SpreadsheetRow {
       description: cells.description || "",
       merchant: cells.merchant || (row.id.startsWith("vitascan-") ? cells.description : ""),
       type: cells.type || "",
+      transactionKind: kind,
       category: cells.category || "",
       quantity: cells.quantity || "",
       unitCost: cells.unitCost || "",
@@ -2238,7 +2328,7 @@ function transactionCategory(row: SpreadsheetRow): string {
 }
 
 function hasTransactionIdentifier(row: SpreadsheetRow): boolean {
-  return [row.cells.description, row.cells.merchant, row.cells.account, row.cells.transferDestination, row.cells.notes, row.cells.type, row.cells.amount, row.cells.category]
+  return [row.cells.description, row.cells.merchant, row.cells.account, row.cells.transferDestination, row.cells.notes, row.cells.type, row.cells.transactionKind, row.cells.billId, row.cells.amount, row.cells.category]
     .some((value) => String(value || "").trim());
 }
 

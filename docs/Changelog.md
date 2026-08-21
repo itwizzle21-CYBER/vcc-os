@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Made a status-first Paid action on Bills open an accessible payment-details flow instead of rejecting the one-field row update.
+- Added General, Purchase / buy, Bill payment, and Investment purposes to Transactions while keeping accounting type and sign semantics separate.
+- Routed bill payments entered from either Bills or Transactions through the same evidence-backed, deterministic financial event.
+- Kept receipt-style item rows exclusive to Purchase entries and added desktop/mobile regression coverage for every new entry path.
+
 - Made bill payment status evidence-based, preserved every supported status, and cleared stale payment evidence when bills are reopened.
 - Replaced repetitive bill-delete confirmation with an eight-second Undo flow that atomically reverses and restores linked payments and account effects.
 - Added non-mutating chronological paycheck-history sorting and repaired multiline Inventory Notes editing without changing spreadsheet navigation elsewhere.

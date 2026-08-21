@@ -56,6 +56,7 @@ describe("paid bill transaction sync", () => {
         date: "2026-07-16",
         account: "Chime",
         billId: "phone",
+        transactionKind: "bill_payment",
         financialEventType: "bill_payment",
       },
     });

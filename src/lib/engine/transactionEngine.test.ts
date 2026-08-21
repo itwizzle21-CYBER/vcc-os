@@ -3,7 +3,7 @@ import { createZeroData } from "../storage/defaultData";
 import { todayIso, weekBounds } from "../calculations/currency";
 import type { SpreadsheetRow } from "../types/app";
 import { computeFinancialState } from "./financialEngine";
-import { identifyTransactionCategory, signedTransactionAmount, transactionMatchesPeriod, transactionType } from "./transactionEngine";
+import { identifyTransactionCategory, signedTransactionAmount, transactionKind, transactionMatchesPeriod, transactionType } from "./transactionEngine";
 
 function transaction(id: string, type: string, amount: string, category: string, date = "2026-07-13"): SpreadsheetRow {
   return {
@@ -22,6 +22,32 @@ function transaction(id: string, type: string, amount: string, category: string,
 }
 
 describe("transaction engine", () => {
+  it("keeps transaction purpose separate from its signed accounting type", () => {
+    const general = transaction("insurance claim", "expense", "100", "");
+    general.cells.transactionKind = "general";
+    const investment = transaction("brokerage contribution", "expense", "100", "Shopping");
+    investment.cells.transactionKind = "investment";
+    const purchase = transaction("desk", "expense", "100", "");
+    purchase.cells.quantity = "1";
+    purchase.cells.unitCost = "100";
+
+    expect(transactionKind(general)).toBe("general");
+    expect(transactionKind(investment)).toBe("investment");
+    expect(identifyTransactionCategory(investment)).toBe("Investments");
+    expect(signedTransactionAmount(investment)).toBe(-100);
+    expect(transactionKind(purchase)).toBe("purchase");
+  });
+
+  it("recognizes deterministic linked bill payments as bill-purpose expenses", () => {
+    const payment = transaction("electric bill payment", "expense", "186.42", "Utilities");
+    payment.cells.billId = "electric";
+    payment.cells.financialEventType = "bill_payment";
+
+    expect(transactionKind(payment)).toBe("bill_payment");
+    expect(transactionType(payment)).toBe("expense");
+    expect(identifyTransactionCategory(payment)).toBe("Utilities");
+  });
+
   it("treats an explicitly typed positive expense as a subtraction", () => {
     const row = transaction("groceries", "expense", "$125.00", "Groceries");
 
