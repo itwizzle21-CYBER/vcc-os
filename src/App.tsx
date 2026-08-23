@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   BrainCircuit,
@@ -22,7 +22,7 @@ import Spreadsheet from "./components/shared/Spreadsheet";
 import SummaryGrid from "./components/shared/SummaryGrid";
 import BufferedTextInput from "./components/shared/BufferedTextInput";
 import type { TransactionLayoutVariant } from "./components/transactions/TransactionHistoryConcepts";
-import { formatCurrency, formatDateMDY, isBlankRow, todayIso, toNumber, weekBounds } from "./lib/calculations/currency";
+import { formatCurrency, formatDateMDY, isBlankRow, isValidIsoDate, todayIso, toNumber, weekBounds } from "./lib/calculations/currency";
 import { amountToCents, calculateReceiptLineAmounts, centsToAmount } from "./lib/calculations/receiptMath";
 import { computeDecisionEngine, rankBillRows } from "./lib/engine/decisionEngine";
 import { computeFinancialState } from "./lib/engine/financialEngine";
@@ -632,11 +632,40 @@ function BillsPage({
       const previousRow = billRows.find((row) => row.id === nextRow.id);
       const previousStatus = storedBillStatus(previousRow);
       const nextStatus = storedBillStatus(nextRow);
+      const paymentAccountWasJustChosen = previousRow?.cells.paymentAccount !== nextRow.cells.paymentAccount
+        && Boolean(nextRow.cells.paymentAccount?.trim());
+
+      if (pendingBillPayment?.billId === nextRow.id && paymentAccountWasJustChosen) {
+        const paidDate = isValidIsoDate(String(nextRow.cells.paidDate || ""))
+          ? String(nextRow.cells.paidDate)
+          : pendingBillPayment.paidDate;
+        try {
+          onChange(payBillEvent(data, {
+            billId: nextRow.id,
+            paymentAccount: String(nextRow.cells.paymentAccount),
+            paidDate,
+          }));
+          setPendingBillPayment(null);
+          setBillMessage(`${nextRow.cells.name || "Bill"} was marked paid and recorded in Transactions.`);
+        } catch (error) {
+          setBillMessage(error instanceof Error ? error.message : "The bill payment could not be recorded.");
+        }
+        return;
+      }
+
+      if (pendingBillPayment?.billId === nextRow.id
+        && previousRow?.cells.status !== nextRow.cells.status
+        && nextStatus !== "paid") {
+        setPendingBillPayment(null);
+      }
 
       if (nextStatus === "paid" && !hasBillPaymentEvidence(nextRow)) {
         if (!nextRow.cells.paymentAccount?.trim()) {
-          setPendingBillPayment({ billId: nextRow.id, paymentAccount: "", paidDate: nextRow.cells.paidDate || todayIso() });
-          setBillMessage(`Complete the payment details for ${nextRow.cells.name || "this bill"}.`);
+          const paidDate = isValidIsoDate(String(nextRow.cells.paidDate || ""))
+            ? String(nextRow.cells.paidDate)
+            : todayIso();
+          setPendingBillPayment({ billId: nextRow.id, paymentAccount: "", paidDate });
+          setBillMessage("");
           return;
         }
         const accountWasJustChosen = previousRow?.cells.paymentAccount !== nextRow.cells.paymentAccount;
@@ -665,19 +694,6 @@ function BillsPage({
     const nextBillRows = [...mergedRows, ...addedRows];
     setBillMessage("");
     updateRows(section, nextBillRows);
-  }
-
-  function submitBillPayment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!pendingBillPayment) return;
-    const bill = billRows.find((row) => row.id === pendingBillPayment.billId);
-    try {
-      onChange(payBillEvent(data, pendingBillPayment));
-      setPendingBillPayment(null);
-      setBillMessage(`${bill?.cells.name || "Bill"} was marked paid and recorded in Transactions.`);
-    } catch (error) {
-      setBillMessage(error instanceof Error ? error.message : "The bill payment could not be recorded.");
-    }
   }
 
   function handleDeleteBill(rowId: string) {
@@ -804,6 +820,16 @@ function BillsPage({
         </article>
       </section>
 
+      {pendingBillPayment && (
+        <div className="bill-payment-inline" role="status" aria-live="polite">
+          <div>
+            <strong>Finish recording {billRows.find((row) => row.id === pendingBillPayment.billId)?.cells.name || "this bill"} as paid</strong>
+            <p>Choose its Paid From account in the table. VCC will then set the status to Paid, use {formatDateMDY(pendingBillPayment.paidDate)}, and record the payment once.</p>
+          </div>
+          <button type="button" onClick={() => setPendingBillPayment(null)}>Cancel payment</button>
+        </div>
+      )}
+
       <Spreadsheet
         config={billsTableConfig}
         rows={visibleBillRows}
@@ -818,46 +844,6 @@ function BillsPage({
         }}
         addLabel="Add Bill"
       />
-      {pendingBillPayment && (
-        <div className="bill-payment-dialog-backdrop">
-          <section className="bill-payment-dialog panel" role="dialog" aria-modal="true" aria-labelledby="bill-payment-dialog-title">
-            <header>
-              <div>
-                <p className="eyebrow">Record payment</p>
-                <h2 id="bill-payment-dialog-title">Mark {billRows.find((row) => row.id === pendingBillPayment.billId)?.cells.name || "bill"} paid</h2>
-              </div>
-              <button type="button" aria-label="Cancel bill payment" onClick={() => setPendingBillPayment(null)}><X size={18} aria-hidden="true" /></button>
-            </header>
-            <form onSubmit={submitBillPayment}>
-              <label>
-                <span>Paid From</span>
-                <select
-                  autoFocus
-                  required
-                  value={pendingBillPayment.paymentAccount}
-                  onChange={(event) => setPendingBillPayment((current) => current ? { ...current, paymentAccount: event.target.value } : current)}
-                >
-                  <option value="">Choose account</option>
-                  {billPaymentAccounts.map((account) => <option key={account.value} value={account.value}>{account.label}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>Paid Date</span>
-                <input
-                  required
-                  type="date"
-                  value={pendingBillPayment.paidDate}
-                  onChange={(event) => setPendingBillPayment((current) => current ? { ...current, paidDate: event.target.value } : current)}
-                />
-              </label>
-              <footer>
-                <button type="button" onClick={() => setPendingBillPayment(null)}>Cancel</button>
-                <button type="submit" className="transaction-save-button">Record payment</button>
-              </footer>
-            </form>
-          </section>
-        </div>
-      )}
       {deletedBill && (
         <div className="bill-undo-notice" role="status" aria-live="polite">
           <span><strong>{deletedBill.name}</strong> deleted. Linked payment and account effects were reversed.</span>

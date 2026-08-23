@@ -514,6 +514,8 @@ export default function Spreadsheet({
                               ? transferOnlyDisabled ? "Transfer transactions only" : "Expense transactions only"
                               : config.key === "transactions" && column.key === "shortfallSource"
                                 ? "Default: account goes negative"
+                              : config.key === "bills" && column.key === "paymentAccount"
+                                ? "Choose paying account"
                                 : `Select ${column.label.toLowerCase()}`
                           }</option>
                           {hasLegacyValue && <option value={value}>{value}</option>}

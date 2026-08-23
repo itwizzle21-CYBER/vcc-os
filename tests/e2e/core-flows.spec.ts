@@ -206,16 +206,27 @@ test("posting a paid bill debits one account and creates one linked transaction"
   await page.goto("/bills");
   const initial = await page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
-    return Number.parseFloat(data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking").cells.amount.replace(/[^0-9.-]/g, ""));
+    const bill = data.sections.bills[0];
+    const amount = data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking").cells.amount;
+    return {
+      balance: Number.parseFloat(amount.replace(/[^0-9.-]/g, "")),
+      status: bill.cells.status,
+    };
   });
 
   await page.getByRole("combobox", { name: /Status, Bills row 1/ }).selectOption("paid");
-  const paymentDialog = page.getByRole("dialog", { name: /Mark Electric bill paid/i });
-  await expect(paymentDialog).toBeVisible();
-  await paymentDialog.getByLabel("Paid From").selectOption("Chime Checking");
-  await expect(paymentDialog.getByLabel("Paid Date")).not.toHaveValue("");
-  await paymentDialog.getByRole("button", { name: "Record payment" }).click();
-  await expect(paymentDialog).toBeHidden();
+  await expect(page.getByRole("status").filter({ hasText: "Finish recording Electric bill as paid" })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    const bill = data.sections.bills[0];
+    const linked = data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === bill.id);
+    const account = data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking");
+    return { status: bill.cells.status, linked: linked.length, balance: Number.parseFloat(account.cells.amount.replace(/[^0-9.-]/g, "")) };
+  })).toEqual({ status: initial.status, linked: 0, balance: initial.balance });
+
+  await page.getByRole("combobox", { name: /Paid From, Bills row 1/ }).selectOption("Chime Checking");
+  await expect(page.getByRole("status").filter({ hasText: "Finish recording Electric bill as paid" })).toHaveCount(0);
 
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -223,7 +234,7 @@ test("posting a paid bill debits one account and creates one linked transaction"
     const linked = data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === bill.id);
     const account = data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking");
     return { status: bill.cells.status, linked: linked.length, balance: Number.parseFloat(account.cells.amount) };
-  })).toEqual({ status: "paid", linked: 1, balance: initial - 186.42 });
+  })).toEqual({ status: "paid", linked: 1, balance: initial.balance - 186.42 });
 
   await page.reload();
   await expect.poll(() => page.evaluate(() => {
@@ -237,7 +248,7 @@ test("posting a paid bill debits one account and creates one linked transaction"
     const linked = data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === "bill-electric");
     const account = data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking");
     return { bill: data.sections.bills.some((row: { id: string }) => row.id === "bill-electric"), linked: linked.length, balance: Number.parseFloat(account.cells.amount) };
-  })).toEqual({ bill: false, linked: 0, balance: initial });
+  })).toEqual({ bill: false, linked: 0, balance: initial.balance });
 
   await page.getByRole("button", { name: "Undo" }).click();
   await expect.poll(() => page.evaluate(() => {
@@ -246,7 +257,7 @@ test("posting a paid bill debits one account and creates one linked transaction"
     const linked = data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === "bill-electric");
     const account = data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking");
     return { status: bill?.cells.status, paidFrom: bill?.cells.paymentAccount, linked: linked.length, balance: Number.parseFloat(account.cells.amount) };
-  })).toEqual({ status: "paid", paidFrom: "Chime Checking", linked: 1, balance: initial - 186.42 });
+  })).toEqual({ status: "paid", paidFrom: "Chime Checking", linked: 1, balance: initial.balance - 186.42 });
 });
 
 test("preserves supported bill statuses and clears payment evidence when a bill is reopened", async ({ page }) => {
