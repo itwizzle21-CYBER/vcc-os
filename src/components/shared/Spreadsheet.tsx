@@ -13,6 +13,7 @@ interface SpreadsheetProps {
   onSortChange: (section: SectionKey, sortBy: string) => void;
   onRowsChange: (section: SectionKey, rows: SpreadsheetRow[]) => void;
   onDeleteRow?: (rowId: string) => void;
+  onBillPayment?: (rowId: string) => void;
   onResetSection: (section: SectionKey) => void;
   getComputedCell?: (row: SpreadsheetRow, columnKey: string) => string | undefined;
   inputLists?: Partial<Record<string, string>>;
@@ -35,6 +36,7 @@ export default function Spreadsheet({
   onSortChange,
   onRowsChange,
   onDeleteRow,
+  onBillPayment,
   onResetSection,
   getComputedCell,
   inputLists,
@@ -488,39 +490,64 @@ export default function Spreadsheet({
                       && column.key === "shortfallSource"
                       && transactionType(row) !== "expense";
                     const selectDisabled = transferOnlyDisabled || shortfallOnlyDisabled;
+                    const selectControl = (
+                      <select
+                        data-row-index={rowIndex}
+                        data-column-index={columnIndex}
+                        data-row-id={row.id}
+                        data-column-key={column.key}
+                        value={value}
+                        disabled={selectDisabled}
+                        aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
+                        aria-description={transferOnlyDisabled
+                          ? "Available when transaction type is Transfer."
+                          : shortfallOnlyDisabled
+                            ? "Available when transaction type is Expense."
+                            : undefined}
+                        onPointerDown={() => beginPointerEdit(row.id, column.key)}
+                        onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value, rowIndex, columnIndex)}
+                        onChange={(event) => updateCell(row.id, column.key, event.target.value)}
+                        onBlur={() => setEditingCell(null)}
+                        onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
+                      >
+                        <option value="">{
+                          selectDisabled
+                            ? transferOnlyDisabled ? "Transfer transactions only" : "Expense transactions only"
+                            : config.key === "transactions" && column.key === "shortfallSource"
+                              ? "Default: account goes negative"
+                            : config.key === "bills" && column.key === "paymentAccount"
+                              ? "Choose paying account"
+                              : `Select ${column.label.toLowerCase()}`
+                        }</option>
+                        {hasLegacyValue && <option value={value}>{value}</option>}
+                        {columnSelectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    );
+                    if (config.key === "bills" && column.key === "paymentAccount") {
+                      const billName = row.cells.name?.trim();
+                      const showPaymentAction = Boolean(billName) && billStatusValue(row.cells.status || "") !== "paid";
+                      return (
+                        <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key)}>
+                          <div className="bill-paid-from-control">
+                            {selectControl}
+                            {showPaymentAction && (
+                              <button
+                                type="button"
+                                className="bill-mark-paid-button"
+                                disabled={!String(value).trim()}
+                                aria-label={`Mark ${billName} paid`}
+                                onClick={() => onBillPayment?.(row.id)}
+                              >
+                                Mark paid
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    }
                     return (
                       <td key={column.key} data-label={column.label} className={cellClassName(row.id, column.key)}>
-                        <select
-                          data-row-index={rowIndex}
-                          data-column-index={columnIndex}
-                          data-row-id={row.id}
-                          data-column-key={column.key}
-                          value={value}
-                          disabled={selectDisabled}
-                          aria-label={`${column.label}, ${config.title} row ${rowIndex + 1}`}
-                          aria-description={transferOnlyDisabled
-                            ? "Available when transaction type is Transfer."
-                            : shortfallOnlyDisabled
-                              ? "Available when transaction type is Expense."
-                              : undefined}
-                          onPointerDown={() => beginPointerEdit(row.id, column.key)}
-                          onFocus={(event) => handleCellFocus(row.id, column.key, event.currentTarget.value, rowIndex, columnIndex)}
-                          onChange={(event) => updateCell(row.id, column.key, event.target.value)}
-                          onBlur={() => setEditingCell(null)}
-                          onKeyDown={(event) => handleKeyDown(event, rowIndex, columnIndex, row.id, column.key)}
-                        >
-                          <option value="">{
-                            selectDisabled
-                              ? transferOnlyDisabled ? "Transfer transactions only" : "Expense transactions only"
-                              : config.key === "transactions" && column.key === "shortfallSource"
-                                ? "Default: account goes negative"
-                              : config.key === "bills" && column.key === "paymentAccount"
-                                ? "Choose paying account"
-                                : `Select ${column.label.toLowerCase()}`
-                          }</option>
-                          {hasLegacyValue && <option value={value}>{value}</option>}
-                          {columnSelectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                        </select>
+                        {selectControl}
                       </td>
                     );
                   }

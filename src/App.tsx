@@ -585,7 +585,6 @@ function BillsPage({
   const [billSearch, setBillSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [billMessage, setBillMessage] = useState("");
-  const [pendingBillPayment, setPendingBillPayment] = useState<{ billId: string; paymentAccount: string; paidDate: string } | null>(null);
   const [deletedBill, setDeletedBill] = useState<{ name: string; snapshot: DeletedBillSnapshot } | null>(null);
   const undoTimerRef = useRef<number | undefined>(undefined);
   const billRows = data.sections.bills.map(normalizeBillRow);
@@ -627,6 +626,7 @@ function BillsPage({
 
   function updateVisibleBillRows(section: SectionKey, nextVisibleRows: SpreadsheetRow[]) {
     const normalizedNextRows: SpreadsheetRow[] = [];
+    let savedPaymentAccountFor = "";
     for (const inputRow of nextVisibleRows) {
       let nextRow = normalizeBillRow(inputRow);
       const previousRow = billRows.find((row) => row.id === nextRow.id);
@@ -635,37 +635,9 @@ function BillsPage({
       const paymentAccountWasJustChosen = previousRow?.cells.paymentAccount !== nextRow.cells.paymentAccount
         && Boolean(nextRow.cells.paymentAccount?.trim());
 
-      if (pendingBillPayment?.billId === nextRow.id && paymentAccountWasJustChosen) {
-        const paidDate = isValidIsoDate(String(nextRow.cells.paidDate || ""))
-          ? String(nextRow.cells.paidDate)
-          : pendingBillPayment.paidDate;
-        try {
-          onChange(payBillEvent(data, {
-            billId: nextRow.id,
-            paymentAccount: String(nextRow.cells.paymentAccount),
-            paidDate,
-          }));
-          setPendingBillPayment(null);
-          setBillMessage(`${nextRow.cells.name || "Bill"} was marked paid and recorded in Transactions.`);
-        } catch (error) {
-          setBillMessage(error instanceof Error ? error.message : "The bill payment could not be recorded.");
-        }
-        return;
-      }
-
-      if (pendingBillPayment?.billId === nextRow.id
-        && previousRow?.cells.status !== nextRow.cells.status
-        && nextStatus !== "paid") {
-        setPendingBillPayment(null);
-      }
-
       if (nextStatus === "paid" && !hasBillPaymentEvidence(nextRow)) {
         if (!nextRow.cells.paymentAccount?.trim()) {
-          const paidDate = isValidIsoDate(String(nextRow.cells.paidDate || ""))
-            ? String(nextRow.cells.paidDate)
-            : todayIso();
-          setPendingBillPayment({ billId: nextRow.id, paymentAccount: "", paidDate });
-          setBillMessage("");
+          setBillMessage(`Choose Paid From for ${nextRow.cells.name || "this bill"}, then click Mark paid or choose Paid again.`);
           return;
         }
         const accountWasJustChosen = previousRow?.cells.paymentAccount !== nextRow.cells.paymentAccount;
@@ -673,10 +645,13 @@ function BillsPage({
           nextRow = { ...nextRow, cells: { ...nextRow.cells, paidDate: todayIso() } };
         }
         if (!hasBillPaymentEvidence(nextRow)) {
-          setPendingBillPayment({ billId: nextRow.id, paymentAccount: nextRow.cells.paymentAccount, paidDate: nextRow.cells.paidDate || todayIso() });
           setBillMessage(`Choose a valid paid date for ${nextRow.cells.name || "this bill"}.`);
           return;
         }
+      }
+
+      if (paymentAccountWasJustChosen && nextStatus !== "paid") {
+        savedPaymentAccountFor = nextRow.cells.name || "Bill";
       }
 
       if (previousStatus === "paid" && nextStatus !== "paid") {
@@ -692,8 +667,29 @@ function BillsPage({
     const mergedRows = preservedRows.map((row) => normalizedNextRows.find((next) => next.id === row.id) || row);
     const addedRows = normalizedNextRows.filter((row) => !billRows.some((existing) => existing.id === row.id));
     const nextBillRows = [...mergedRows, ...addedRows];
-    setBillMessage("");
     updateRows(section, nextBillRows);
+    setBillMessage(savedPaymentAccountFor
+      ? `Paid From saved for ${savedPaymentAccountFor}. Click Mark paid to submit the payment.`
+      : "");
+  }
+
+  function markBillPaid(rowId: string) {
+    const bill = billRows.find((row) => row.id === rowId);
+    if (!bill) return;
+    const paymentAccount = String(bill.cells.paymentAccount || "").trim();
+    if (!paymentAccount) {
+      setBillMessage(`Choose Paid From for ${bill.cells.name || "this bill"} before marking it paid.`);
+      return;
+    }
+    const paidDate = isValidIsoDate(String(bill.cells.paidDate || ""))
+      ? String(bill.cells.paidDate)
+      : todayIso();
+    try {
+      onChange(payBillEvent(data, { billId: rowId, paymentAccount, paidDate }));
+      setBillMessage(`${bill.cells.name || "Bill"} was marked paid and recorded in Transactions.`);
+    } catch (error) {
+      setBillMessage(error instanceof Error ? error.message : "The bill payment could not be recorded.");
+    }
   }
 
   function handleDeleteBill(rowId: string) {
@@ -820,16 +816,6 @@ function BillsPage({
         </article>
       </section>
 
-      {pendingBillPayment && (
-        <div className="bill-payment-inline" role="status" aria-live="polite">
-          <div>
-            <strong>Finish recording {billRows.find((row) => row.id === pendingBillPayment.billId)?.cells.name || "this bill"} as paid</strong>
-            <p>Choose its Paid From account in the table. VCC will then set the status to Paid, use {formatDateMDY(pendingBillPayment.paidDate)}, and record the payment once.</p>
-          </div>
-          <button type="button" onClick={() => setPendingBillPayment(null)}>Cancel payment</button>
-        </div>
-      )}
-
       <Spreadsheet
         config={billsTableConfig}
         rows={visibleBillRows}
@@ -837,6 +823,7 @@ function BillsPage({
         onSortChange={updateSort}
         onRowsChange={updateVisibleBillRows}
         onDeleteRow={handleDeleteBill}
+        onBillPayment={markBillPaid}
         onResetSection={resetSection}
         getComputedCell={(row, columnKey) => computedCell("bills", row, columnKey)}
         selectOptions={{

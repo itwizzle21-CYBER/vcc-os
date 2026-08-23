@@ -215,7 +215,7 @@ test("posting a paid bill debits one account and creates one linked transaction"
   });
 
   await page.getByRole("combobox", { name: /Status, Bills row 1/ }).selectOption("paid");
-  await expect(page.getByRole("status").filter({ hasText: "Finish recording Electric bill as paid" })).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("Choose Paid From for Electric bill");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -226,7 +226,9 @@ test("posting a paid bill debits one account and creates one linked transaction"
   })).toEqual({ status: initial.status, linked: 0, balance: initial.balance });
 
   await page.getByRole("combobox", { name: /Paid From, Bills row 1/ }).selectOption("Chime Checking");
-  await expect(page.getByRole("status").filter({ hasText: "Finish recording Electric bill as paid" })).toHaveCount(0);
+  await expect(page.getByRole("alert")).toContainText("Paid From saved for Electric bill");
+  await expect(page.getByRole("combobox", { name: /Paid From, Bills row 1/ })).toHaveValue("Chime Checking");
+  await page.getByRole("button", { name: "Mark Electric bill paid" }).click();
 
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
