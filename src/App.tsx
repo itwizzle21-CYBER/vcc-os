@@ -605,7 +605,11 @@ function BillsPage({
   const rankedBills = rankBillRows(filledBillRows);
   const dueBill = rankedBills[0];
   const billPaymentAccounts = transactionEndpointOptions(data)
-    .filter((account) => account.kind === "money" && !account.isNew);
+    .filter((account) => account.kind === "money" && !account.isNew)
+    .map((account) => ({
+      ...account,
+      label: `${account.value} · ${formatCurrency(account.balance)}`,
+    }));
   const billStats = {
     shown: visibleBillRows.filter((row) => !isBlankRow(row.cells)).length,
     total: filledBillRows.length,

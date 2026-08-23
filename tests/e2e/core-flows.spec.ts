@@ -259,7 +259,33 @@ test("preserves supported bill statuses and clears payment evidence when a bill 
   await page.reload();
   await expect(page.getByRole("combobox", { name: /Status, Bills row 1/ })).toHaveValue("cancelled");
 
+  const beforeAccountSelection = await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    const account = data.sections.money.find((row: { cells: { label?: string } }) => row.cells.label === "Chime Checking");
+    const bill = data.sections.bills[0];
+    return {
+      balance: Number(account.cells.amount),
+      linked: data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === bill.id).length,
+    };
+  });
   await paidFrom.selectOption("Chime Checking");
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    const account = data.sections.money.find((row: { cells: { label?: string } }) => row.cells.label === "Chime Checking");
+    const bill = data.sections.bills[0];
+    return {
+      status: bill.cells.status,
+      paymentAccount: bill.cells.paymentAccount,
+      balance: Number(account.cells.amount),
+      linked: data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === bill.id).length,
+    };
+  })).toEqual({
+    status: "cancelled",
+    paymentAccount: "Chime Checking",
+    ...beforeAccountSelection,
+  });
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: /Paid From, Bills row 1/ })).toHaveValue("Chime Checking");
   await status.selectOption("paid");
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -277,6 +303,37 @@ test("preserves supported bill statuses and clears payment evidence when a bill 
       linked: data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === bill.id).length,
     };
   })).toEqual({ status: "unpaid", paymentAccount: "", paidDate: "", linked: 0 });
+});
+
+test("uses one spreadsheet focus highlight and keeps Paid From choices readable", async ({ page }, testInfo) => {
+  await page.goto("/bills");
+  const billEditor = page.getByRole("textbox", { name: "Bill, Bills row 1", exact: true });
+  await billEditor.click();
+  await expect(billEditor).toBeFocused();
+  const focusStyles = await billEditor.evaluate((editor) => {
+    const cell = editor.closest("td");
+    const editorStyle = getComputedStyle(editor);
+    const cellStyle = cell ? getComputedStyle(cell) : null;
+    return {
+      cellHighlight: cellStyle?.boxShadow || "none",
+      editorShadow: editorStyle.boxShadow,
+      editorOutline: editorStyle.outlineStyle,
+      editorBorder: editorStyle.borderColor,
+    };
+  });
+  expect(focusStyles.cellHighlight).not.toBe("none");
+  expect(focusStyles.editorShadow).toBe("none");
+  expect(focusStyles.editorOutline).toBe("none");
+  expect(focusStyles.editorBorder).toBe("rgba(0, 0, 0, 0)");
+
+  const paidFrom = page.getByRole("combobox", { name: /Paid From, Bills row 1/ });
+  const choices = (await paidFrom.locator("option").allTextContents()).slice(1);
+  expect(choices.length).toBeGreaterThan(0);
+  expect(choices.every((choice) => choice.includes("$"))).toBe(true);
+  expect(new Set(choices).size).toBe(choices.length);
+  if (testInfo.project.name === "desktop-chromium") {
+    expect((await paidFrom.boundingBox())?.width || 0).toBeGreaterThanOrEqual(190);
+  }
 });
 
 test("sorts paycheck history chronologically without rewriting stored records", async ({ page }) => {
