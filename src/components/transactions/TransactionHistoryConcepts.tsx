@@ -69,6 +69,7 @@ export default function TransactionHistoryConcepts({
   const [accountFilter, setAccountFilter] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<SpreadsheetRow | null>(null);
+  const editingIsNew = Boolean(editingRow && !rows.some((row) => row.id === editingRow.id));
 
   const categories = useMemo(() => [...new Set(rows.map((row) => row.cells.category?.trim()).filter(Boolean))].sort(), [rows]);
   const filteredRows = useMemo(() => rows
@@ -144,6 +145,7 @@ export default function TransactionHistoryConcepts({
         <CalmLedger
           rows={filteredRows}
           editingRow={editingRow}
+          editingIsNew={editingIsNew}
           accounts={accounts}
           bills={bills}
           incomeTotal={incomeTotal}
@@ -162,6 +164,7 @@ export default function TransactionHistoryConcepts({
         <AccountLens
           rows={filteredRows}
           editingRow={editingRow}
+          editingIsNew={editingIsNew}
           accounts={accounts}
           bills={bills}
           selectedAccount={accountFilter}
@@ -182,6 +185,7 @@ export default function TransactionHistoryConcepts({
           rows={filteredRows}
           allRows={rows}
           editingRow={editingRow}
+          editingIsNew={editingIsNew}
           accounts={accounts}
           bills={bills}
           incomeTotal={incomeTotal}
@@ -199,6 +203,7 @@ export default function TransactionHistoryConcepts({
         <CashflowFocus
           rows={filteredRows}
           editingRow={editingRow}
+          editingIsNew={editingIsNew}
           accounts={accounts}
           bills={bills}
           incomeTotal={incomeTotal}
@@ -217,6 +222,7 @@ export default function TransactionHistoryConcepts({
         <ReviewQueue
           rows={filteredRows}
           editingRow={editingRow}
+          editingIsNew={editingIsNew}
           accounts={accounts}
           bills={bills}
           incomeTotal={incomeTotal}
@@ -266,12 +272,22 @@ function TransactionToolbar({
   onToggleFilters: () => void;
   onAdd: () => void;
 }) {
+  const filterTriggerRef = useRef<HTMLButtonElement>(null);
+  const filterPopoverId = "transaction-filter-popover";
+
+  function handleFilterKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    onToggleFilters();
+    filterTriggerRef.current?.focus();
+  }
+
   return (
     <div className="transaction-concept-toolbar">
       {segmented && (
-        <div className="transaction-type-tabs" aria-label="Transaction type">
+        <div className="transaction-type-tabs" role="group" aria-label="Filter by transaction type">
           {[['all', 'All'], ['spending', 'Spending'], ['income', 'Income'], ['transfer', 'Transfers']].map(([value, label]) => (
-            <button key={value} type="button" className={typeFilter === value ? "active" : ""} onClick={() => onTypeFilter(value)}>{label}</button>
+            <button key={value} type="button" className={typeFilter === value ? "active" : ""} aria-pressed={typeFilter === value} onClick={() => onTypeFilter(value)}>{label}</button>
           ))}
         </div>
       )}
@@ -289,11 +305,11 @@ function TransactionToolbar({
         </select>
       )}
       <div className="transaction-filter-menu">
-        <button type="button" className="transaction-filter-trigger" aria-expanded={filtersOpen} onClick={onToggleFilters}>
+        <button ref={filterTriggerRef} type="button" className="transaction-filter-trigger" aria-expanded={filtersOpen} aria-controls={filterPopoverId} onClick={onToggleFilters}>
           <SlidersHorizontal size={16} aria-hidden="true" /> Filters
         </button>
         {filtersOpen && (
-          <div className="transaction-filter-popover">
+          <div id={filterPopoverId} className="transaction-filter-popover" role="group" aria-label="Transaction filters" onKeyDown={handleFilterKeyDown}>
             <label>
               <span>Category</span>
               <select value={categoryFilter} onChange={(event) => onCategoryFilter(event.target.value)}>
@@ -322,6 +338,7 @@ function TransactionToolbar({
 function CalmLedger({
   rows,
   editingRow,
+  editingIsNew,
   accounts,
   bills,
   incomeTotal,
@@ -359,7 +376,7 @@ function CalmLedger({
         </div>
         {editingRow && (
           <aside className="transaction-editor-drawer" aria-label="Transaction details">
-            <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} />
+            <TransactionEditor key={editingRow.id} row={editingRow} isNew={editingIsNew} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} />
           </aside>
         )}
       </div>
@@ -370,6 +387,7 @@ function CalmLedger({
 function AccountLens({
   rows,
   editingRow,
+  editingIsNew,
   accounts,
   bills,
   selectedAccount,
@@ -418,7 +436,7 @@ function AccountLens({
             </div>
             {editingRow && (
               <aside className="transaction-editor-drawer" aria-label="Transaction details">
-                <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} />
+                <TransactionEditor key={editingRow.id} row={editingRow} isNew={editingIsNew} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} />
               </aside>
             )}
           </div>
@@ -432,6 +450,7 @@ function MoneyTimeline({
   rows,
   allRows,
   editingRow,
+  editingIsNew,
   accounts,
   bills,
   incomeTotal,
@@ -452,7 +471,7 @@ function MoneyTimeline({
       <header className="transaction-concept-header">
         <div>
           <p className="eyebrow">Layout 3 · Money Timeline</p>
-          <h2 id="money-timeline-title">July activity <span>Net {formatCurrency(incomeTotal - expenseTotal)}</span></h2>
+          <h2 id="money-timeline-title">Activity timeline <span>Net {formatCurrency(incomeTotal - expenseTotal)}</span></h2>
         </div>
       </header>
       {toolbar}
@@ -460,7 +479,7 @@ function MoneyTimeline({
         <div className="transaction-timeline-list">
           {editingRow && !editingRowIsVisible && (
             <div className="transaction-inline-editor transaction-inline-editor-new">
-              <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} compact />
+              <TransactionEditor key={editingRow.id} row={editingRow} isNew={editingIsNew} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} compact />
             </div>
           )}
           {buckets.map((bucket) => (
@@ -471,7 +490,7 @@ function MoneyTimeline({
                   <TransactionRow row={row} selected={editingRow?.id === row.id} onEdit={onEdit} onDelete={onDelete} timeline />
                   {editingRow?.id === row.id && (
                     <div className="transaction-inline-editor">
-                      <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} compact />
+                      <TransactionEditor key={editingRow.id} row={editingRow} isNew={editingIsNew} accounts={accounts} bills={bills} message={message} onClose={onClose} onSave={onSave} onDelete={onDelete} compact />
                     </div>
                   )}
                 </div>
@@ -509,6 +528,7 @@ function MoneyTimeline({
 function CashflowFocus({
   rows,
   editingRow,
+  editingIsNew,
   accounts,
   bills,
   incomeTotal,
@@ -543,7 +563,7 @@ function CashflowFocus({
       </div>
       {editingRow && (
         <aside className="transaction-bottom-sheet" aria-label="Selected transaction details">
-          <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} compact onClose={onClose} onSave={onSave} onDelete={onDelete} />
+          <TransactionEditor key={editingRow.id} row={editingRow} isNew={editingIsNew} accounts={accounts} bills={bills} message={message} compact onClose={onClose} onSave={onSave} onDelete={onDelete} />
         </aside>
       )}
     </section>
@@ -553,6 +573,7 @@ function CashflowFocus({
 function ReviewQueue({
   rows,
   editingRow,
+  editingIsNew,
   accounts,
   bills,
   incomeTotal,
@@ -615,7 +636,7 @@ function ReviewQueue({
               </div>
               {editingRow?.id === current.id && (
                 <div className="transaction-review-editor">
-                  <TransactionEditor row={editingRow} accounts={accounts} bills={bills} message={message} compact onClose={onClose} onSave={onSave} onDelete={onDelete} />
+                  <TransactionEditor key={editingRow.id} row={editingRow} isNew={editingIsNew} accounts={accounts} bills={bills} message={message} compact onClose={onClose} onSave={onSave} onDelete={onDelete} />
                 </div>
               )}
             </>
@@ -638,6 +659,7 @@ function ReviewQueue({
 interface ConceptBodyProps {
   rows: SpreadsheetRow[];
   editingRow: SpreadsheetRow | null;
+  editingIsNew: boolean;
   accounts: AccountOption[];
   bills: BillPaymentOption[];
   incomeTotal: number;
@@ -749,7 +771,7 @@ interface TransactionLineItem {
   cost: string;
 }
 
-function TransactionEditor({ row, accounts, bills, message, compact = false, onClose, onSave, onDelete }: { row: SpreadsheetRow; accounts: AccountOption[]; bills: BillPaymentOption[]; message: string; compact?: boolean; onClose: () => void; onSave: (rows: SpreadsheetRow | SpreadsheetRow[]) => void; onDelete: (rowId: string) => void }) {
+function TransactionEditor({ row, isNew, accounts, bills, message, compact = false, onClose, onSave, onDelete }: { row: SpreadsheetRow; isNew: boolean; accounts: AccountOption[]; bills: BillPaymentOption[]; message: string; compact?: boolean; onClose: () => void; onSave: (rows: SpreadsheetRow | SpreadsheetRow[]) => void; onDelete: (rowId: string) => void }) {
   const [draft, setDraft] = useState<SpreadsheetRow>(() => ({
     ...row,
     cells: { ...row.cells, amount: String(Math.abs(toNumber(row.cells.amount)) || "") },
@@ -763,7 +785,7 @@ function TransactionEditor({ row, accounts, bills, message, compact = false, onC
   }]);
   const type = transactionType(draft);
   const kind = transactionKind(draft);
-  const isNew = row.id.startsWith("concept-transaction-");
+  const isLinkedBillPayment = row.cells.financialEventType === "bill_payment" && Boolean(row.cells.billId?.trim());
   const usesLineItems = isNew && type === "expense" && kind === "purchase";
   const isBillPayment = isNew && kind === "bill_payment";
   const availableAccounts = isBillPayment ? accounts.filter((account) => account.kind === "money" && !account.isNew) : accounts;
@@ -890,6 +912,33 @@ function TransactionEditor({ row, accounts, bills, message, compact = false, onC
     setLineItems((items) => items.length === 1 ? items : items.filter((item) => item.id !== id));
   }
 
+  if (isLinkedBillPayment) {
+    return (
+      <div className={`transaction-detail-editor transaction-linked-payment ${compact ? "compact" : ""}`}>
+        <header>
+          <div><p className="eyebrow">Linked bill payment</p><h3>{row.cells.description || "Bill payment"}</h3></div>
+          <button type="button" aria-label="Close transaction details" onClick={onClose}><X size={18} aria-hidden="true" /></button>
+        </header>
+        <div className="transaction-linked-payment-notice" role="note">
+          <strong>Managed from Bills</strong>
+          <span>Edit status, Paid From, and Paid Date on the Bills page so the payment remains one reconciled event.</span>
+        </div>
+        <dl className="transaction-linked-payment-summary">
+          <div><dt>Paid date</dt><dd>{row.cells.date ? formatDateMDY(row.cells.date) : "No date"}</dd></div>
+          <div><dt>Paid from</dt><dd>{row.cells.account || "No account selected"}</dd></div>
+          <div><dt>Amount</dt><dd>{formatSignedAmount(row)}</dd></div>
+          <div><dt>Category</dt><dd>{row.cells.category || "Uncategorized"}</dd></div>
+        </dl>
+        <footer>
+          <button type="button" className="transaction-delete-button" onClick={() => onDelete(row.id)}><Trash2 size={15} aria-hidden="true" /> Delete payment</button>
+          <span />
+          <button type="button" onClick={onClose}>Close</button>
+          <a className="transaction-save-button" href="/bills">Open Bills</a>
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <form className={`transaction-detail-editor ${compact ? "compact" : ""}`} onSubmit={submit}>
       <header>
@@ -935,7 +984,7 @@ function TransactionEditor({ row, accounts, bills, message, compact = false, onC
           <label className="wide"><span>Notes</span><textarea value={draft.cells.notes || ""} onChange={(event) => updateCell("notes", event.target.value)} /></label>
         </div>
       )}
-      <p className="transaction-editor-message" role="status">{validation || message}</p>
+      <p className="transaction-editor-message" role={validation ? "alert" : "status"} aria-live={validation ? "assertive" : "polite"}>{validation || message}</p>
       <footer>
         {!isNew && <button type="button" className="transaction-delete-button" onClick={() => onDelete(row.id)}><Trash2 size={15} aria-hidden="true" /> Delete</button>}
         <span />
@@ -1012,7 +1061,7 @@ function formatSignedAmount(row: SpreadsheetRow) {
 }
 
 function accountName(account: AccountOption) {
-  return account.value.replace(/ · (Account|Vault)(?: \d+)?$/, "");
+  return account.value;
 }
 
 function dateGroupLabel(date: string) {

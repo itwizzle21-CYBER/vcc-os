@@ -29,10 +29,12 @@ import { computeFinancialState } from "./lib/engine/financialEngine";
 import {
   applyBillRowsEvent,
   deleteBillEvent,
-  deleteTransactionEvent,
+  deleteTransactionWithSnapshotEvent,
   payBillEvent,
   restoreDeletedBillEvent,
+  restoreDeletedTransactionEvent,
   type DeletedBillSnapshot,
+  type DeletedTransactionSnapshot,
 } from "./lib/engine/financialEventEngine";
 import { effectiveBillStatus, hasBillPaymentEvidence, storedBillStatus } from "./lib/engine/billPaymentSync";
 import { categorizeItem, getInventoryAlert, normalizeInventoryRow, rankInventoryRows } from "./lib/engine/inventoryEngine";
@@ -1097,6 +1099,8 @@ export function TransactionsPage({
 
 function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: (next: AppData) => void }) {
   const [message, setMessage] = useState("");
+  const [deletedTransaction, setDeletedTransaction] = useState<{ name: string; snapshot: DeletedTransactionSnapshot } | null>(null);
+  const undoTimerRef = useRef<number | undefined>(undefined);
   const transactionEndpoints = useMemo(() => transactionEndpointOptions(data), [data]);
   const transactionRows = data.sections.transactions.map(normalizeTransactionRow).filter((row) => !isBlankRow(row.cells));
   const payableBills = data.sections.bills
@@ -1120,6 +1124,10 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
     .reduce((sum, row) => sum + Math.abs(toNumber(row.cells.amount)), 0);
   const layoutVariant: TransactionLayoutVariant = data.settings.layoutViews.transactions;
 
+  useEffect(() => () => {
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+  }, []);
+
   function saveTransactionRows(input: SpreadsheetRow | SpreadsheetRow[]): boolean {
     const rows = Array.isArray(input) ? input : [input];
     const linkedPayment = rows.find((row) => transactionRows.find((existing) => existing.id === row.id)?.cells.financialEventType === "bill_payment");
@@ -1127,7 +1135,8 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
       setMessage("Edit this payment from Bills so the bill, transaction, and paying account remain one event.");
       return false;
     }
-    const billPaymentRequest = rows.find((row) => row.id.startsWith("concept-transaction-") && transactionKind(row) === "bill_payment");
+    const billPaymentRequest = rows.find((row) => !transactionRows.some((existing) => existing.id === row.id)
+      && transactionKind(row) === "bill_payment");
     if (billPaymentRequest) {
       if (rows.length !== 1 || !billPaymentRequest.cells.billId?.trim()) {
         setMessage("Choose one bill to record as paid.");
@@ -1172,13 +1181,25 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
   function deleteTransactionRow(rowId: string) {
     const transaction = transactionRows.find((row) => row.id === rowId);
     const description = transaction?.cells.description || transaction?.cells.merchant || "this transaction";
-    if (!window.confirm(`Delete ${description}? Linked balances and bill state will be reconciled.`)) return;
     try {
-      onChange(deleteTransactionEvent(data, rowId));
-      setMessage("Transaction deleted; linked balances and bill state were reconciled.");
+      const result = deleteTransactionWithSnapshotEvent(data, rowId);
+      if (!result.snapshot) return;
+      onChange(result.data);
+      setDeletedTransaction({ name: description, snapshot: result.snapshot });
+      setMessage("");
+      if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = window.setTimeout(() => setDeletedTransaction(null), 8_000);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The transaction could not be deleted.");
     }
+  }
+
+  function undoDeleteTransaction() {
+    if (!deletedTransaction) return;
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+    onChange(restoreDeletedTransactionEvent(data, deletedTransaction.snapshot));
+    setMessage(`${deletedTransaction.name} was restored with its exact account and bill effects.`);
+    setDeletedTransaction(null);
   }
 
   function addReceiptRows(rows: SpreadsheetRow[]): boolean {
@@ -1207,6 +1228,12 @@ function TransactionsConceptPage({ data, onChange }: { data: AppData; onChange: 
         onSave={saveTransactionRows}
         onDelete={deleteTransactionRow}
       />
+      {deletedTransaction && (
+        <div className="transaction-undo-notice" role="status" aria-live="polite">
+          <span><strong>{deletedTransaction.name}</strong> deleted. Linked account and bill effects were reversed.</span>
+          <button type="button" onClick={undoDeleteTransaction}>Undo</button>
+        </div>
+      )}
     </div>
   );
 }

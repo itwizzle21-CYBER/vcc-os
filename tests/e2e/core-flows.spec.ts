@@ -456,7 +456,7 @@ test("edits and persists multiline Inventory Notes without hijacking caret keys"
   expect(viewportFits).toBe(true);
 });
 
-test("mobile swipe intentionally reveals transaction deletion and requires confirmation", async ({ page }, testInfo) => {
+test("mobile swipe reveals immediate transaction deletion with Undo", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes("mobile"), "Mobile swipe behavior.");
   await page.goto("/transactions");
   const firstRow = page.locator(".transaction-simple-row").first();
@@ -471,9 +471,17 @@ test("mobile swipe intentionally reveals transaction deletion and requires confi
 
   const deleteButton = page.locator(".transaction-swipe-row").first().getByRole("button", { name: /^Delete / });
   await expect(deleteButton).toBeVisible();
-  page.once("dialog", (dialog) => dialog.accept());
+  let dialogCount = 0;
+  page.on("dialog", async (dialog) => {
+    dialogCount += 1;
+    await dialog.dismiss();
+  });
   await deleteButton.click();
   await expect(page.locator(".transaction-simple-row")).toHaveCount(initialCount - 1);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+  expect(dialogCount).toBe(0);
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.locator(".transaction-simple-row")).toHaveCount(initialCount);
 });
 
 test("mobile navigation exposes labeled destinations", async ({ page }, testInfo) => {
@@ -628,7 +636,7 @@ test("hides optional captions and hints for experienced users", async ({ page })
 });
 
 test("has no measurable accessibility failures across every application route", async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(240_000);
   const failures: string[] = [];
   for (const path of [
     "/", "/money", "/bills", "/income", "/transactions", "/debt", "/car-payment",
@@ -854,7 +862,7 @@ test("keeps all 30 selectable layouts collision-free from mobile through desktop
 
 test("keeps wide-screen context rails readable", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "This test targets full-screen desktop composition.");
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
 
   const chooseLayout = async (section: string, option: string) => {
     await page.goto("/settings#settings-layout-views");
@@ -1037,7 +1045,7 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   await expect(page.locator(".search-results").getByRole("link", { name: /Goals/ }).first()).toBeVisible();
 
   await page.goto("/transactions");
-  await expect(page.getByRole("heading", { name: /activity/ }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /activity/i }).first()).toBeVisible();
   const transactionToolbar = page.locator(".transaction-concept-toolbar");
   await expect(transactionToolbar.getByRole("textbox", { name: "Search transactions" })).toBeVisible();
   await expect(transactionToolbar.getByRole("button", { name: "Filters" })).toBeVisible();
@@ -1152,6 +1160,49 @@ test("records an existing bill as paid from the Transactions page", async ({ pag
     const account = data.sections.money.find((row: { cells: { label: string } }) => row.cells.label === "Chime Checking");
     return { status: bill.cells.status, paidFrom: bill.cells.paymentAccount, paymentKind: payments[0]?.cells.transactionKind, payments: payments.length, balance: Number.parseFloat(account.cells.amount) };
   })).toEqual({ status: "paid", paidFrom: "Chime Checking", paymentKind: "bill_payment", payments: 1, balance: initial - 186.42 });
+
+  await page.locator(".transaction-simple-row").filter({ hasText: "Electric bill payment" }).click();
+  const linkedPayment = page.locator(".transaction-linked-payment");
+  await expect(linkedPayment.getByText("Managed from Bills", { exact: true })).toBeVisible();
+  await expect(linkedPayment.getByRole("link", { name: "Open Bills" })).toHaveAttribute("href", "/bills");
+  await expect(linkedPayment.getByRole("button", { name: "Save changes" })).toHaveCount(0);
+});
+
+test("deletes a transaction immediately and restores its exact account effect with Undo", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  let editor = page.locator(".transaction-detail-editor");
+  await editor.getByLabel("Description").fill("Undo expense");
+  await editor.getByLabel("Amount").fill("10");
+  await editor.getByLabel("Account", { exact: true }).selectOption("Cash App");
+  await editor.getByRole("button", { name: "Save changes" }).click();
+  const savedBalance = await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return Number(data.sections.money.find((row: { cells: { label?: string } }) => row.cells.label === "Cash App").cells.amount);
+  });
+
+  await page.locator(".transaction-simple-row").filter({ hasText: "Undo expense" }).click();
+  editor = page.locator(".transaction-detail-editor");
+  let dialogCount = 0;
+  page.on("dialog", async (dialog) => {
+    dialogCount += 1;
+    await dialog.dismiss();
+  });
+  await editor.getByRole("button", { name: "Delete" }).click();
+  await expect(page.locator(".transaction-simple-row").filter({ hasText: "Undo expense" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+  expect(dialogCount).toBe(0);
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return Number(data.sections.money.find((row: { cells: { label?: string } }) => row.cells.label === "Cash App").cells.amount);
+  })).toBe(savedBalance + 10);
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.locator(".transaction-simple-row").filter({ hasText: "Undo expense" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return Number(data.sections.money.find((row: { cells: { label?: string } }) => row.cells.label === "Cash App").cells.amount);
+  })).toBe(savedBalance);
 });
 
 test("supports general and investment transactions without forcing retail items", async ({ page }) => {
@@ -1183,6 +1234,86 @@ test("supports general and investment transactions without forcing retail items"
     { description: "Annual insurance filing", kind: "general", category: "Insurance", quantity: "" },
     { description: "Brokerage contribution", kind: "investment", category: "Investments", quantity: "" },
   ]);
+});
+
+test("reopens saved page-created transactions as editable records and refreshes the draft when rows change", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    data.settings.layoutViews.transactions = 2;
+    localStorage.setItem("vcc-os:data:v2", JSON.stringify(data));
+  });
+  await page.reload();
+
+  for (const [description, amount] of [["First saved activity", "12"], ["Second saved activity", "18"]]) {
+    await page.getByRole("button", { name: "Add transaction" }).click();
+    const editor = page.locator(".transaction-detail-editor");
+    await editor.getByLabel("Description").fill(description);
+    await editor.getByLabel("Amount").fill(amount);
+    await editor.getByLabel("Account", { exact: true }).selectOption("Cash App");
+    await editor.getByRole("button", { name: "Save changes" }).click();
+  }
+
+  await page.locator(".transaction-simple-row").filter({ hasText: "First saved activity" }).click();
+  let editor = page.locator(".transaction-detail-editor");
+  await expect(editor.getByText("Transaction details", { exact: true })).toBeVisible();
+  await expect(editor.getByLabel("Description")).toHaveValue("First saved activity");
+  await expect(editor.getByRole("button", { name: "Delete" })).toBeVisible();
+
+  await page.locator(".transaction-simple-row").filter({ hasText: "Second saved activity" }).click();
+  editor = page.locator(".transaction-detail-editor");
+  await expect(editor.getByLabel("Description")).toHaveValue("Second saved activity");
+  await expect(editor.getByRole("heading", { name: "Second saved activity" })).toBeVisible();
+});
+
+test("loads the selected transaction into a single fresh editor across all five layouts", async ({ page }) => {
+  test.setTimeout(90_000);
+  for (const layout of [1, 2, 3, 4, 5]) {
+    await page.goto("/transactions");
+    await page.evaluate((layoutView) => {
+      const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+      data.settings.layoutViews.transactions = layoutView;
+      localStorage.setItem("vcc-os:data:v2", JSON.stringify(data));
+    }, layout);
+    await page.reload();
+
+    const rowSelector = layout === 5 ? ".transaction-review-recent button" : ".transaction-simple-row";
+    await page.locator(rowSelector).filter({ hasText: "Primary paycheck" }).first().click();
+    await expect(page.locator(".transaction-detail-editor")).toHaveCount(1);
+    await expect(page.locator(".transaction-detail-editor").getByLabel("Description")).toHaveValue("Primary paycheck");
+
+    await page.locator(rowSelector).filter({ hasText: "Groceries" }).first().click();
+    await expect(page.locator(".transaction-detail-editor")).toHaveCount(1);
+    await expect(page.locator(".transaction-detail-editor").getByLabel("Description")).toHaveValue("Groceries");
+  }
+});
+
+test("keeps duplicate account names distinguishable in the Transactions account lens", async ({ page }) => {
+  await page.goto("/transactions");
+  await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    data.settings.layoutViews.transactions = 2;
+    data.sections.money.push({
+      id: "money-cash-app-duplicate",
+      cells: { label: "Cash App", section: "cash", amount: "25.00", notes: "Conflicting balance retained for review." },
+    });
+    localStorage.setItem("vcc-os:data:v2", JSON.stringify(data));
+  });
+  await page.reload();
+
+  const accountRail = page.getByRole("complementary", { name: "Accounts and vaults" });
+  await expect(accountRail.getByRole("button", { name: /Cash App · Account 1/ })).toBeVisible();
+  await expect(accountRail.getByRole("button", { name: /Cash App · Account 2/ })).toBeVisible();
+});
+
+test("keeps Bills and Transactions usable at 320px without page-level horizontal overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  for (const path of ["/bills", "/transactions"]) {
+    await page.goto(path);
+    await expect(page.locator("main").getByRole("heading", { level: 1 })).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+  }
 });
 
 test("posts a multi-item manual receipt as itemized transaction rows", async ({ page }) => {

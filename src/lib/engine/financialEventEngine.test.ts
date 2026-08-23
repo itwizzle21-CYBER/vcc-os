@@ -5,8 +5,10 @@ import {
   applyBillRowsEvent,
   deleteBillEvent,
   deleteTransactionEvent,
+  deleteTransactionWithSnapshotEvent,
   payBillEvent,
   restoreDeletedBillEvent,
+  restoreDeletedTransactionEvent,
 } from "./financialEventEngine";
 
 function row(id: string, cells: Record<string, string>): SpreadsheetRow {
@@ -147,5 +149,50 @@ describe("canonical financial events", () => {
 
     expect(deleted.sections.money[0].cells.amount).toBe("50.00");
     expect(deleted.sections.transactions).toEqual([]);
+  });
+
+  it("restores an ordinary deleted transaction at its original position with the exact balance effect", () => {
+    const data = createZeroData();
+    data.sections.money = [row("cash", { label: "Cash", section: "cash", amount: "40.00" })];
+    data.sections.transactions = [
+      row("before", { description: "Before", type: "income", amount: "1.00" }),
+      row("groceries", {
+        description: "Groceries",
+        type: "expense",
+        amount: "-10.00",
+        date: "2026-08-08",
+        account: "Cash",
+        balanceEndpointId: "cash",
+        balanceEffect: "expense",
+        balanceApplied: "yes",
+        balanceApplication: "transaction-editor",
+      }),
+      row("after", { description: "After", type: "income", amount: "1.00" }),
+    ];
+
+    const deleted = deleteTransactionWithSnapshotEvent(data, "groceries");
+    expect(deleted.data.sections.money[0].cells.amount).toBe("50.00");
+    expect(deleted.snapshot).not.toBeNull();
+
+    const restored = restoreDeletedTransactionEvent(deleted.data, deleted.snapshot!);
+    expect(restored.sections.transactions.map((transaction) => transaction.id)).toEqual(["before", "groceries", "after"]);
+    expect(restored.sections.money[0].cells.amount).toBe("40.00");
+    expect(restoreDeletedTransactionEvent(restored, deleted.snapshot!)).toEqual(restored);
+  });
+
+  it("restores a deleted bill-payment transaction and its complete bill evidence", () => {
+    const data = createZeroData();
+    data.sections.money = [row("chime", { label: "Chime", section: "cash", amount: "100.00" })];
+    data.sections.bills = [bill("unpaid")];
+    const paid = payBillEvent(data, { billId: "phone", paymentAccount: "Chime", paidDate: "2026-08-08" });
+
+    const deleted = deleteTransactionWithSnapshotEvent(paid, "bill-payment-phone");
+    expect(deleted.data.sections.bills[0].cells).toMatchObject({ status: "unpaid", paymentAccount: "", paidDate: "" });
+    expect(deleted.data.sections.money[0].cells.amount).toBe("100.00");
+
+    const restored = restoreDeletedTransactionEvent(deleted.data, deleted.snapshot!);
+    expect(restored.sections.bills[0]).toEqual(paid.sections.bills[0]);
+    expect(restored.sections.transactions[0]).toMatchObject(paid.sections.transactions[0]);
+    expect(restored.sections.money[0].cells.amount).toBe("75.00");
   });
 });

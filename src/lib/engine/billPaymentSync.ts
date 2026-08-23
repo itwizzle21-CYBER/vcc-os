@@ -69,11 +69,12 @@ export function syncBillPaymentTransactions(
 function createBillPaymentTransaction(bill: SpreadsheetRow, paymentDate: string, existing?: SpreadsheetRow): SpreadsheetRow {
   const name = String(bill.cells.name || "Bill").trim() || "Bill";
   const carPayment = isCarPaymentBill(bill);
+  const description = carPayment || /\bbill$/i.test(name) ? `${name} payment` : `${name} bill payment`;
   return {
     id: paymentTransactionId(bill.id),
     cells: {
       ...existing?.cells,
-      description: carPayment ? `${name} payment` : `${name} bill payment`,
+      description,
       type: "expense",
       category: carPayment ? "Debt Payments" : bill.cells.category || "",
       amount: bill.cells.amount || "",

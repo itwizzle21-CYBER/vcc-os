@@ -840,6 +840,17 @@
   cursor: pointer;
 }
 
+.transaction-filter-trigger:hover,
+.transaction-filter-trigger:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 72%, var(--border));
+  background: var(--accent-soft);
+}
+
+.transaction-filter-trigger:active,
+.transaction-add-button:active {
+  transform: scale(0.98);
+}
+
 .transaction-filter-popover {
   position: absolute;
   top: calc(100% + 0.45rem);
@@ -992,6 +1003,15 @@
   color: #fff;
   font-weight: 850;
   cursor: pointer;
+}
+
+.transaction-swipe-delete:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+}
+
+.transaction-swipe-row:has(.transaction-swipe-delete:focus-visible) .transaction-simple-row {
+  transform: translateX(-6.25rem);
 }
 
 .transaction-simple-row:hover,
@@ -1215,8 +1235,75 @@
   cursor: pointer;
 }
 
+.transaction-detail-editor > footer a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.42rem 0.68rem;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
 .transaction-detail-editor > footer .transaction-delete-button { color: var(--bad); }
 .transaction-detail-editor > footer .transaction-save-button { border-color: var(--accent); background: var(--accent); color: var(--button-text, #07101f); }
+
+.transaction-linked-payment-notice {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 52%, var(--border));
+  border-radius: 0.7rem;
+  background: var(--accent-soft);
+  padding: 0.75rem;
+}
+
+.transaction-linked-payment-notice strong {
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.transaction-linked-payment-notice span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.transaction-linked-payment-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.transaction-linked-payment-summary > div {
+  display: grid;
+  gap: 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--surface);
+  padding: 0.65rem;
+}
+
+.transaction-linked-payment-summary dt {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.transaction-linked-payment-summary dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
 
 .transaction-line-items {
   display: grid;
@@ -1456,6 +1543,10 @@
   }
 
   .transaction-swipe-row.delete-revealed .transaction-simple-row {
+    transform: none;
+  }
+
+  .transaction-swipe-row:has(.transaction-swipe-delete:focus-visible) .transaction-simple-row {
     transform: none;
   }
 
@@ -4089,7 +4180,7 @@ td select:focus {
   }
 
   .bills-page .spreadsheet-panel select[data-column-key="paymentAccount"] {
-    min-width: 10.75rem;
+    min-width: 12rem;
   }
 }
 
@@ -4583,7 +4674,8 @@ td textarea[readonly] {
   padding: 0.55rem 0.65rem;
 }
 
-.bill-undo-notice {
+.bill-undo-notice,
+.transaction-undo-notice {
   position: fixed;
   right: max(1rem, env(safe-area-inset-right));
   bottom: max(5.5rem, calc(env(safe-area-inset-bottom) + 1rem));
@@ -4600,12 +4692,14 @@ td textarea[readonly] {
   padding: 0.8rem 0.9rem;
 }
 
-.bill-undo-notice span {
+.bill-undo-notice span,
+.transaction-undo-notice span {
   min-width: 0;
   font-size: 0.86rem;
 }
 
-.bill-undo-notice button {
+.bill-undo-notice button,
+.transaction-undo-notice button {
   flex-shrink: 0;
   border-color: var(--accent);
   background: var(--accent);

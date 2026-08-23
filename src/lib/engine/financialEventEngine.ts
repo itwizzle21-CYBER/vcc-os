@@ -15,6 +15,12 @@ export interface DeletedBillSnapshot {
   linkedTransactions: Array<{ row: SpreadsheetRow; index: number }>;
 }
 
+export interface DeletedTransactionSnapshot {
+  transaction: SpreadsheetRow;
+  transactionIndex: number;
+  linkedBill?: { row: SpreadsheetRow; index: number };
+}
+
 export interface PayBillInput {
   billId: string;
   paymentAccount: string;
@@ -100,6 +106,54 @@ export function deleteTransactionEvent(data: AppData, transactionId: string): Ap
     sections: {
       ...reconciled.sections,
       bills: nextBills,
+      carPayment: carPayment.carPayment,
+    },
+  };
+}
+
+export function deleteTransactionWithSnapshotEvent(
+  data: AppData,
+  transactionId: string,
+): { data: AppData; snapshot: DeletedTransactionSnapshot | null } {
+  const transactionIndex = data.sections.transactions.findIndex((row) => row.id === transactionId);
+  if (transactionIndex === -1) return { data, snapshot: null };
+  const transaction = data.sections.transactions[transactionIndex];
+  const billId = transaction.cells.billId?.trim();
+  const billIndex = billId ? data.sections.bills.findIndex((bill) => bill.id === billId) : -1;
+  return {
+    data: deleteTransactionEvent(data, transactionId),
+    snapshot: {
+      transaction,
+      transactionIndex,
+      linkedBill: billIndex >= 0 ? { row: data.sections.bills[billIndex], index: billIndex } : undefined,
+    },
+  };
+}
+
+export function restoreDeletedTransactionEvent(data: AppData, snapshot: DeletedTransactionSnapshot): AppData {
+  if (data.sections.transactions.some((row) => row.id === snapshot.transaction.id)) return data;
+
+  const transactions = [...data.sections.transactions];
+  transactions.splice(Math.min(snapshot.transactionIndex, transactions.length), 0, snapshot.transaction);
+  const bills = [...data.sections.bills];
+  if (snapshot.linkedBill) {
+    const existingBillIndex = bills.findIndex((bill) => bill.id === snapshot.linkedBill!.row.id);
+    if (existingBillIndex >= 0) bills[existingBillIndex] = snapshot.linkedBill.row;
+    else bills.splice(Math.min(snapshot.linkedBill.index, bills.length), 0, snapshot.linkedBill.row);
+  }
+  const base = { ...data, sections: { ...data.sections, bills } };
+  const carPayment = reconcileCarPaymentRows(
+    data.sections.transactions,
+    transactions,
+    data.sections.carPayment,
+  );
+  const reconciled = syncTransactionTransfers(base, carPayment.transactions);
+
+  return {
+    ...reconciled,
+    sections: {
+      ...reconciled.sections,
+      bills,
       carPayment: carPayment.carPayment,
     },
   };

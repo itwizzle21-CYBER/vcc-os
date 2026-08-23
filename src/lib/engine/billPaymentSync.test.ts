@@ -62,6 +62,17 @@ describe("paid bill transaction sync", () => {
     });
   });
 
+  it("does not repeat the word bill when the bill name already includes it", () => {
+    const unpaid = bill("overdue");
+    unpaid.cells.name = "Electric bill";
+    const paid = bill("paid");
+    paid.cells.name = "Electric bill";
+
+    const [transaction] = syncBillPaymentTransactions([unpaid], [paid], [], "2026-07-16");
+
+    expect(transaction.cells.description).toBe("Electric bill payment");
+  });
+
   it("does not duplicate the expense when a paid bill is edited", () => {
     const existing = syncBillPaymentTransactions([bill("overdue")], [bill("paid")], [], "2026-07-16");
     existing[0].cells.principalAmount = "90.00";
