@@ -1045,11 +1045,11 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   await expect(page.locator(".search-results").getByRole("link", { name: /Goals/ }).first()).toBeVisible();
 
   await page.goto("/transactions");
-  await expect(page.getByRole("heading", { name: /activity/i }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Start with the place the money changed" })).toBeVisible();
   const transactionToolbar = page.locator(".transaction-concept-toolbar");
   await expect(transactionToolbar.getByRole("textbox", { name: "Search transactions" })).toBeVisible();
   await expect(transactionToolbar.getByRole("button", { name: "Filters" })).toBeVisible();
-  await expect(transactionToolbar.locator(".transaction-type-tabs button")).toHaveCount(4);
+  await expect(transactionToolbar.locator(".transaction-type-tabs button")).toHaveCount(0);
   await expect(page.locator('[data-column-key="recurring"]')).toHaveCount(0);
   const incomeAmount = page.locator(".transaction-row-amount.income strong").first();
   const expenseAmount = page.locator(".transaction-row-amount.expense strong").first();
@@ -1064,7 +1064,7 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   await expect(page.locator(".transaction-simple-row")).toHaveCount(1);
   await expect(page.locator(".transaction-row-account")).toHaveText("Cash App");
   await accountFilter.selectOption("all");
-  await transactionToolbar.getByRole("button", { name: "Transfers" }).click();
+  await transactionToolbar.getByLabel("Transaction type").selectOption("transfer");
   await expect(page.locator(".transaction-simple-row")).toHaveCount(1);
   await expect(page.locator(".transaction-row-account")).toContainText("Emergency Fund");
 
