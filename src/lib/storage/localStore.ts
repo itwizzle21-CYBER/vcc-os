@@ -4,6 +4,7 @@ import { canonicalizeAccountRows, canonicalizeInventoryRows } from "../engine/ca
 import { syncConfirmedReceiptTransactions } from "../engine/carLoanEngine";
 import { displayAccountLabel } from "../engine/paycheckPlannerEngine";
 import { migrateLegacyReceiptTaxRows } from "../engine/receiptTransactionEngine";
+import { isAvailableLayoutView } from "../layoutViews";
 import { createVerifiedCarLoanData } from "./carLoanReference";
 import { createZeroData, sectionConfigs } from "./defaultData";
 
@@ -174,7 +175,7 @@ export function normalizeAppData(raw: unknown): AppData {
   const layoutViews = Object.fromEntries(
     Object.entries(starter.settings.layoutViews).map(([page, fallback]) => {
       const candidate = Number((sourceLayoutViews as Record<string, unknown>)[page]);
-      return [page, candidate >= 1 && candidate <= 5 ? candidate : fallback];
+      return [page, isAvailableLayoutView(page as keyof AppData["settings"]["layoutViews"], candidate) ? candidate : fallback];
     }),
   ) as AppData["settings"]["layoutViews"];
   const vccCompanionId = (["scout", "penny", "clover", "pico"] as const).includes(sourceSettings.vccCompanionId as "scout" | "penny" | "clover" | "pico")

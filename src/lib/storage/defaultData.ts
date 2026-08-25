@@ -1,5 +1,6 @@
 import type { AppData, SectionConfig, SectionKey } from "../types/app";
 import { syncConfirmedReceiptTransactions } from "../engine/carLoanEngine";
+import { defaultLayoutViews } from "../layoutViews";
 import { createVerifiedCarLoanData } from "./carLoanReference";
 
 export const sectionConfigs: Record<SectionKey, SectionConfig> = {
@@ -446,14 +447,7 @@ export function createZeroData(): AppData {
       vitaScanEnabled: true,
       vccPetEnabled: true,
       vccCompanionId: "scout",
-      layoutViews: {
-        dashboard: 1,
-        money: 2,
-        bills: 3,
-        inventory: 4,
-        transactions: 3,
-        reports: 4,
-      },
+      layoutViews: { ...defaultLayoutViews },
     },
   };
 }

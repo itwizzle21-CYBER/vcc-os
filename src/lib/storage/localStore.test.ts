@@ -160,24 +160,24 @@ describe("import normalization", () => {
     expect(imported.sections.transactions).toEqual(expect.any(Array));
     expect(imported.carLoan.receipts).toEqual(expect.any(Array));
     expect(imported.settings.layoutViews).toEqual({
-      dashboard: 1,
-      money: 2,
-      bills: 3,
+      dashboard: 3,
+      money: 5,
+      bills: 5,
       inventory: 4,
-      transactions: 3,
-      reports: 4,
+      transactions: 2,
+      reports: 1,
     });
   });
 
-  it("preserves valid layout views and repairs invalid selections", () => {
+  it("preserves available layout views and repairs removed or invalid selections", () => {
     const imported = normalizeAppData({
       sections: {},
       settings: {
         layoutViews: {
-          dashboard: 5,
+          dashboard: 2,
           money: 0,
           bills: 9,
-          inventory: 2,
+          inventory: 3,
           transactions: 4,
           reports: 1,
         },
@@ -185,11 +185,11 @@ describe("import normalization", () => {
     });
 
     expect(imported.settings.layoutViews).toEqual({
-      dashboard: 5,
-      money: 2,
-      bills: 3,
-      inventory: 2,
-      transactions: 4,
+      dashboard: 2,
+      money: 5,
+      bills: 5,
+      inventory: 3,
+      transactions: 2,
       reports: 1,
     });
   });

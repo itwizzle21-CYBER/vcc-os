@@ -1,4 +1,5 @@
 import { Activity, Columns3, ListChecks, Rows3, ScanSearch } from "lucide-react";
+import { availableLayoutViews } from "../../lib/layoutViews";
 import type { LayoutView, LayoutViewPage, LayoutViews } from "../../lib/types/app";
 
 export const layoutViewOptions = [
@@ -27,7 +28,7 @@ export function LayoutViewSettings({ value, onChange }: { value: LayoutViews; on
           <h2>Choose how each workspace thinks</h2>
           <p>Every view uses the same saved data and calculations. Only the hierarchy and interaction model change.</p>
         </div>
-        <span>5 views · 6 pages</span>
+        <span>8 focused choices · 6 pages</span>
       </header>
       <div className="layout-view-page-list">
         {pages.map((page) => (
@@ -40,7 +41,8 @@ export function LayoutViewSettings({ value, onChange }: { value: LayoutViews; on
               <a href={page.href}>Open page</a>
             </div>
             <div className="layout-view-choice-grid" role="radiogroup" aria-label={`${page.label} layout view`}>
-              {layoutViewOptions.map((option) => {
+              {availableLayoutViews[page.key].map((view) => {
+                const option = layoutViewOptions.find(({ id }) => id === view)!;
                 const Icon = option.icon;
                 const selected = value[page.key] === option.id;
                 return (

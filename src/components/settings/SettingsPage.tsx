@@ -173,7 +173,7 @@ export default function SettingsPage({
             <SettingFeatureRow title="Local-first mode" description="Keep this VCC workspace and its data on this device." checked={data.settings.localMode} onChange={(localMode) => onChange({ ...data, settings: { ...data.settings, localMode } })} />
           </SettingsSection>
 
-          <SettingsSection id="settings-layout-views" icon={Columns3} title="Layout Views" description="Choose one of five focused layouts for each major workspace." open={openSection === "settings-layout-views"}>
+          <SettingsSection id="settings-layout-views" icon={Columns3} title="Layout Views" description="Choose from the focused layouts retained for each major workspace." open={openSection === "settings-layout-views"}>
             <LayoutViewSettings
               value={data.settings.layoutViews}
               onChange={(layoutViews) => onChange({ ...data, settings: { ...data.settings, layoutViews } })}

@@ -698,25 +698,25 @@ test("loads every application page without runtime or heading-structure failures
   expect(errors).toEqual([]);
 });
 
-test("keeps all 30 selectable layouts collision-free from mobile through desktop", async ({ page }, testInfo) => {
+test("keeps all retained layouts collision-free from mobile through desktop", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "This test supplies its own responsive viewport matrix.");
   test.setTimeout(420_000);
   await page.emulateMedia({ reducedMotion: "reduce" });
 
-  const pages = [
-    { label: "Dashboard", path: "/" },
-    { label: "Money Snapshot", path: "/money" },
-    { label: "Bills", path: "/bills" },
-    { label: "Inventory", path: "/inventory" },
-    { label: "Transactions", path: "/transactions" },
-    { label: "Reports", path: "/reports" },
-  ];
   const views = [
     { id: 1, name: "Focused Stack", description: "A calm, linear view with details revealed only when needed." },
     { id: 2, name: "Lens", description: "A side-by-side view centered on accounts, status, or categories." },
     { id: 3, name: "Timeline", description: "Activity-led sections that make sequence and progress easy to read." },
     { id: 4, name: "Command Strip", description: "Key totals first, followed by one focused working area." },
     { id: 5, name: "Review Queue", description: "Exceptions and next decisions first, with recent history beside them." },
+  ];
+  const pages = [
+    { label: "Dashboard", path: "/", views: [views[2], views[1]] },
+    { label: "Money Snapshot", path: "/money", views: [views[4]] },
+    { label: "Bills", path: "/bills", views: [views[4]] },
+    { label: "Inventory", path: "/inventory", views: [views[3], views[2]] },
+    { label: "Transactions", path: "/transactions", views: [views[1]] },
+    { label: "Reports", path: "/reports", views: [views[0]] },
   ];
   const viewports = [
     { width: 320, height: 844 },
@@ -727,7 +727,7 @@ test("keeps all 30 selectable layouts collision-free from mobile through desktop
   const failures: string[] = [];
 
   for (const targetPage of pages) {
-    for (const view of views) {
+    for (const view of targetPage.views) {
       await page.goto("/settings#settings-layout-views");
       const pageCard = page.getByRole("region", { name: targetPage.label, exact: true });
       const radio = pageCard.getByRole("radio", {
@@ -887,7 +887,7 @@ test("keeps wide-screen context rails readable", async ({ page }, testInfo) => {
 
   await chooseLayout(
     "Bills",
-    "4. Command Strip Key totals first, followed by one focused working area.",
+    "5. Review Queue Exceptions and next decisions first, with recent history beside them.",
   );
   await page.goto("/bills");
 
@@ -1266,9 +1266,9 @@ test("reopens saved page-created transactions as editable records and refreshes 
   await expect(editor.getByRole("heading", { name: "Second saved activity" })).toBeVisible();
 });
 
-test("loads the selected transaction into a single fresh editor across all five layouts", async ({ page }) => {
+test("loads the selected transaction into a single fresh editor in the retained Lens layout", async ({ page }) => {
   test.setTimeout(90_000);
-  for (const layout of [1, 2, 3, 4, 5]) {
+  for (const layout of [2]) {
     await page.goto("/transactions");
     await page.evaluate((layoutView) => {
       const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -1277,7 +1277,7 @@ test("loads the selected transaction into a single fresh editor across all five 
     }, layout);
     await page.reload();
 
-    const rowSelector = layout === 5 ? ".transaction-review-recent button" : ".transaction-simple-row";
+    const rowSelector = ".transaction-simple-row";
     await page.locator(rowSelector).filter({ hasText: "Primary paycheck" }).first().click();
     await expect(page.locator(".transaction-detail-editor")).toHaveCount(1);
     await expect(page.locator(".transaction-detail-editor").getByLabel("Description")).toHaveValue("Primary paycheck");
