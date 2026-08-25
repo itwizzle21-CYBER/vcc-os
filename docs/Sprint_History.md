@@ -374,3 +374,30 @@ Release status:
 - GO for commit, push, and official production deployment.
 - No application behavior, dependency, schema, financial calculation, or persisted data changed.
 
+## Sprint 0.25: Bills Review Queue Redesign
+
+Date: 2026-08-25
+
+Goal:
+
+- Make Bills a focused review queue while preserving the canonical payment, transaction, account-balance, deletion, and Undo guarantees.
+
+Completed:
+
+- Added canonical summary cards, priority ordering, search and status filters, upcoming and recently-cleared rails, and a focused review panel.
+- Added account-aware payment-impact previews and routed payment submission through the existing deterministic bill-payment event.
+- Retained the full spreadsheet ledger for add, edit, sort, reopen, delete, and Undo workflows.
+- Added cent-safe bill-review unit coverage and preserved the established accessible queue-region contract.
+- Recorded detailed evidence and rollback guidance in `docs/SPRINT_0_25_BILLS_REVIEW_QUEUE_REDESIGN.md`.
+
+Validation:
+
+- Build, bundle budgets, lint, TypeScript, 186 unit tests, product-design QA, and production dependency audit passed.
+- Full browser suite: 97 passed, 11 intentionally skipped by project, 0 failed in 15.4 minutes.
+- Desktop/mobile accessibility sweeps and the dedicated 320px Bills/Transactions overflow contract passed.
+- No dependency, schema, RLS, migration, or production-data changes were required.
+
+Release status:
+
+- GO for commit, push, and official production deployment.
+

@@ -373,7 +373,7 @@ export default function Spreadsheet({
               <BufferedTextInput aria-label={`Search ${config.title} rows`} value={search} onValueChange={setSearch} placeholder={`Search ${config.title} rows`} />
             </label>
           )}
-          <button type="button" onClick={addRow}>
+          <button type="button" data-spreadsheet-action="add" onClick={addRow}>
             {addLabel}
           </button>
           <button type="button" className="ghost-button" onClick={resetRows}>

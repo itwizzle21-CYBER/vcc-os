@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-25 - Sprint 0.25 Bills Review Queue Redesign
+
+- Rebuilt Bills around a responsive priority review queue with canonical summaries, search/status filters, upcoming and recently-cleared rails, and a focused review panel.
+- Added account-aware payment-impact previews while preserving the existing deterministic payment transaction, account reconciliation, reopen, delete, and Undo flows.
+- Retained the complete spreadsheet ledger for direct bill management and restored the established accessible queue-region contract.
+- Added cent-safe review-engine tests and verified 186 unit tests, 97 applicable browser tests, 11 intentional project skips, responsive/accessibility checks, bundle budgets, and a clean production dependency audit.
+- Production URL: `https://vcc-os.vercel.app`.
+- Rollback: redeploy the preceding Vercel production deployment or revert the Sprint 0.25 commit; no database or persisted-data rollback is required.
+
 ## 2026-08-24 - Sprint 0.24 Deterministic Playwright Server Lifecycle
 
 - Replaced Playwright's shell-managed Vite web server with a programmatic Vite server owned by global setup and closed by its returned teardown callback.
