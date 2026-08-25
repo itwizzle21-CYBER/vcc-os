@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-08-24 - Sprint 0.24 Deterministic Playwright Server Lifecycle
+
+- Replaced Playwright's shell-managed Vite web server with a programmatic Vite server owned by global setup and closed by its returned teardown callback.
+- Disabled implicit reuse of arbitrary port-4173 servers by enforcing Vite `strictPort` startup for every browser run.
+- Restored a deterministic release signal after two stale VCC development servers caused aggregate-only timeouts while every focused rerun passed.
+- Verified build, lint, TypeScript, 183 unit tests, 97 applicable browser tests, 11 intentional project skips, production dependency audit, bundle budgets, automatic teardown, and port release.
+- Production URL: `https://vcc-os.vercel.app`.
+- Rollback: revert the Playwright configuration and `tests/e2e/global-setup.ts`; no application, schema, dependency, or persisted-data rollback is required.
+
+## 2026-08-24 - Sprint 0.6 AI Stack Remediation Completion
+
+- Installed the approved TypeScript, Tailwind, and interaction-design skills plus the GitHub and Supabase CLIs.
+- Installed Google Chrome and documented its remaining Computer-use extension setup action.
+- Raised the audited AI-stack readiness score to 94% and preserved Vercel CLI operation while documenting the app connector's project-scope limitation.
+- Commit: `69e0d8cd`.
+- Production deployment: READY at `https://vcc-os.vercel.app`.
+
 ## Unreleased
 
 - Made a status-first Paid action on Bills open an accessible payment-details flow instead of rejecting the one-field row update.

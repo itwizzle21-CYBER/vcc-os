@@ -346,3 +346,31 @@ Release status:
 
 - GO for the focused commit and official production deployment; production smoke remains the post-deploy gate.
 
+## Sprint 0.24: Deterministic Playwright Server Lifecycle
+
+Date: 2026-08-24
+
+Goal:
+
+- Prevent the release suite from silently reusing stale VCC development servers.
+- Ensure the Windows Playwright run releases its Vite server and port without manual process termination.
+
+Completed:
+
+- Replaced the shell-based Playwright `webServer` command with a programmatic Vite server created in global setup.
+- Enabled strict port ownership so an occupied test port fails visibly instead of selecting or reusing another server.
+- Returned an awaited teardown callback that closes the exact Vite server instance owned by the run.
+- Preserved the serial desktop/mobile execution policy and every existing user-visible assertion.
+- Recorded detailed evidence and rollback guidance in `docs/SPRINT_0_24_PLAYWRIGHT_SERVER_LIFECYCLE.md`.
+
+Validation:
+
+- Build, bundle budgets, lint, TypeScript, 183 unit tests, and production dependency audit passed.
+- Full browser suite: 97 passed, 11 intentionally skipped by project, 0 failed in 17.9 minutes.
+- The Playwright process returned exit code 0 without intervention, and port 4173 was released after teardown.
+
+Release status:
+
+- GO for commit, push, and official production deployment.
+- No application behavior, dependency, schema, financial calculation, or persisted data changed.
+
