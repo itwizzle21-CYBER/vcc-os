@@ -19,11 +19,14 @@ describe("bill review engine", () => {
     ], referenceDate);
 
     expect(result).toEqual({
+      dueThisMonthCount: 2,
+      dueThisMonthAmount: 15.26,
       openCount: 2,
       openAmount: 30.01,
       paidCount: 1,
       paidAmount: 5.25,
       overdueCount: 1,
+      overdueAmount: 10.01,
       upcomingCount: 1,
       autopayCount: 1,
     });
@@ -36,6 +39,9 @@ describe("bill review engine", () => {
 
     expect(result.openCount).toBe(1);
     expect(result.openAmount).toBe(0);
+    expect(result.dueThisMonthCount).toBe(0);
+    expect(result.dueThisMonthAmount).toBe(0);
+    expect(result.overdueAmount).toBe(0);
     expect(result.upcomingCount).toBe(0);
   });
 

@@ -104,6 +104,7 @@ export default function AppShell({
   );
   const isDashboard = normalize(currentPath) === "/";
   const isTransactions = normalize(currentPath) === "/transactions";
+  const isBills = normalize(currentPath) === "/bills";
   const moreTabActive = !mobileTabPaths.includes(normalize(currentPath));
   const pageTitle = titleForPath(currentPath, settings);
   const accountName = settings.accountName.trim();
@@ -301,7 +302,7 @@ export default function AppShell({
 
   return (
     <div
-      className={`app-shell reference-shell theme-${activeTheme} appearance-${settings.appearanceTheme} accent-${settings.accent} density-${settings.density} ${hasWallpaper ? `has-wallpaper wallpaper-${visualSettings.wallpaper}` : "wallpaper-default"} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""} ${isTransactions ? "transactions-shell" : ""}`}
+      className={`app-shell reference-shell theme-${activeTheme} appearance-${settings.appearanceTheme} accent-${settings.accent} density-${settings.density} ${hasWallpaper ? `has-wallpaper wallpaper-${visualSettings.wallpaper}` : "wallpaper-default"} ${settings.sidebarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-shell" : ""} ${isTransactions ? "transactions-shell" : ""} ${isBills ? "bills-shell" : ""}`}
       style={(hasWallpaper ? { "--vcc-wallpaper": `url(${JSON.stringify(wallpaperSource)})`, ...opacityStyle } : undefined) as CSSProperties | undefined}
     >
       <header className="dashboard-top-nav">
@@ -385,6 +386,7 @@ export default function AppShell({
         {!isDashboard && <header className="topbar">
           <div>
             <h1 aria-label={pageTitle}>{pageTitle}</h1>
+            {isBills && <p className="bills-page-subtitle">Review what needs attention and clear your queue.</p>}
           </div>
           <div className="top-actions">
             <div className="search-shell">

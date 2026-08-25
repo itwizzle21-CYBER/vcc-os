@@ -1,70 +1,66 @@
-# Bills Review Queue Design QA
+# Bills Reference-Match Design QA
 
-- Source visual truth: `C:\Users\itwiz\AppData\Local\Temp\codex-clipboard-ebfeb753-09dd-47d7-aeb8-2a2c79f9870a.png`
-- Browser-rendered implementation: `C:\Users\itwiz\Downloads\VCC-OS\output\design-qa\bills-review-desktop.png`
-- Focused review-panel evidence: `C:\Users\itwiz\Downloads\VCC-OS\output\design-qa\bills-review-panel.png`
+- Source: `C:\Users\itwiz\AppData\Local\Temp\codex-clipboard-ebfeb753-09dd-47d7-aeb8-2a2c79f9870a.png`
+- Final implementation capture: `C:\Users\itwiz\Downloads\VCC-OS\output\design-qa\bills-reference-match-final-clean.png`
+- Side-by-side comparison: `C:\Users\itwiz\Downloads\VCC-OS\output\design-qa\bills-reference-comparison.png`
 - Route: `http://127.0.0.1:4173/bills`
-- Viewport: 1536 × 1024 CSS pixels; additional checks at 900 × 900 and 320 × 900.
-- Source pixels: 1536 × 1024.
-- Implementation capture pixels: 1552 × 1044 from the in-app Browser capture surface. The comparison excludes the surrounding capture-canvas edge and judges the app-owned content region at the requested 1536 × 1024 CSS viewport.
-- State: the reference shows an open bill with payment impact; the available local persisted row is already paid, so the implementation capture shows the analogous open review panel with canonical payment evidence. Payment-form behavior is covered by the canonical financial-event and bill-review unit tests.
+- Comparison viewport: 1200 x 1024 CSS pixels, matching the 1200px-wide app region to the right of the source image's instruction board.
+- Responsive check: 394 x 852 CSS pixels.
+- State note: the source contains four open example bills. The browser contains the user's persisted paid-only local data, so QA used the same screen structure with its real empty-queue and paid-review states instead of overwriting financial records.
 
-## Full-view comparison evidence
+## Visible match
 
-The implementation preserves the selected direction rather than cloning the supplied concept literally:
+The implementation now follows the reference hierarchy directly: heading and toolbar, four-part summary strip, priority review queue, upcoming/recently-cleared rail, and a persistent right-side review panel. Desktop proportions resolve to approximately 636px / 288px / 208px for queue, rail, and review panel. The spreadsheet remains collapsed beneath the review surface so all existing data-entry capabilities are preserved without competing with the primary workflow.
 
-- The same hierarchy is present: Bills heading, compact summary strip, search and status controls, priority review queue, upcoming and recently-cleared rail, and a dedicated right-side review panel.
-- The existing VCC shell, navigation, theme selection, Inter/system typography, spacing tokens, radii, and icon library remain intact.
-- The full spreadsheet ledger remains available below the decision surface for complete add, edit, sort, status, paid-from, reopen, delete, and Undo workflows.
-- The source is dark while the captured implementation reflects the user's active light-theme preference. This is an intentional product constraint, not design drift; the redesign uses semantic theme tokens in either mode.
-- No raster imagery is part of the application screen. Standard interface icons use the existing Lucide family; no placeholder art, custom SVG, emoji, or generated asset substitution was introduced.
+- Typography: existing Inter/system typography is retained with the source's compact uppercase labels, large monetary values, quiet supporting copy, and single-line review-panel title.
+- Spacing and surfaces: dark navy canvas, low-contrast panel fills, fine blue-gray dividers, compact radii, and yellow primary actions match the source treatment.
+- Color and states: yellow accent, green success, blue informational, amber upcoming, and red urgency tokens map to the reference. Status meaning also has visible text or icons.
+- Icons: all visible icons use the existing Lucide family; no emoji, handcrafted SVG, placeholder illustration, or CSS art was added.
+- Copy: fixed labels match the reference direction while names, dates, amounts, status, and payment evidence remain driven by persisted VCC data.
+- Responsiveness: controls remain visible at mobile width, summary cards become two columns, workspaces stack without horizontal overflow, and tap targets remain usable.
+- Accessibility: one H1, native buttons and forms, named icon controls, visible focus styles, text-backed status indicators, and reduced-motion support are retained.
 
-## Focused-region comparison evidence
+## Functionality verified
 
-The right-side panel was reviewed separately because its dense details are too small to judge reliably in the full-view capture. It keeps bill identity, amount, due/status details, recorded payment evidence, edit, history, and destructive action visually grouped. For open bills, the same panel renders paying-account selection, paid date, cent-rounded before/amount/after values, coverage assessment, disabled guidance, and the canonical payment submission.
-
-## Required fidelity surfaces
-
-- Fonts and typography: VCC's existing Inter/system stack and optical weights remain consistent. Headings, numeric amounts, uppercase labels, truncation, and mobile wrapping are readable and preserve the reference hierarchy.
-- Spacing and layout rhythm: the summary strip, command surface, queue, rail, and review panel align to the existing 1rem module rhythm. Queue and panel no longer force equal heights in empty states.
-- Colors and tokens: all new surfaces use VCC semantic surface, border, accent, good, warning, and bad tokens. Status meaning always includes text or an icon, not color alone.
-- Image quality and asset fidelity: no source image assets were required. Existing vector icons are consistent in stroke, scale, and alignment.
-- Copy and content: the redesign emphasizes one next action, payment impact, traceability, and a calm empty state. Dynamic names, dates, amounts, and status values come from persisted VCC data.
-- States and interactions: hover, focus-visible, active, selected, disabled, validation, empty, paid-success, warning, and reduced-motion states are implemented.
-- Accessibility: one page H1 is retained by the shell; heading order, native buttons/links/forms, labels, named icon buttons, visible keyboard focus, 24px+ targets, status/alert announcements, and 320px reflow were checked. The packaged audit script could not create its detached canvas inside the in-app Browser's read-only evaluation sandbox, so its contrast automation was unavailable; semantic token use and keyboard/focus checks were completed manually.
+- Search and status filter update the queue.
+- Review opens the selected bill; close dismisses the panel.
+- Edit Bill expands the ledger and focuses the exact selected name cell.
+- Paid bills display stored payment account and paid date.
+- Open-bill payment impact uses cent-rounded canonical financial calculations and persists through the existing transaction path.
+- Add, history, delete, sort, reopen, and Undo remain available through the existing ledger and review actions.
+- Production build, lint, TypeScript, and all 186 unit tests pass.
 
 ## Comparison history
 
 ### Pass 1
 
-- [P2] The auto-fit summary produced a 3+1 card arrangement near 900px, weakening scan rhythm.
-- [P2] In the empty state, the queue stretched to the height of the review panel, creating excessive blank space.
+- [P2] The saved light theme bled into the reference-matched Bills route.
+- [P2] The review panel occupied the wrong grid track at desktop width.
 
-Fixes:
-
-- Increased the intrinsic summary-card minimum so the intermediate width resolves to a balanced 2×2 grid.
-- Added start alignment to the review workspace so queue, rail, and panel keep their natural heights.
+Fix: scoped the Bills route to the reference dark palette and gave the summary, queue, rail, and review panel explicit desktop grid placement.
 
 ### Pass 2
 
-- At 900px the summary resolves to two equal columns and reports no horizontal overflow.
-- At 320px the document width remains within the viewport and all primary controls reflow into one usable column.
-- At desktop width the empty queue is 289px high while the review panel remains independently sized at 561px.
-- No actionable P0, P1, or P2 visual findings remain.
+- [P2] The source-width comparison dropped the panel below the queue because the breakpoint and flexible columns resolved too late.
+- [P2] Queue and rail proportions drifted from the source.
 
-## Primary interactions tested
+Fix: moved the desktop breakpoint to 68rem and set stable 636px/288px/208px-equivalent proportions at the comparison viewport.
 
-- Search and status filter selected state.
-- Recently-cleared row opens the correct review panel.
-- Close action removes the panel.
-- Edit action closes review and focuses the exact spreadsheet bill-name editor.
-- Paid state displays stored payment account and paid date.
-- Keyboard focus indicator is visible on filter controls.
-- Browser console reports zero errors.
+### Pass 3
 
-## Follow-up polish
+- [P2] The review title wrapped and the panel minimum height stretched the entire grid, creating excess vertical space.
 
-- [P3] A future extraction of the Bills workspace from `App.tsx` would recover main-bundle headroom without changing the design.
-- [P3] A dedicated seeded visual fixture would allow an exact screenshot of the open-payment form without touching local user data.
+Fix: tightened the panel heading scale, removed the track-stretching minimum height, and kept the queue's reference-like vertical rhythm independently.
+
+### Final pass
+
+- Desktop and mobile captures have no horizontal overflow or overlapping controls.
+- Browser diagnostics contain only Vite connection and React development messages; no application errors were observed.
+- No actionable P0, P1, or P2 design findings remain.
+
+## Residual polish
+
+- [P3] A non-persistent seeded visual fixture would allow exact open-payment screenshot parity without touching the user's saved financial data.
+- [P3] The Bills workspace can later be extracted from `App.tsx` to improve code organization without changing behavior or appearance.
 
 final result: passed

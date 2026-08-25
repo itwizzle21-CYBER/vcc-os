@@ -5,11 +5,13 @@ import {
   ArrowRight,
   BrainCircuit,
   CalendarDays,
-  CalendarClock,
+  ChevronDown,
+  ChevronRight,
   Check,
   CheckCircle2,
   CircleDollarSign,
   CreditCard,
+  EllipsisVertical,
   Filter,
   History,
   Lock,
@@ -18,6 +20,7 @@ import {
   Plus,
   ReceiptText,
   Save,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
@@ -595,10 +598,13 @@ function BillsPage({
 }) {
   const [billSearch, setBillSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [billMessage, setBillMessage] = useState("");
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
+  const [reviewPanelDismissed, setReviewPanelDismissed] = useState(false);
   const [reviewPaymentAccount, setReviewPaymentAccount] = useState("");
   const [reviewPaidDate, setReviewPaidDate] = useState(todayIso);
+  const [billToolbarTarget, setBillToolbarTarget] = useState<Element | null>(null);
   const [deletedBill, setDeletedBill] = useState<{ name: string; snapshot: DeletedBillSnapshot } | null>(null);
   const undoTimerRef = useRef<number | undefined>(undefined);
   const billRows = data.sections.bills.map(normalizeBillRow);
@@ -616,10 +622,10 @@ function BillsPage({
   });
   const visibleBillIds = new Set(visibleBillRows.map((row) => row.id));
   const rankedBills = rankBillRows(filledBillRows);
-  const queueBills = rankedBills.filter((bill) => visibleBillIds.has(bill.row.id));
+  const attentionBills = rankedBills.filter((bill) => bill.daysUntilDue <= 30);
+  const queueBills = attentionBills.filter((bill) => visibleBillIds.has(bill.row.id));
   const billReviewSummary = summarizeBillReview(filledBillRows);
-  const visibleBillSummary = summarizeBillReview(visibleBillRows);
-  const upcomingBills = rankedBills
+  const upcomingBills = attentionBills
     .filter((bill) => bill.daysUntilDue >= 0 && bill.daysUntilDue <= 30)
     .sort((left, right) => left.daysUntilDue - right.daysUntilDue)
     .slice(0, 4);
@@ -639,22 +645,32 @@ function BillsPage({
   const reviewImpact = selectedBill && reviewAccount
     ? previewBillPayment(reviewAccount.balance, selectedBill.cells.amount)
     : null;
-  const billStats = {
-    shown: visibleBillRows.filter((row) => !isBlankRow(row.cells)).length,
-    amount: visibleBillSummary.openAmount + visibleBillSummary.paidAmount,
-    overdue: billReviewSummary.overdueCount,
-    autopay: billReviewSummary.autopayCount,
-  };
+  const nextUpcomingBill = upcomingBills[0];
+  const defaultReviewBill = queueBills[0]?.row || recentlyClearedBills[0];
+  const defaultPaymentAccount = billPaymentAccounts[0]?.value || "";
 
   useEffect(() => () => {
     if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
   }, []);
 
+  useEffect(() => {
+    setBillToolbarTarget(document.querySelector(".bills-shell .top-actions"));
+  }, []);
+
+  useEffect(() => {
+    const nextBill = defaultReviewBill;
+    if (!nextBill || selectedBillId || reviewPanelDismissed) return;
+    setSelectedBillId(nextBill.id);
+    setReviewPaymentAccount(String(nextBill.cells.paymentAccount || defaultPaymentAccount));
+    setReviewPaidDate(isValidIsoDate(nextBill.cells.paidDate) ? nextBill.cells.paidDate : todayIso());
+  }, [defaultPaymentAccount, defaultReviewBill, reviewPanelDismissed, selectedBillId]);
+
   function openBillReview(rowId: string) {
     const bill = billRows.find((row) => row.id === rowId);
     if (!bill) return;
+    setReviewPanelDismissed(false);
     setSelectedBillId(rowId);
-    setReviewPaymentAccount(String(bill.cells.paymentAccount || ""));
+    setReviewPaymentAccount(String(bill.cells.paymentAccount || billPaymentAccounts[0]?.value || ""));
     setReviewPaidDate(isValidIsoDate(bill.cells.paidDate) ? bill.cells.paidDate : todayIso());
     setBillMessage("");
   }
@@ -662,6 +678,8 @@ function BillsPage({
   function openNewBillEditor() {
     setStatusFilter("all");
     window.setTimeout(() => {
+      const management = document.querySelector<HTMLDetailsElement>(".bills-management");
+      if (management) management.open = true;
       const addButton = document.querySelector<HTMLButtonElement>('.bills-page [data-spreadsheet-action="add"]');
       addButton?.click();
       document.querySelector(".bills-management")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -674,6 +692,8 @@ function BillsPage({
     setStatusFilter("all");
     setSelectedBillId(null);
     window.setTimeout(() => {
+      const management = document.querySelector<HTMLDetailsElement>(".bills-management");
+      if (management) management.open = true;
       const editor = document.querySelector<HTMLElement>(`[data-row-id="${rowId}"][data-column-key="name"]`);
       editor?.scrollIntoView({ behavior: "smooth", block: "center" });
       editor?.focus();
@@ -793,91 +813,83 @@ function BillsPage({
 
   return (
     <div className={`bills-page bills-review-redesign module-page ${layoutViewClass(data.settings.layoutViews.bills)}`} data-layout-view={data.settings.layoutViews.bills}>
-      <header className="bills-review-intro">
-        <div>
-          <p className="eyebrow">Review queue</p>
-          <h2>Handle the next bill, not the whole month.</h2>
-          <p>Priority, payment impact, and history stay together so every action is easy to verify.</p>
-        </div>
-        <button type="button" className="bills-new-button" onClick={openNewBillEditor}>
-          <Plus size={18} aria-hidden="true" /> New bill
-        </button>
-      </header>
+      {billToolbarTarget && createPortal(
+        <div className="bills-topbar-controls">
+          <label className="bills-topbar-search">
+            <Search size={17} aria-hidden="true" />
+            <BufferedTextInput aria-label="Search bills" value={billSearch} onValueChange={setBillSearch} placeholder="Search bills..." />
+          </label>
+          <div className="bills-filter-menu">
+            <button type="button" className="bills-filter-trigger" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>
+              <Filter size={16} aria-hidden="true" /> Filter
+              {statusFilter !== "all" && <span aria-label={`Current filter: ${statusFilter}`}>1</span>}
+            </button>
+            {filtersOpen && (
+              <div className="bills-filter-popover" role="group" aria-label="Bill status filter">
+                {[
+                  ["all", "All bills"],
+                  ["unpaid", "Unpaid"],
+                  ["paid", "Paid"],
+                  ["overdue", "Overdue"],
+                ].map(([value, label]) => (
+                  <button key={value} type="button" aria-pressed={statusFilter === value} onClick={() => { setStatusFilter(value); setFiltersOpen(false); }}>
+                    <span>{label}</span>{statusFilter === value && <Check size={15} aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button type="button" className="bills-new-button" onClick={openNewBillEditor}>
+            <Plus size={18} aria-hidden="true" /> Add Bill
+          </button>
+        </div>,
+        billToolbarTarget,
+      )}
 
       <section className="bills-review-summary" aria-label="Bill summary">
-        <BillReviewSummaryCard icon={<CircleDollarSign size={20} />} label="Open pressure" value={formatCurrency(billReviewSummary.openAmount)} detail={`${billReviewSummary.openCount} open bill${billReviewSummary.openCount === 1 ? "" : "s"}`} tone="info" />
-        <BillReviewSummaryCard icon={<CalendarDays size={20} />} label="Next 30 days" value={String(billReviewSummary.upcomingCount)} detail={`${billReviewSummary.autopayCount} on autopay`} tone="warn" />
-        <BillReviewSummaryCard icon={<CheckCircle2 size={20} />} label="Paid" value={formatCurrency(billReviewSummary.paidAmount)} detail={`${billReviewSummary.paidCount} cleared`} tone="good" />
-        <BillReviewSummaryCard icon={<AlertTriangle size={20} />} label="Overdue" value={String(financialState.overdueBills)} detail={financialState.overdueBills ? "Needs attention" : "Nothing overdue"} tone={financialState.overdueBills ? "bad" : "good"} />
-      </section>
-
-      <section className="bills-command-panel bills-list-toolbar" aria-label="Bills list controls">
-        <div className="bills-filter-row">
-          <label className="bills-search">
-            <span>Search bills</span>
-            <BufferedTextInput aria-label="Search bills" value={billSearch} onValueChange={setBillSearch} placeholder="Name, category, status, or note" />
-          </label>
-          <div>
-            <span className="bills-filter-label"><Filter size={15} aria-hidden="true" /> Status</span>
-            <div className="bills-status-tabs" role="group" aria-label="Bill status filter">
-              {[
-                ["all", "All"],
-                ["unpaid", "Unpaid"],
-                ["paid", "Paid"],
-                ["overdue", "Overdue"],
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={statusFilter === value ? "active" : ""}
-                  aria-pressed={statusFilter === value}
-                  onClick={() => setStatusFilter(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="bills-inline-stats" aria-label="Visible bill summary">
-          <span>{billStats.shown} shown</span>
-          <strong>{formatCurrency(billStats.amount)} visible total</strong>
-          <strong className={billStats.overdue > 0 ? "bad" : ""}>{billStats.overdue} overdue</strong>
-          <em>{billStats.autopay} autopay</em>
-        </div>
+        <BillReviewSummaryCard icon={<CalendarDays size={21} />} label="Due this month" value={formatCurrency(billReviewSummary.dueThisMonthAmount)} detail={`${billReviewSummary.dueThisMonthCount} bill${billReviewSummary.dueThisMonthCount === 1 ? "" : "s"}`} tone="info" />
+        <BillReviewSummaryCard icon={<CircleDollarSign size={21} />} label="Remaining" value={formatCurrency(billReviewSummary.openAmount)} detail={`${billReviewSummary.openCount} bill${billReviewSummary.openCount === 1 ? "" : "s"}`} tone="good" />
+        <BillReviewSummaryCard icon={<CheckCircle2 size={21} />} label="Paid" value={formatCurrency(billReviewSummary.paidAmount)} detail={`${billReviewSummary.paidCount} bill${billReviewSummary.paidCount === 1 ? "" : "s"}`} tone="good" />
+        <BillReviewSummaryCard icon={<AlertTriangle size={21} />} label="Overdue" value={formatCurrency(billReviewSummary.overdueAmount)} detail={`${financialState.overdueBills} bill${financialState.overdueBills === 1 ? "" : "s"}`} tone={financialState.overdueBills ? "bad" : "good"} />
       </section>
       {billMessage && <p className="table-validation" role="alert">{billMessage}</p>}
 
       <section className={`bills-review-workspace ${selectedBill ? "has-review" : ""}`} aria-label="Bill review workspace">
         <section className="panel bills-review-queue" aria-label="Decision Engine bill order">
           <header>
-            <div className="bills-due-primary">
-              <span className="bills-due-icon" aria-hidden="true"><CalendarClock size={20} /></span>
-              <div>
-                <p className="eyebrow">Priority order</p>
-                <h2 id="bills-review-queue-title">Review queue</h2>
-                <p>{queueBills.length ? "Overdue and near-term bills rise to the top automatically." : "No bills match this view."}</p>
-              </div>
+            <div className="bills-queue-title">
+              <h2 id="bills-review-queue-title">Review Queue</h2>
+              <span>{queueBills.length}</span>
             </div>
-            <span>{queueBills.length} to review</span>
+            <button type="button" className="bills-priority-sort" aria-label="Bills are sorted by priority">
+              Sorted by priority <ChevronDown size={15} aria-hidden="true" />
+            </button>
           </header>
           <div className="bills-review-queue-list">
             {queueBills.map((bill) => (
-              <BillQueueItem key={bill.row.id} bill={bill} selected={bill.row.id === selectedBillId} onReview={() => openBillReview(bill.row.id)} />
+              <BillQueueItem key={bill.row.id} bill={bill} selected={bill.row.id === selectedBillId} onReview={() => openBillReview(bill.row.id)} onMarkPaid={() => openBillReview(bill.row.id)} />
             ))}
             {!queueBills.length && (
               <div className="bills-review-empty">
                 <CheckCircle2 size={28} aria-hidden="true" />
-                <strong>{statusFilter === "paid" ? "Paid bills live in Recently cleared" : "You're caught up"}</strong>
-                <span>Change the filter or add a bill when something new comes up.</span>
+                <strong>{statusFilter === "paid" ? "Paid bills live in Recently Cleared" : "You're caught up!"}</strong>
+                <span>No bills currently need your attention.</span>
               </div>
             )}
           </div>
+          {queueBills.length > 0 && (
+            <div className="bills-caught-up-banner">
+              <span aria-hidden="true"><CheckCircle2 size={22} /></span>
+              <div><strong>You're caught up!</strong><small>{queueBills.length} bill{queueBills.length === 1 ? " is" : "s are"} organized by priority.</small></div>
+              {nextUpcomingBill && <div><small>Next up: {nextUpcomingBill.name}</small><span>Due {formatDateMDY(nextUpcomingBill.dueDate)} · {formatCurrency(nextUpcomingBill.amount)}</span></div>}
+              <ChevronRight size={18} aria-hidden="true" />
+            </div>
+          )}
         </section>
 
         <aside className="bills-review-rail" aria-label="Upcoming and recently cleared bills">
-          <BillSideList title="Upcoming" subtitle="Next 30 days" icon={<CalendarDays size={17} />} bills={upcomingBills} empty="No open bills due in the next 30 days." onReview={openBillReview} />
-          <BillSideList title="Recently cleared" subtitle="Payment history" icon={<CheckCircle2 size={17} />} bills={recentlyClearedBills} empty="Paid bills will appear here." onReview={openBillReview} />
+          <BillSideList title="Upcoming" subtitle="Next 30 Days" icon={<CalendarDays size={17} />} bills={upcomingBills.slice(0, 3)} empty="No open bills due in the next 30 days." onReview={openBillReview} footerLabel="View All Upcoming" onFooter={() => { setStatusFilter("all"); document.querySelector(".bills-review-queue")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+          <BillSideList title="Recently Cleared" subtitle="Last paid bills" icon={<CheckCircle2 size={17} />} bills={recentlyClearedBills.slice(0, 3)} empty="Paid bills will appear here." onReview={openBillReview} footerLabel="View Payment History" footerHref="/transactions" />
         </aside>
 
         {selectedBill && (
@@ -890,7 +902,7 @@ function BillsPage({
             impact={reviewImpact}
             onPaymentAccountChange={setReviewPaymentAccount}
             onPaidDateChange={setReviewPaidDate}
-            onClose={() => setSelectedBillId(null)}
+            onClose={() => { setReviewPanelDismissed(true); setSelectedBillId(null); }}
             onEdit={openSelectedBillEditor}
             onDelete={() => handleDeleteBill(selectedBill.id)}
             onSubmit={recordReviewedPayment}
@@ -898,10 +910,10 @@ function BillsPage({
         )}
       </section>
 
-      <details className="bills-management" open>
+      <details className="bills-management">
         <summary>
           <span><strong>All bills & editing</strong><small>Add, edit, sort, or reopen any bill.</small></span>
-          <span>Full ledger <ArrowRight size={16} aria-hidden="true" /></span>
+          <span>Open Full Ledger <ArrowRight size={16} aria-hidden="true" /></span>
         </summary>
         <Spreadsheet
           config={billsTableConfig}
@@ -919,6 +931,7 @@ function BillsPage({
           addLabel="Add Bill"
         />
       </details>
+      <p className="bills-financial-rule"><strong>Rule:</strong> Every paid bill creates one transaction in Transactions and stays in history permanently.</p>
       {deletedBill && (
         <div className="bill-undo-notice" role="status" aria-live="polite">
           <span><strong>{deletedBill.name}</strong> deleted. Linked payment and account effects were reversed.</span>
@@ -948,28 +961,29 @@ function BillReviewSummaryCard({ icon, label, value, detail, tone }: {
   );
 }
 
-function BillQueueItem({ bill, selected, onReview }: { bill: RankedBillRow; selected: boolean; onReview: () => void }) {
+function BillQueueItem({ bill, selected, onReview, onMarkPaid }: { bill: RankedBillRow; selected: boolean; onReview: () => void; onMarkPaid: () => void }) {
   const statusLabel = bill.daysUntilDue < 0 ? "Overdue" : bill.daysUntilDue <= 3 ? "Due soon" : "Upcoming";
   const statusTone = bill.daysUntilDue < 0 ? "bad" : bill.daysUntilDue <= 3 ? "warn" : "info";
+  const recurrence = bill.row.cells.frequency || bill.row.cells.recurrence || (isAffirmative(bill.row.cells.autopay) ? "Autopay" : "Manual");
   return (
     <article className={`bill-review-row ${selected ? "selected" : ""}`} aria-current={selected ? "true" : undefined}>
       <span className={`bill-review-row-accent ${statusTone}`} aria-hidden="true" />
       <BillCategoryIcon category={bill.category} />
       <div className="bill-review-row-name">
         <strong>{bill.name}</strong>
-        <small>{bill.category} · {isAffirmative(bill.row.cells.autopay) ? "Autopay" : "Manual"}</small>
+        <small>{bill.category} <i>•</i> {recurrence}</small>
       </div>
       <div className="bill-review-row-due">
-        <span>{bill.dueDate ? formatDateMDY(bill.dueDate) : "No due date"}</span>
-        <small>{bill.dueLabel}</small>
+        <span>Due {bill.dueDate ? formatDateMDY(bill.dueDate) : "Not set"}</span>
       </div>
       <div className="bill-review-row-amount">
         <strong>{formatCurrency(bill.amount)}</strong>
-        <span className={`bill-review-status ${statusTone}`}>{statusLabel}</span>
+        <span><em className={`bill-review-status ${statusTone}`}>{statusLabel}</em><small>{bill.dueLabel}</small></span>
       </div>
       <div className="bill-review-row-actions">
-        <button type="button" className="bill-review-secondary" onClick={onReview}>Review</button>
-        <button type="button" className="bill-review-primary" onClick={onReview}>Payment</button>
+        <button type="button" className="bill-review-secondary" onClick={onMarkPaid}>Mark Paid</button>
+        <button type="button" className="bill-review-primary" onClick={onReview}>Review</button>
+        <button type="button" className="bill-review-more" aria-label={`More actions for ${bill.name}`} onClick={onReview}><EllipsisVertical size={18} aria-hidden="true" /></button>
       </div>
     </article>
   );
@@ -985,13 +999,16 @@ function BillCategoryIcon({ category }: { category: string }) {
   return <span className="bill-review-row-icon" aria-hidden="true"><Icon size={18} /></span>;
 }
 
-function BillSideList({ title, subtitle, icon, bills, empty, onReview }: {
+function BillSideList({ title, subtitle, icon, bills, empty, onReview, footerLabel, footerHref, onFooter }: {
   title: string;
   subtitle: string;
   icon: ReactNode;
   bills: Array<RankedBillRow | SpreadsheetRow>;
   empty: string;
   onReview: (rowId: string) => void;
+  footerLabel: string;
+  footerHref?: string;
+  onFooter?: () => void;
 }) {
   return (
     <section className="panel bill-side-list">
@@ -1013,6 +1030,9 @@ function BillSideList({ title, subtitle, icon, bills, empty, onReview }: {
         })}
         {!bills.length && <p>{empty}</p>}
       </div>
+      {footerHref
+        ? <a className="bill-side-list-footer" href={footerHref}>{footerLabel}<ArrowRight size={16} aria-hidden="true" /></a>
+        : <button type="button" className="bill-side-list-footer" onClick={onFooter}>{footerLabel}<ArrowRight size={16} aria-hidden="true" /></button>}
     </section>
   );
 }
@@ -1033,6 +1053,7 @@ function BillReviewPanel({ bill, rankedBill, accounts, paymentAccount, paidDate,
 }) {
   const paid = hasBillPaymentEvidence(bill);
   const name = bill.cells.name || "Untitled bill";
+  const recurrence = bill.cells.frequency || bill.cells.recurrence || (isAffirmative(bill.cells.autopay) ? "Autopay" : "Manual");
   const status = paid
     ? "Paid"
     : rankedBill && rankedBill.daysUntilDue < 0
@@ -1043,17 +1064,16 @@ function BillReviewPanel({ bill, rankedBill, accounts, paymentAccount, paidDate,
   return (
     <aside className="panel bills-review-panel" aria-labelledby="bill-review-panel-title">
       <header>
-        <div><p className="eyebrow">Review bill</p><h2 id="bill-review-panel-title">{name}</h2></div>
+        <h2 id="bill-review-panel-title">Review Bill</h2>
         <button type="button" aria-label="Close bill review" onClick={onClose}><X size={18} aria-hidden="true" /></button>
       </header>
       <div className="bill-review-panel-identity">
         <BillCategoryIcon category={bill.cells.category || "Bills"} />
-        <span><strong>{bill.cells.category || "Bills"}</strong><small>{isAffirmative(bill.cells.autopay) ? "Autopay" : "Manual payment"}</small></span>
-        <b>{formatCurrency(toNumber(bill.cells.amount))}</b>
+        <span><strong>{name}</strong><small>{bill.cells.category || "Bills"} <i>•</i> {recurrence}</small></span>
       </div>
       <dl className="bill-review-details">
         <div><dt>Due date</dt><dd>{bill.cells.dueDate ? formatDateMDY(bill.cells.dueDate) : "Not set"}</dd></div>
-        <div><dt>Status</dt><dd>{status}</dd></div>
+        <div><dt>Status</dt><dd><span className={`bill-review-status ${rankedBill && rankedBill.daysUntilDue < 0 ? "bad" : "warn"}`}>{status}</span></dd></div>
         {bill.cells.notes && <div><dt>Note</dt><dd>{bill.cells.notes}</dd></div>}
       </dl>
 
@@ -1064,14 +1084,17 @@ function BillReviewPanel({ bill, rankedBill, accounts, paymentAccount, paidDate,
         </section>
       ) : (
         <form className="bill-review-payment" onSubmit={onSubmit}>
-          <div><p className="eyebrow">Payment impact</p><h3>Confirm where the money moves</h3></div>
-          <label><span>Pay from</span><select aria-label="Pay from" value={paymentAccount} onChange={(event) => onPaymentAccountChange(event.target.value)} required><option value="">Choose an account</option>{accounts.map((account) => <option key={account.value} value={account.value}>{account.label}</option>)}</select></label>
-          <label><span>Date paid</span><input aria-label="Date paid" type="date" value={paidDate} onChange={(event) => onPaidDateChange(event.target.value)} required /></label>
+          <h3>Payment Impact</h3>
           <div className="bill-review-impact" aria-live="polite">
             <span><small>Available cash</small><strong>{impact ? formatCurrency(impact.availableCash) : "Choose an account"}</strong></span>
             <span><small>Bill amount</small><strong>-{formatCurrency(Math.abs(toNumber(bill.cells.amount)))}</strong></span>
             <span><small>After payment</small><strong className={impact && !impact.canCover ? "bad" : "good"}>{impact ? formatCurrency(impact.projectedAfterPayment) : "—"}</strong></span>
           </div>
+          <div className="bill-review-payment-fields">
+            <label><span>Pay from</span><select aria-label="Pay from" value={paymentAccount} onChange={(event) => onPaymentAccountChange(event.target.value)} required><option value="">Choose an account</option>{accounts.map((account) => <option key={account.value} value={account.value}>{account.label}</option>)}</select></label>
+            <label><span>Date paid</span><input aria-label="Date paid" type="date" value={paidDate} onChange={(event) => onPaidDateChange(event.target.value)} required /></label>
+          </div>
+          <h3>VCC Assessment</h3>
           <p className={`bill-review-assessment ${impact && !impact.canCover ? "bad" : ""}`}>
             {impact
               ? impact.canCover
@@ -1079,7 +1102,9 @@ function BillReviewPanel({ bill, rankedBill, accounts, paymentAccount, paidDate,
                 : <><AlertTriangle size={16} aria-hidden="true" /> This payment would leave the account below zero.</>
               : <><AlertTriangle size={16} aria-hidden="true" /> Choose the account that will fund this payment.</>}
           </p>
-          <button type="submit" className="bill-review-submit" disabled={!readyToPay}>Record payment</button>
+          {rankedBill && rankedBill.daysUntilDue > 0 && <p className="bill-review-timing"><AlertTriangle size={15} aria-hidden="true" /> This bill is due in {rankedBill.daysUntilDue} day{rankedBill.daysUntilDue === 1 ? "" : "s"}.</p>}
+          <h3>Actions</h3>
+          <button type="submit" className="bill-review-submit" disabled={!readyToPay}>Mark Paid</button>
           {!readyToPay && <small className="bill-review-submit-help">Choose an account and a valid paid date to continue.</small>}
         </form>
       )}
