@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SpreadsheetRow } from "../types/app";
-import { previewBillPayment, summarizeBillReview } from "./billReviewEngine";
+import { isMeaningfulBillRow, previewBillPayment, summarizeBillReview } from "./billReviewEngine";
 
 function bill(id: string, cells: Record<string, string>): SpreadsheetRow {
   return { id, cells: { name: id, amount: "0", status: "unpaid", ...cells } };
@@ -16,6 +16,7 @@ describe("bill review engine", () => {
       bill("paid", { amount: "5.25", dueDate: "2026-08-20", status: "paid", paymentAccount: "Cash", paidDate: "2026-08-20" }),
       bill("cancelled", { amount: "100.00", dueDate: "2026-08-30", status: "cancelled" }),
       { id: "blank", cells: {} },
+      { id: "draft", cells: { status: "unpaid" } },
     ], referenceDate);
 
     expect(result).toEqual({
@@ -43,6 +44,19 @@ describe("bill review engine", () => {
     expect(result.dueThisMonthAmount).toBe(0);
     expect(result.overdueAmount).toBe(0);
     expect(result.upcomingCount).toBe(0);
+  });
+
+  it("ignores status-only drafts while preserving an explicitly entered zero bill", () => {
+    expect(isMeaningfulBillRow({ id: "draft", cells: { status: "unpaid" } })).toBe(false);
+    expect(isMeaningfulBillRow(bill("zero", { amount: "0" }))).toBe(true);
+
+    const result = summarizeBillReview([
+      { id: "draft", cells: { status: "unpaid" } },
+      bill("zero", { amount: "0" }),
+    ], referenceDate);
+
+    expect(result.openCount).toBe(1);
+    expect(result.openAmount).toBe(0);
   });
 
   it("previews a bill payment in cents without mutating an account", () => {

@@ -22,6 +22,19 @@ export interface BillPaymentImpact {
   canCover: boolean;
 }
 
+export function isMeaningfulBillRow(row: SpreadsheetRow): boolean {
+  return [
+    row.cells.name,
+    row.cells.category,
+    row.cells.amount,
+    row.cells.dueDate,
+    row.cells.due_date,
+    row.cells.paymentAccount,
+    row.cells.paidDate,
+    row.cells.notes,
+  ].some((value) => String(value || "").trim().length > 0);
+}
+
 export function summarizeBillReview(rows: SpreadsheetRow[], referenceDate = new Date()): BillReviewSummary {
   const summary = {
     dueThisMonthCount: 0,
@@ -37,7 +50,7 @@ export function summarizeBillReview(rows: SpreadsheetRow[], referenceDate = new 
   };
 
   for (const row of rows) {
-    if (isBlankRow(row.cells)) continue;
+    if (isBlankRow(row.cells) || !isMeaningfulBillRow(row)) continue;
     const status = effectiveBillStatus(row, referenceDate);
     const amountCents = Math.max(0, Math.round(toNumber(row.cells.amount) * 100));
     const dueDays = daysUntil(row.cells.dueDate || row.cells.due_date, referenceDate);

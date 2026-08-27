@@ -37,7 +37,7 @@ import { formatCurrency, formatDateMDY, isBlankRow, isValidIsoDate, todayIso, to
 import { amountToCents, calculateReceiptLineAmounts, centsToAmount } from "./lib/calculations/receiptMath";
 import { computeDecisionEngine, rankBillRows, type RankedBillRow } from "./lib/engine/decisionEngine";
 import { computeFinancialState } from "./lib/engine/financialEngine";
-import { previewBillPayment, summarizeBillReview, type BillPaymentImpact } from "./lib/engine/billReviewEngine";
+import { isMeaningfulBillRow, previewBillPayment, summarizeBillReview, type BillPaymentImpact } from "./lib/engine/billReviewEngine";
 import {
   applyBillRowsEvent,
   deleteBillEvent,
@@ -600,6 +600,7 @@ function BillsPage({
   const [statusFilter, setStatusFilter] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [billMessage, setBillMessage] = useState("");
+  const [billMessageTone, setBillMessageTone] = useState<"info" | "success" | "error">("info");
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const [reviewPanelDismissed, setReviewPanelDismissed] = useState(false);
   const [reviewPaymentAccount, setReviewPaymentAccount] = useState("");
@@ -608,7 +609,7 @@ function BillsPage({
   const [deletedBill, setDeletedBill] = useState<{ name: string; snapshot: DeletedBillSnapshot } | null>(null);
   const undoTimerRef = useRef<number | undefined>(undefined);
   const billRows = data.sections.bills.map(normalizeBillRow);
-  const filledBillRows = billRows.filter((row) => !isBlankRow(row.cells));
+  const filledBillRows = billRows.filter(isMeaningfulBillRow);
   const visibleBillRows = billRows.filter((row) => {
     if (isBlankRow(row.cells)) return true;
     const status = billStatus(row);
@@ -646,8 +647,13 @@ function BillsPage({
     ? previewBillPayment(reviewAccount.balance, selectedBill.cells.amount)
     : null;
   const nextUpcomingBill = upcomingBills[0];
-  const defaultReviewBill = queueBills[0]?.row || recentlyClearedBills[0];
+  const defaultReviewBill = queueBills[0]?.row;
   const defaultPaymentAccount = billPaymentAccounts[0]?.value || "";
+
+  function showBillMessage(message: string, tone: "info" | "success" | "error" = "info") {
+    setBillMessage(message);
+    setBillMessageTone(tone);
+  }
 
   useEffect(() => () => {
     if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
@@ -709,10 +715,10 @@ function BillsPage({
         paymentAccount: reviewPaymentAccount,
         paidDate: reviewPaidDate,
       }));
-      setBillMessage(`${selectedBill.cells.name || "Bill"} was marked paid and recorded in Transactions.`);
-      setSelectedBillId(null);
+      showBillMessage(`${selectedBill.cells.name || "Bill"} was marked paid and recorded in Transactions.`, "success");
+      setReviewPanelDismissed(false);
     } catch (error) {
-      setBillMessage(error instanceof Error ? error.message : "The bill payment could not be recorded.");
+      showBillMessage(error instanceof Error ? error.message : "The bill payment could not be recorded.", "error");
     }
   }
 
@@ -727,19 +733,13 @@ function BillsPage({
       const paymentAccountWasJustChosen = previousRow?.cells.paymentAccount !== nextRow.cells.paymentAccount
         && Boolean(nextRow.cells.paymentAccount?.trim());
 
-      if (nextStatus === "paid" && !hasBillPaymentEvidence(nextRow)) {
-        if (!nextRow.cells.paymentAccount?.trim()) {
-          setBillMessage(`Choose Paid From for ${nextRow.cells.name || "this bill"}, then click Mark paid or choose Paid again.`);
-          return;
-        }
-        const accountWasJustChosen = previousRow?.cells.paymentAccount !== nextRow.cells.paymentAccount;
-        if (!nextRow.cells.paidDate && (previousStatus !== "paid" || accountWasJustChosen)) {
-          nextRow = { ...nextRow, cells: { ...nextRow.cells, paidDate: todayIso() } };
-        }
-        if (!hasBillPaymentEvidence(nextRow)) {
-          setBillMessage(`Choose a valid paid date for ${nextRow.cells.name || "this bill"}.`);
-          return;
-        }
+      if (nextStatus === "paid" && previousStatus !== "paid") {
+        setReviewPanelDismissed(false);
+        setSelectedBillId(nextRow.id);
+        setReviewPaymentAccount(String(nextRow.cells.paymentAccount || defaultPaymentAccount));
+        setReviewPaidDate(isValidIsoDate(nextRow.cells.paidDate) ? nextRow.cells.paidDate : todayIso());
+        showBillMessage(`Review the payment details for ${nextRow.cells.name || "this bill"}, then confirm Mark Paid.`);
+        return;
       }
 
       if (paymentAccountWasJustChosen && nextStatus !== "paid") {
@@ -760,27 +760,10 @@ function BillsPage({
     const addedRows = normalizedNextRows.filter((row) => !billRows.some((existing) => existing.id === row.id));
     const nextBillRows = [...mergedRows, ...addedRows];
     updateRows(section, nextBillRows);
-    setBillMessage(savedPaymentAccountFor
-      ? `Paid From saved for ${savedPaymentAccountFor}. Click Mark paid to submit the payment.`
-      : "");
-  }
-
-  function markBillPaid(rowId: string) {
-    const bill = billRows.find((row) => row.id === rowId);
-    if (!bill) return;
-    const paymentAccount = String(bill.cells.paymentAccount || "").trim();
-    if (!paymentAccount) {
-      setBillMessage(`Choose Paid From for ${bill.cells.name || "this bill"} before marking it paid.`);
-      return;
-    }
-    const paidDate = isValidIsoDate(String(bill.cells.paidDate || ""))
-      ? String(bill.cells.paidDate)
-      : todayIso();
-    try {
-      onChange(payBillEvent(data, { billId: rowId, paymentAccount, paidDate }));
-      setBillMessage(`${bill.cells.name || "Bill"} was marked paid and recorded in Transactions.`);
-    } catch (error) {
-      setBillMessage(error instanceof Error ? error.message : "The bill payment could not be recorded.");
+    if (savedPaymentAccountFor) {
+      showBillMessage(`Paid From saved for ${savedPaymentAccountFor}. Click Mark paid to submit the payment.`);
+    } else {
+      setBillMessage("");
     }
   }
 
@@ -799,7 +782,7 @@ function BillsPage({
     if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
     onChange(restoreDeletedBillEvent(data, deletedBill.snapshot));
     setDeletedBill(null);
-    setBillMessage(`${deletedBill.name} was restored with its payment history and account effect.`);
+    showBillMessage(`${deletedBill.name} was restored with its payment history and account effect.`, "success");
   }
 
   const billColumnOrder = ["name", "category", "dueDate", "amount", "paymentAccount", "status", "paidDate", "autopay", "notes"];
@@ -852,7 +835,14 @@ function BillsPage({
         <BillReviewSummaryCard icon={<CheckCircle2 size={21} />} label="Paid" value={formatCurrency(billReviewSummary.paidAmount)} detail={`${billReviewSummary.paidCount} bill${billReviewSummary.paidCount === 1 ? "" : "s"}`} tone="good" />
         <BillReviewSummaryCard icon={<AlertTriangle size={21} />} label="Overdue" value={formatCurrency(billReviewSummary.overdueAmount)} detail={`${financialState.overdueBills} bill${financialState.overdueBills === 1 ? "" : "s"}`} tone={financialState.overdueBills ? "bad" : "good"} />
       </section>
-      {billMessage && <p className="table-validation" role="alert">{billMessage}</p>}
+      {billMessage && (
+        <p
+          className={`table-validation bill-message-${billMessageTone}`}
+          role={billMessageTone === "error" ? "alert" : "status"}
+        >
+          {billMessage}
+        </p>
+      )}
 
       <section className={`bills-review-workspace ${selectedBill ? "has-review" : ""}`} aria-label="Bill review workspace">
         <section className="panel bills-review-queue" aria-label="Decision Engine bill order">
@@ -922,7 +912,7 @@ function BillsPage({
           onSortChange={updateSort}
           onRowsChange={updateVisibleBillRows}
           onDeleteRow={handleDeleteBill}
-          onBillPayment={markBillPaid}
+          onBillPayment={openBillReview}
           onResetSection={resetSection}
           getComputedCell={(row, columnKey) => computedCell("bills", row, columnKey)}
           selectOptions={{
