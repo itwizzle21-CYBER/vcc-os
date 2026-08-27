@@ -434,6 +434,7 @@
 
   .money-page.layout-view-2 > .money-account-panel,
   .money-page.layout-view-2 > .planner-panel,
+  .money-page.layout-view-2 > .money-accounts-workspace,
   .bills-page.layout-view-2 > .bills-command-panel,
   .bills-page.layout-view-2 > .bills-due-display,
   .inventory-page.layout-view-2 > .inventory-command-panel,
@@ -480,6 +481,7 @@
 
   .money-page.layout-view-4 > .money-hero-panel,
   .money-page.layout-view-4 > .money-account-panel,
+  .money-page.layout-view-4 > .money-accounts-workspace,
   .bills-page.layout-view-4 > .summary-grid,
   .bills-page.layout-view-4 > .bills-command-panel,
   .inventory-page.layout-view-4 > .summary-grid,
@@ -527,6 +529,12 @@
   }
 
   .money-page.layout-view-5 > .planner-panel {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: stretch;
+  }
+
+  .money-page.layout-view-5 > .money-accounts-workspace {
     grid-column: 1;
     grid-row: 1;
     align-self: stretch;
@@ -4375,6 +4383,178 @@ td textarea[readonly] {
   font-size: 1rem;
 }
 
+.money-accounts-workspace {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--theme-radius-panel);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-raised);
+}
+
+.money-workspace-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding: 1rem;
+}
+
+.money-workspace-heading h2 {
+  margin: 0;
+}
+
+.money-workspace-heading p:not(.eyebrow) {
+  max-width: 50rem;
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+}
+
+.money-workspace-tabs {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-2);
+  padding: 0.25rem;
+}
+
+.money-workspace-tabs > button {
+  display: inline-flex;
+  min-height: 2.6rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.58rem;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.5rem 0.75rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.money-workspace-tabs > button:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  color: var(--text);
+}
+
+.money-workspace-tabs > button:active {
+  transform: translateY(1px);
+}
+
+.money-workspace-tabs > button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.money-workspace-tabs > button[aria-selected="true"] {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.money-workspace-tabs > button span {
+  display: inline-grid;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  color: inherit;
+  padding-inline: 0.35rem;
+  font-size: 0.72rem;
+}
+
+.money-workspace-tabs > button[aria-selected="true"] span {
+  background: var(--accent);
+  color: var(--theme-on-accent);
+}
+
+.money-workspace-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.money-workspace-panel[hidden] {
+  display: none;
+}
+
+.money-accounts-workspace .money-account-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.money-paychecks-panel > .planner-panel,
+.money-paychecks-panel > .money-history-panel {
+  box-shadow: none;
+}
+
+.money-account-ledger {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--surface-2);
+}
+
+.money-account-ledger > summary {
+  display: flex;
+  min-height: 3.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+}
+
+.money-account-ledger > summary::-webkit-details-marker {
+  display: none;
+}
+
+.money-account-ledger > summary:hover {
+  background: color-mix(in srgb, var(--accent-soft) 45%, transparent);
+}
+
+.money-account-ledger > summary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: -3px;
+}
+
+.money-account-ledger > summary span {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.money-account-ledger > summary small {
+  color: var(--muted);
+}
+
+.money-account-ledger > summary svg {
+  flex-shrink: 0;
+  transition: transform 160ms ease;
+}
+
+.money-account-ledger[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.money-account-ledger[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.money-account-ledger .money-simple-inputs {
+  padding: 0.75rem;
+}
+
 .money-simple-inputs .spreadsheet-panel {
   box-shadow: none;
 }
@@ -4439,6 +4619,17 @@ td textarea[readonly] {
   display: grid;
   min-width: 0;
   gap: 0.2rem;
+}
+
+.money-account-grid .money-account-balance {
+  justify-items: end;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.money-account-grid .money-account-deposit {
+  margin-top: 0.2rem;
+  color: var(--accent-ink);
 }
 
 .money-account-grid strong,
@@ -8445,6 +8636,19 @@ td textarea[readonly] {
 
   .money-hero-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .money-workspace-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .money-workspace-tabs {
+    width: 100%;
+  }
+
+  .money-workspace-tabs > button {
+    flex: 1 1 0;
   }
 
   .money-account-heading {

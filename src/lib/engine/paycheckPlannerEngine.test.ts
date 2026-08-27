@@ -7,6 +7,7 @@ import {
   depositAccountOptions,
   eligibleDepositAccounts,
   lockPaycheckWeek,
+  reconcilePaycheckHistoryAccountLinks,
   setPaycheckHistoryLock,
   updatePaycheckHistoryRecord,
 } from "./paycheckPlannerEngine";
@@ -381,6 +382,91 @@ describe("connected paycheck planner", () => {
 
     expect(() => deletePaycheckHistoryRecord(data, "history")).toThrow("original deposit account is missing");
     expect(data.paycheckHistory).toHaveLength(1);
+  });
+
+  it("relinks a stale paycheck to one uniquely matching canonical account without changing balances", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      { id: "canonical-chime", cells: { label: "Chime", section: "cash", amount: "160.00" } },
+      { id: "mypay-current", cells: { label: "MyPay", section: "borrowed", amount: "0.00" } },
+    ];
+    data.paycheckPlanner = {
+      incomeSource: "Work",
+      depositAccountId: "legacy-chime",
+      paycheckAmount: "100.00",
+      payDate: "2026-07-22",
+      weekStart: "2026-07-19",
+      weekEnd: "2026-07-25",
+      spotMeRepayment: "0.00",
+      myPayRepayment: "40.00",
+      depositApplied: true,
+      locked: false,
+    };
+    data.paycheckHistory = [{
+      id: "legacy-paycheck",
+      incomeSource: "Work",
+      depositAccountId: "legacy-chime",
+      depositAccountLabel: "Chime",
+      borrowedRepayments: [{ rowId: "legacy-mypay", label: "MyPay", amount: 40 }],
+      depositAppliedAmount: "60.00",
+      payDate: "2026-07-22",
+      income: "100.00",
+      spotMe: "0.00",
+      myPay: "40.00",
+      remaining: "60.00",
+      weekStart: "2026-07-19",
+      weekEnd: "2026-07-25",
+      locked: false,
+    }];
+    data.sections.transactions = [{
+      id: "paycheck-income-legacy-paycheck",
+      cells: {
+        paycheckHistoryId: "legacy-paycheck",
+        depositAccountId: "legacy-chime",
+        account: "Chime",
+        amount: "100.00",
+      },
+    }];
+
+    const relinked = reconcilePaycheckHistoryAccountLinks(data);
+
+    expect(relinked.sections.money.map((row) => row.cells.amount)).toEqual(["160.00", "0.00"]);
+    expect(relinked.paycheckHistory[0]).toMatchObject({
+      depositAccountId: "canonical-chime",
+      borrowedRepayments: [{ rowId: "mypay-current", label: "MyPay", amount: 40 }],
+    });
+    expect(relinked.paycheckPlanner.depositAccountId).toBe("canonical-chime");
+    expect(relinked.sections.transactions[0].cells.depositAccountId).toBe("canonical-chime");
+
+    const deleted = deletePaycheckHistoryRecord(relinked, "legacy-paycheck");
+    expect(deleted.sections.money.find((row) => row.id === "canonical-chime")?.cells.amount).toBe("100.00");
+    expect(deleted.sections.money.find((row) => row.id === "mypay-current")?.cells.amount).toBe("40.00");
+  });
+
+  it("does not guess when more than one account matches a stale paycheck label", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      { id: "chime-one", cells: { label: "Chime", section: "cash", amount: "10.00" } },
+      { id: "chime-two", cells: { label: "Chime Checking", section: "cash", amount: "20.00" } },
+    ];
+    data.paycheckHistory = [{
+      id: "history",
+      depositAccountId: "missing-account",
+      depositAccountLabel: "Chime",
+      depositAppliedAmount: "10.00",
+      payDate: "2026-08-21",
+      income: "10.00",
+      spotMe: "0.00",
+      myPay: "0.00",
+      remaining: "10.00",
+      weekStart: "2026-08-16",
+      weekEnd: "2026-08-22",
+      locked: false,
+    }];
+
+    const reconciled = reconcilePaycheckHistoryAccountLinks(data);
+    expect(reconciled).toBe(data);
+    expect(() => deletePaycheckHistoryRecord(reconciled, "history")).toThrow("original deposit account is missing");
   });
 
   it("rounds a paycheck once to cents and preserves the cent on delete reversal", () => {

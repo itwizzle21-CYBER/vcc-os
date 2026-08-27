@@ -266,14 +266,32 @@ describe("import normalization", () => {
           { id: "cash-1", cells: { label: "Cash", section: "cash", amount: "10" } },
           { id: "cash-2", cells: { label: " cash ", section: "cash", amount: "$10.00" } },
         ],
+        transactions: [{
+          id: "legacy-paycheck-transaction",
+          cells: { paycheckHistoryId: "legacy-paycheck", depositAccountId: "cash-2", account: "cash" },
+        }],
         inventory: [
           { id: "water-1", cells: { item: "Water", qty: "5", minNeeded: "2" } },
           { id: "water-2", cells: { item: "water", qty: "0", minNeeded: "3" } },
         ],
       },
+      paycheckHistory: [{
+        id: "legacy-paycheck",
+        depositAccountId: "cash-2",
+        depositAccountLabel: "Cash",
+        payDate: "2026-08-21",
+        income: "10.00",
+        spotMe: "0.00",
+        myPay: "0.00",
+        remaining: "10.00",
+        weekStart: "2026-08-16",
+        weekEnd: "2026-08-22",
+      }],
     });
 
     expect(imported.sections.money).toHaveLength(1);
+    expect(imported.paycheckHistory[0].depositAccountId).toBe("cash-1");
+    expect(imported.sections.transactions[0].cells).toMatchObject({ depositAccountId: "cash-1", account: "Cash" });
     expect(imported.sections.inventory).toHaveLength(1);
     expect(imported.sections.inventory[0].cells).toMatchObject({ qty: "0", minNeeded: "3", alert: "Critical" });
     expect(imported.sections.inventory[0].cells.duplicateMergeEvidence).toBeTruthy();

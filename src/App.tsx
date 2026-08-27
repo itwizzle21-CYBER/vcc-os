@@ -57,6 +57,7 @@ import {
   deletePaycheckHistoryRecord,
   depositAccountOptions,
   eligibleDepositAccounts,
+  reconcilePaycheckHistoryAccountLinks,
   setPaycheckHistoryLock,
   updatePaycheckHistoryRecord,
   type DepositAccountOption,
@@ -105,7 +106,7 @@ export default function App({ initialData }: { initialData?: AppData }) {
   );
   const activeTheme = data.settings.theme === "system" ? systemTheme : data.settings.theme;
   const normalizeAndSetData = useCallback((next: AppData) => {
-    const normalized = {
+    const normalized = reconcilePaycheckHistoryAccountLinks({
       ...next,
       version: 5,
       settings: { ...next.settings, theme: themePreferenceRef.current },
@@ -115,7 +116,7 @@ export default function App({ initialData }: { initialData?: AppData }) {
         inventory: canonicalizeInventoryRows(next.sections.inventory),
         transactions: migrateLegacyReceiptTaxRows(next.sections.transactions),
       },
-    };
+    });
     saveAppData(normalized);
     setData(normalized);
   }, []);
@@ -280,8 +281,10 @@ function MoneyPage({
   resetSection: (section: SectionKey) => void;
   onChange: (data: AppData) => void;
 }) {
+  const [moneyWorkspaceView, setMoneyWorkspaceView] = useState<"accounts" | "paychecks">("accounts");
   const moneyRows = data.sections.money;
   const accounts = depositAccountOptions(data);
+  const connectedAccountCount = accounts.filter((account) => !account.isNew).length;
   const spendableSafe = Math.min(financialState.spendableCash, financialState.safeToSpend);
   const moneyStats = [
     { label: "Total Cash", value: financialState.totalCash },
@@ -292,6 +295,20 @@ function MoneyPage({
     { label: "Borrowed Money", value: financialState.borrowedMoney, tone: "warn" as const },
     { label: "Unaccounted Cash", value: financialState.unreconciledCash, tone: "warn" as const },
   ];
+
+  function handleMoneyWorkspaceKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const nextView = event.key === "Home"
+      ? "accounts"
+      : event.key === "End"
+        ? "paychecks"
+        : moneyWorkspaceView === "accounts"
+          ? "paychecks"
+          : "accounts";
+    setMoneyWorkspaceView(nextView);
+    document.getElementById(`money-${nextView}-tab`)?.focus();
+  }
 
   return (
     <div className={`money-page ${layoutViewClass(data.settings.layoutViews.money)}`} data-layout-view={data.settings.layoutViews.money}>
@@ -311,59 +328,131 @@ function MoneyPage({
         </div>
       </section>
 
-      <MoneyAccountOverview accounts={accounts} />
-
-      <PaycheckPlanner data={data} onChange={onChange} showHistory={false} />
-
-      <section className="money-simple-inputs" aria-labelledby="canonical-accounts-title">
-        <div className="money-account-heading">
+      <section className="money-accounts-workspace" aria-labelledby="money-workspace-title">
+        <header className="money-workspace-heading">
           <div>
-            <p className="eyebrow">Authoritative Accounts</p>
-            <h2 id="canonical-accounts-title">Manage account balances at their source</h2>
-            <p>Money Snapshot is derived from these accounts, linked transactions, savings vaults, bills, and borrowing rules.</p>
+            <p className="eyebrow">Money Management</p>
+            <h2 id="money-workspace-title">Accounts &amp; Paychecks</h2>
+            <p>See where your money lives, connect each deposit to its account, and manage both from one place.</p>
           </div>
-        </div>
-        <Spreadsheet
-          config={{ ...sectionConfigs.money, title: "Canonical Accounts" }}
-          rows={moneyRows}
-          sortBy={data.sortBy.money}
-          onSortChange={updateSort}
-          onRowsChange={updateRows}
-          onResetSection={resetSection}
-          getComputedCell={(row, columnKey) => computedCell("money", row, columnKey)}
-          preventDuplicateKey="label"
-          addLabel="Add Account"
-        />
-      </section>
+          <div className="money-workspace-tabs" role="tablist" aria-label="Money workspace view" onKeyDown={handleMoneyWorkspaceKeyDown}>
+            <button
+              id="money-accounts-tab"
+              type="button"
+              role="tab"
+              aria-selected={moneyWorkspaceView === "accounts"}
+              aria-controls="money-accounts-panel"
+              tabIndex={moneyWorkspaceView === "accounts" ? 0 : -1}
+              onClick={() => setMoneyWorkspaceView("accounts")}
+            >
+              Accounts <span>{connectedAccountCount}</span>
+            </button>
+            <button
+              id="money-paychecks-tab"
+              type="button"
+              role="tab"
+              aria-selected={moneyWorkspaceView === "paychecks"}
+              aria-controls="money-paychecks-panel"
+              tabIndex={moneyWorkspaceView === "paychecks" ? 0 : -1}
+              onClick={() => setMoneyWorkspaceView("paychecks")}
+            >
+              Paychecks <span>{data.paycheckHistory.length}</span>
+            </button>
+          </div>
+        </header>
 
-      <MoneyPaycheckHistory data={data} onChange={onChange} />
+        <div
+          id="money-accounts-panel"
+          className="money-workspace-panel"
+          role="tabpanel"
+          aria-labelledby="money-accounts-tab"
+          hidden={moneyWorkspaceView !== "accounts"}
+        >
+          <MoneyAccountOverview accounts={accounts} paycheckHistory={data.paycheckHistory} />
+          <details className="money-account-ledger">
+            <summary>
+              <span>
+                <strong>Manage account balances</strong>
+                <small>Open the authoritative account ledger</small>
+              </span>
+              <ChevronDown size={18} aria-hidden="true" />
+            </summary>
+            <div className="money-simple-inputs" aria-label="Authoritative account ledger">
+              <Spreadsheet
+                config={{ ...sectionConfigs.money, title: "Accounts" }}
+                rows={moneyRows}
+                sortBy={data.sortBy.money}
+                onSortChange={updateSort}
+                onRowsChange={updateRows}
+                onResetSection={resetSection}
+                getComputedCell={(row, columnKey) => computedCell("money", row, columnKey)}
+                preventDuplicateKey="label"
+                addLabel="Add Account"
+              />
+            </div>
+          </details>
+        </div>
+        <div
+          id="money-paychecks-panel"
+          className="money-workspace-panel money-paychecks-panel"
+          role="tabpanel"
+          aria-labelledby="money-paychecks-tab"
+          hidden={moneyWorkspaceView !== "paychecks"}
+        >
+          <PaycheckPlanner data={data} onChange={onChange} showHistory={false} />
+          <MoneyPaycheckHistory data={data} onChange={onChange} />
+        </div>
+      </section>
     </div>
   );
 }
 
-function MoneyAccountOverview({ accounts }: { accounts: DepositAccountOption[] }) {
+function MoneyAccountOverview({
+  accounts,
+  paycheckHistory,
+}: {
+  accounts: DepositAccountOption[];
+  paycheckHistory: AppData["paycheckHistory"];
+}) {
   const connectedCount = accounts.filter((account) => !account.isNew).length;
 
   return (
     <section className="money-account-panel" aria-labelledby="money-accounts-title">
       <div className="money-account-heading">
         <div>
-          <p className="eyebrow">Linked Accounts</p>
-          <h2 id="money-accounts-title">Every account in one view</h2>
-          <p>These balances are shared with Transactions, savings transfers, and the Current Week Planner.</p>
+          <p className="eyebrow">Account Overview</p>
+          <h2 id="money-accounts-title">Balances with paycheck context</h2>
+          <p>Account balances remain the source of truth. Recorded paychecks appear here as deposit history and are never counted twice.</p>
         </div>
-        <span>{connectedCount} with activity</span>
+        <span>{connectedCount} connected</span>
       </div>
       <div className="money-account-grid">
-        {accounts.map((account) => (
-          <article key={account.id} className={`${account.isNew ? "available" : "connected"} ${account.balance < 0 ? "negative" : ""}`}>
-            <div>
-              <strong>{account.label}</strong>
-              <small>{account.balance < 0 ? "Overdrawn · included in totals" : account.isNew ? "Ready for first transaction" : "Linked and updating"}</small>
-            </div>
-            <b>{formatCurrency(account.balance)}</b>
-          </article>
-        ))}
+        {accounts.map((account) => {
+          const accountDeposits = paycheckHistory
+            .filter((record) => record.depositAccountId === account.id)
+            .sort((left, right) => (right.payDate || "").localeCompare(left.payDate || ""));
+          const latestDeposit = accountDeposits[0];
+
+          return (
+            <article key={account.id} className={`${account.isNew ? "available" : "connected"} ${account.balance < 0 ? "negative" : ""}`}>
+              <div>
+                <strong>{account.label}</strong>
+                <small>{account.balance < 0 ? "Overdrawn · included in totals" : account.isNew ? "Ready for first transaction" : "Linked and updating"}</small>
+                {!account.isNew && (
+                  <small className="money-account-deposit">
+                    {latestDeposit
+                      ? `Latest paycheck ${formatCurrency(toNumber(latestDeposit.depositAppliedAmount ?? latestDeposit.remaining))} · ${formatDateMDY(latestDeposit.payDate)}`
+                      : "No paycheck deposits recorded"}
+                  </small>
+                )}
+              </div>
+              <div className="money-account-balance">
+                <b>{formatCurrency(account.balance)}</b>
+                {!account.isNew && <small>{accountDeposits.length} {accountDeposits.length === 1 ? "paycheck" : "paychecks"}</small>}
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

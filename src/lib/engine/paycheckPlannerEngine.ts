@@ -55,6 +55,73 @@ export function depositAccountOptions(data: AppData): DepositAccountOption[] {
   return [...currentOptions, ...suggestedOptions];
 }
 
+/**
+ * Repairs stale paycheck links after an exact duplicate account row was
+ * canonicalized away. This changes identifiers and labels only; it never
+ * changes a balance or replays a paycheck effect.
+ */
+export function reconcilePaycheckHistoryAccountLinks(data: AppData): AppData {
+  const resolvedAccounts = new Map<string, SpreadsheetRow>();
+  let historyChanged = false;
+  const paycheckHistory = data.paycheckHistory.map((history) => {
+    const depositAccount = resolveHistoryDepositAccount(data, history);
+    let repaymentsChanged = false;
+    const borrowedRepayments = (history.borrowedRepayments || []).map((repayment) => {
+      const resolved = resolveHistoryRepaymentRow(data, repayment.rowId, repayment.label);
+      if (!resolved || resolved.id === repayment.rowId) return repayment;
+      repaymentsChanged = true;
+      historyChanged = true;
+      return { ...repayment, rowId: resolved.id, label: resolved.cells.label || repayment.label };
+    });
+    if (!depositAccount) {
+      return repaymentsChanged ? { ...history, borrowedRepayments } : history;
+    }
+    resolvedAccounts.set(history.id, depositAccount);
+    const depositAccountLabel = displayAccountLabel(depositAccount.cells.label);
+    if (history.depositAccountId === depositAccount.id
+      && history.depositAccountLabel === depositAccountLabel
+      && !repaymentsChanged) return history;
+    historyChanged = true;
+    return {
+      ...history,
+      depositAccountId: depositAccount.id,
+      depositAccountLabel,
+      borrowedRepayments,
+    };
+  });
+
+  if (!historyChanged) return data;
+  const historyById = new Map(paycheckHistory.map((history) => [history.id, history]));
+  const transactions = data.sections.transactions.map((transaction) => {
+    const history = transaction.cells.paycheckHistoryId
+      ? historyById.get(transaction.cells.paycheckHistoryId)
+      : undefined;
+    const account = history ? resolvedAccounts.get(history.id) : undefined;
+    if (!account) return transaction;
+    if (transaction.cells.depositAccountId === account.id
+      && transaction.cells.account === displayAccountLabel(account.cells.label)) return transaction;
+    return {
+      ...transaction,
+      cells: {
+        ...transaction.cells,
+        depositAccountId: account.id,
+        account: displayAccountLabel(account.cells.label),
+      },
+    };
+  });
+  const plannerHistory = paycheckHistory.find((history) => history.payDate === data.paycheckPlanner.payDate);
+  const paycheckPlanner = plannerHistory && data.paycheckPlanner.depositAccountId !== plannerHistory.depositAccountId
+    ? { ...data.paycheckPlanner, depositAccountId: plannerHistory.depositAccountId || data.paycheckPlanner.depositAccountId }
+    : data.paycheckPlanner;
+
+  return {
+    ...data,
+    paycheckPlanner,
+    paycheckHistory,
+    sections: { ...data.sections, transactions },
+  };
+}
+
 export function applyPendingPaycheckDeposit(data: AppData): AppData {
   if (!data.paycheckPlanner.locked || data.paycheckPlanner.depositApplied) return data;
   const selectedAccountExists = depositAccountOptions(data)
@@ -210,18 +277,20 @@ function reversePaycheckEffects(data: AppData, history: PaycheckHistoryRow): App
   const accountAdjustments = new Map<string, number>();
   const depositCents = history.depositAccountId ? toCents(history.depositAppliedAmount ?? history.remaining) : 0;
   if (history.depositAccountId && depositCents !== 0) {
-    if (!data.sections.money.some((row) => row.id === history.depositAccountId)) {
+    const depositAccount = resolveHistoryDepositAccount(data, history);
+    if (!depositAccount) {
       throw new Error("The original deposit account is missing. Restore it before changing this paycheck.");
     }
-    accountAdjustments.set(history.depositAccountId, -depositCents);
+    accountAdjustments.set(depositAccount.id, -depositCents);
   }
   for (const repayment of history.borrowedRepayments || []) {
     const repaymentCents = toCents(repayment.amount);
     if (!repaymentCents) continue;
-    if (!data.sections.money.some((row) => row.id === repayment.rowId)) {
+    const repaymentRow = resolveHistoryRepaymentRow(data, repayment.rowId, repayment.label);
+    if (!repaymentRow) {
       throw new Error(`The original ${repayment.label} repayment row is missing. Restore it before changing this paycheck.`);
     }
-    accountAdjustments.set(repayment.rowId, (accountAdjustments.get(repayment.rowId) || 0) + repaymentCents);
+    accountAdjustments.set(repaymentRow.id, (accountAdjustments.get(repaymentRow.id) || 0) + repaymentCents);
   }
   const money = data.sections.money.map((row) => {
     const adjustment = accountAdjustments.get(row.id);
@@ -236,6 +305,28 @@ function reversePaycheckEffects(data: AppData, history: PaycheckHistoryRow): App
       transactions: data.sections.transactions.filter((row) => row.cells.paycheckHistoryId !== history.id),
     },
   };
+}
+
+function resolveHistoryDepositAccount(data: AppData, history: PaycheckHistoryRow): SpreadsheetRow | undefined {
+  const eligible = eligibleDepositAccounts(data);
+  const exact = history.depositAccountId
+    ? eligible.find((row) => row.id === history.depositAccountId)
+    : undefined;
+  if (exact) return exact;
+  return uniqueAccountByLabel(eligible, history.depositAccountLabel);
+}
+
+function resolveHistoryRepaymentRow(data: AppData, rowId: string, label: string): SpreadsheetRow | undefined {
+  const exact = data.sections.money.find((row) => row.id === rowId);
+  if (exact) return exact;
+  return uniqueAccountByLabel(data.sections.money, label);
+}
+
+function uniqueAccountByLabel(rows: SpreadsheetRow[], label: string | undefined): SpreadsheetRow | undefined {
+  const key = canonicalAccountLabel(label);
+  if (!key) return undefined;
+  const matches = rows.filter((row) => canonicalAccountLabel(row.cells.label) === key);
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 function requireHistoryRow(data: AppData, historyId: string): PaycheckHistoryRow {

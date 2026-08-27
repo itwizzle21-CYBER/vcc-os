@@ -363,6 +363,7 @@ test("sorts paycheck history chronologically without rewriting stored records", 
     { id: "newest", payDate: "2026-08-22", income: "900", spotMe: "0", myPay: "0", remaining: "900", weekStart: "2026-08-17", weekEnd: "2026-08-23", locked: true },
   ]);
   await page.reload();
+  await page.getByRole("tab", { name: /Paychecks/ }).click();
 
   const records = page.locator(".money-history-record");
   await expect(records).toHaveCount(3);
@@ -374,6 +375,7 @@ test("sorts paycheck history chronologically without rewriting stored records", 
 
 test("edits, locks, unlocks, and deletes paycheck history with exact balance reconciliation", async ({ page }) => {
   await page.goto("/money");
+  await page.getByRole("tab", { name: /Paychecks/ }).click();
   const planner = page.locator(".planner-form");
   const deposit = planner.getByLabel("Deposit To");
   await deposit.selectOption({ index: 1 });
@@ -428,6 +430,102 @@ test("edits, locks, unlocks, and deletes paycheck history with exact balance rec
     historyExists: false,
     linkedTransactions: 0,
   });
+});
+
+test("combines accounts and paychecks in one keyboard-accessible Money workspace", async ({ page }) => {
+  await page.goto("/money");
+
+  const accountsTab = page.getByRole("tab", { name: /Accounts/ });
+  const paychecksTab = page.getByRole("tab", { name: /Paychecks/ });
+  await expect(accountsTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: /Accounts/ })).toBeVisible();
+  await expect(page.getByText("Balances with paycheck context")).toBeVisible();
+  await expect(page.locator(".planner-form")).toBeHidden();
+
+  await page.getByText("Manage account balances", { exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Accounts", exact: true })).toBeVisible();
+
+  await accountsTab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(paychecksTab).toBeFocused();
+  await expect(paychecksTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: /Paychecks/ })).toBeVisible();
+  await expect(page.locator(".planner-form")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Paycheck Records" })).toBeVisible();
+
+  await page.keyboard.press("Home");
+  await expect(accountsTab).toBeFocused();
+  await expect(accountsTab).toHaveAttribute("aria-selected", "true");
+});
+
+test("repairs a stale paycheck account link before editing its financial effects", async ({ page }) => {
+  await page.goto("/money");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}").paycheckPlanner?.depositApplied)).toBe(true);
+  await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    data.sections.money = [
+      { id: "canonical-chime", cells: { label: "Chime", section: "cash", amount: "60.00", weekStart: "", weekEnd: "", notes: "" } },
+    ];
+    data.sections.transactions = [{
+      id: "paycheck-income-legacy-paycheck",
+      cells: {
+        description: "Legacy paycheck",
+        type: "income",
+        amount: "100.00",
+        date: "2026-07-22",
+        account: "Chime",
+        paycheckHistoryId: "legacy-paycheck",
+        depositAccountId: "legacy-chime",
+        balanceApplied: "yes",
+      },
+    }];
+    data.paycheckHistory = [{
+      id: "legacy-paycheck",
+      incomeSource: "Jordan's Quick",
+      depositAccountId: "legacy-chime",
+      depositAccountLabel: "Chime",
+      depositAppliedAmount: "60.00",
+      payDate: "2026-07-22",
+      income: "100.00",
+      spotMe: "0.00",
+      myPay: "40.00",
+      remaining: "60.00",
+      weekStart: "2026-07-19",
+      weekEnd: "2026-07-25",
+      locked: false,
+    }];
+    data.paycheckPlanner = {
+      incomeSource: "Jordan's Quick",
+      depositAccountId: "legacy-chime",
+      paycheckAmount: "100.00",
+      payDate: "2026-07-22",
+      weekStart: "2026-07-19",
+      weekEnd: "2026-07-25",
+      spotMeRepayment: "0.00",
+      myPayRepayment: "40.00",
+      depositApplied: true,
+      locked: false,
+    };
+    localStorage.setItem("vcc-os:data:v2", JSON.stringify(data));
+  });
+  await page.reload();
+  await page.getByRole("tab", { name: /Paychecks/ }).click();
+
+  const record = page.locator(".money-history-record").filter({ hasText: "07-22-2026" });
+  await record.getByRole("button", { name: "Edit" }).click();
+  await expect(record.getByLabel("Edit deposit account")).toHaveValue("canonical-chime");
+  await record.getByLabel("Edit income source").fill("Jordan's Quick updated");
+  await record.getByRole("button", { name: "Save & Lock" }).click();
+
+  await expect(page.getByText("Paycheck changes saved and locked.")).toBeVisible();
+  await expect(page.getByText("The original deposit account is missing.")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => {
+    const stored = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return {
+      accountId: stored.paycheckHistory[0]?.depositAccountId,
+      balance: stored.sections.money.find((row: { id: string }) => row.id === "canonical-chime")?.cells.amount,
+    };
+  })).toEqual({ accountId: "canonical-chime", balance: "60.00" });
 });
 
 test("edits and persists multiline Inventory Notes without hijacking caret keys", async ({ page }) => {

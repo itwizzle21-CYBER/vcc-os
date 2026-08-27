@@ -2,7 +2,7 @@ import type { AppData, SectionKey, SpreadsheetRow, ThemeMode } from "../types/ap
 import { isBlankRow, toNumber } from "../calculations/currency";
 import { canonicalizeAccountRows, canonicalizeInventoryRows } from "../engine/canonicalRecords";
 import { syncConfirmedReceiptTransactions } from "../engine/carLoanEngine";
-import { displayAccountLabel } from "../engine/paycheckPlannerEngine";
+import { displayAccountLabel, reconcilePaycheckHistoryAccountLinks } from "../engine/paycheckPlannerEngine";
 import { migrateLegacyReceiptTaxRows } from "../engine/receiptTransactionEngine";
 import { isAvailableLayoutView } from "../layoutViews";
 import { createVerifiedCarLoanData } from "./carLoanReference";
@@ -182,7 +182,7 @@ export function normalizeAppData(raw: unknown): AppData {
     ? sourceSettings.vccCompanionId as AppData["settings"]["vccCompanionId"]
     : starter.settings.vccCompanionId;
 
-  return {
+  const normalized = {
     ...starter,
     ...source,
     version: 5,
@@ -199,6 +199,7 @@ export function normalizeAppData(raw: unknown): AppData {
     activity: Array.isArray(source.activity) ? source.activity : starter.activity,
     settings: { ...starter.settings, ...sourceSettings, theme, appearanceTheme, vccCompanionId, layoutViews },
   } as AppData;
+  return reconcilePaycheckHistoryAccountLinks(normalized);
 }
 
 function migrateRow(section: SectionKey, raw: unknown): SpreadsheetRow {
