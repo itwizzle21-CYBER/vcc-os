@@ -90,6 +90,63 @@ describe("canonical financial events", () => {
     expect(() => applyBillRowsEvent(data, [bill("paid")])).toThrow(/Choose the account/);
   });
 
+  it("lets a valid bill payment proceed when an unrelated legacy paid row lacks evidence", () => {
+    const data = createZeroData();
+    data.sections.money = [row("chime", { label: "Chime", section: "cash", amount: "100.00" })];
+    data.sections.bills = [
+      row("legacy-gym", {
+        name: "gym membership",
+        amount: "10.00",
+        dueDate: "2026-08-01",
+        status: "paid",
+        paymentAccount: "",
+        paidDate: "",
+      }),
+      bill("overdue"),
+    ];
+
+    const paid = payBillEvent(data, { billId: "phone", paymentAccount: "Chime", paidDate: "2026-08-08" });
+
+    expect(paid.sections.money[0].cells.amount).toBe("75.00");
+    expect(paid.sections.transactions).toHaveLength(1);
+    expect(paid.sections.transactions[0].cells.billId).toBe("phone");
+    expect(paid.sections.bills.find((candidate) => candidate.id === "legacy-gym")?.cells).toMatchObject({
+      status: "paid",
+      paymentAccount: "",
+      paidDate: "",
+    });
+  });
+
+  it("creates one canonical transaction when repairing a legacy paid row with complete evidence", () => {
+    const data = createZeroData();
+    data.sections.money = [row("chime", { label: "Chime", section: "cash", amount: "100.00" })];
+    data.sections.bills = [row("legacy-gym", {
+      name: "gym membership",
+      amount: "10.00",
+      dueDate: "2026-08-01",
+      status: "paid",
+      paymentAccount: "",
+      paidDate: "",
+    })];
+
+    const repaired = payBillEvent(data, {
+      billId: "legacy-gym",
+      paymentAccount: "Chime",
+      paidDate: "2026-08-08",
+    });
+    const retried = payBillEvent(repaired, {
+      billId: "legacy-gym",
+      paymentAccount: "Chime",
+      paidDate: "2026-08-08",
+    });
+
+    expect(repaired.sections.money[0].cells.amount).toBe("90.00");
+    expect(repaired.sections.transactions).toHaveLength(1);
+    expect(repaired.sections.transactions[0].cells.billId).toBe("legacy-gym");
+    expect(retried.sections.money[0].cells.amount).toBe("90.00");
+    expect(retried.sections.transactions).toHaveLength(1);
+  });
+
   it("deleting a linked bill transaction restores the balance and reopens the bill", () => {
     const data = createZeroData();
     data.sections.money = [row("chime", { label: "Chime", section: "cash", amount: "100.00" })];

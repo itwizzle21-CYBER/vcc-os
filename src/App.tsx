@@ -599,6 +599,7 @@ function BillsPage({
   const [billSearch, setBillSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [billsWorkspaceView, setBillsWorkspaceView] = useState<"queue" | "ledger">("queue");
   const [billMessage, setBillMessage] = useState("");
   const [billMessageTone, setBillMessageTone] = useState<"info" | "success" | "error">("info");
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
@@ -655,6 +656,14 @@ function BillsPage({
     setBillMessageTone(tone);
   }
 
+  function showBillsWorkspace(view: "queue" | "ledger") {
+    setBillsWorkspaceView(view);
+    if (view === "ledger") {
+      setReviewPanelDismissed(true);
+      setSelectedBillId(null);
+    }
+  }
+
   useEffect(() => () => {
     if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
   }, []);
@@ -683,12 +692,11 @@ function BillsPage({
 
   function openNewBillEditor() {
     setStatusFilter("all");
+    showBillsWorkspace("ledger");
     window.setTimeout(() => {
-      const management = document.querySelector<HTMLDetailsElement>(".bills-management");
-      if (management) management.open = true;
       const addButton = document.querySelector<HTMLButtonElement>('.bills-page [data-spreadsheet-action="add"]');
       addButton?.click();
-      document.querySelector(".bills-management")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelector(".bills-review-queue")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
@@ -696,14 +704,24 @@ function BillsPage({
     if (!selectedBillId) return;
     const rowId = selectedBillId;
     setStatusFilter("all");
-    setSelectedBillId(null);
+    showBillsWorkspace("ledger");
     window.setTimeout(() => {
-      const management = document.querySelector<HTMLDetailsElement>(".bills-management");
-      if (management) management.open = true;
       const editor = document.querySelector<HTMLElement>(`[data-row-id="${rowId}"][data-column-key="name"]`);
       editor?.scrollIntoView({ behavior: "smooth", block: "center" });
       editor?.focus();
     });
+  }
+
+  function handleBillsWorkspaceKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const nextView = event.key === "Home"
+      ? "queue"
+      : event.key === "End"
+        ? "ledger"
+        : billsWorkspaceView === "queue" ? "ledger" : "queue";
+    showBillsWorkspace(nextView);
+    window.requestAnimationFrame(() => document.getElementById(`bills-${nextView}-tab`)?.focus());
   }
 
   function recordReviewedPayment(event: React.FormEvent<HTMLFormElement>) {
@@ -844,35 +862,79 @@ function BillsPage({
         </p>
       )}
 
-      <section className={`bills-review-workspace ${selectedBill ? "has-review" : ""}`} aria-label="Bill review workspace">
+      <section className={`bills-review-workspace ${selectedBill ? "has-review" : ""} ${billsWorkspaceView === "ledger" ? "is-ledger" : ""}`} aria-label="Bill review workspace">
         <section className="panel bills-review-queue" aria-label="Decision Engine bill order">
-          <header>
-            <div className="bills-queue-title">
-              <h2 id="bills-review-queue-title">Review Queue</h2>
-              <span>{queueBills.length}</span>
+          <header className="bills-workspace-header">
+            <div className="bills-workspace-tabs" role="tablist" aria-label="Bills workspace view" onKeyDown={handleBillsWorkspaceKeyDown}>
+              <button
+                id="bills-queue-tab"
+                type="button"
+                role="tab"
+                aria-selected={billsWorkspaceView === "queue"}
+                aria-controls="bills-queue-panel"
+                tabIndex={billsWorkspaceView === "queue" ? 0 : -1}
+                onClick={() => showBillsWorkspace("queue")}
+              >
+                Review Queue <span>{queueBills.length}</span>
+              </button>
+              <button
+                id="bills-ledger-tab"
+                type="button"
+                role="tab"
+                aria-selected={billsWorkspaceView === "ledger"}
+                aria-controls="bills-ledger-panel"
+                tabIndex={billsWorkspaceView === "ledger" ? 0 : -1}
+                onClick={() => showBillsWorkspace("ledger")}
+              >
+                All Bills <span>{filledBillRows.length}</span>
+              </button>
             </div>
-            <button type="button" className="bills-priority-sort" aria-label="Bills are sorted by priority">
-              Sorted by priority <ChevronDown size={15} aria-hidden="true" />
-            </button>
-          </header>
-          <div className="bills-review-queue-list">
-            {queueBills.map((bill) => (
-              <BillQueueItem key={bill.row.id} bill={bill} selected={bill.row.id === selectedBillId} onReview={() => openBillReview(bill.row.id)} onMarkPaid={() => openBillReview(bill.row.id)} />
-            ))}
-            {!queueBills.length && (
-              <div className="bills-review-empty">
-                <CheckCircle2 size={28} aria-hidden="true" />
-                <strong>{statusFilter === "paid" ? "Paid bills live in Recently Cleared" : "You're caught up!"}</strong>
-                <span>No bills currently need your attention.</span>
-              </div>
+            {billsWorkspaceView === "queue" && (
+              <button type="button" className="bills-priority-sort" aria-label="Bills are sorted by priority">
+                Sorted by priority <ChevronDown size={15} aria-hidden="true" />
+              </button>
             )}
-          </div>
-          {queueBills.length > 0 && (
-            <div className="bills-caught-up-banner">
-              <span aria-hidden="true"><CheckCircle2 size={22} /></span>
-              <div><strong>You're caught up!</strong><small>{queueBills.length} bill{queueBills.length === 1 ? " is" : "s are"} organized by priority.</small></div>
-              {nextUpcomingBill && <div><small>Next up: {nextUpcomingBill.name}</small><span>Due {formatDateMDY(nextUpcomingBill.dueDate)} · {formatCurrency(nextUpcomingBill.amount)}</span></div>}
-              <ChevronRight size={18} aria-hidden="true" />
+          </header>
+          {billsWorkspaceView === "queue" ? (
+            <div id="bills-queue-panel" role="tabpanel" aria-labelledby="bills-queue-tab">
+              <div className="bills-review-queue-list">
+                {queueBills.map((bill) => (
+                  <BillQueueItem key={bill.row.id} bill={bill} selected={bill.row.id === selectedBillId} onReview={() => openBillReview(bill.row.id)} onMarkPaid={() => openBillReview(bill.row.id)} />
+                ))}
+                {!queueBills.length && (
+                  <div className="bills-review-empty">
+                    <CheckCircle2 size={28} aria-hidden="true" />
+                    <strong>{statusFilter === "paid" ? "Paid bills live in Recently Cleared" : "You're caught up!"}</strong>
+                    <span>No bills currently need your attention.</span>
+                  </div>
+                )}
+              </div>
+              {queueBills.length > 0 && (
+                <div className="bills-caught-up-banner">
+                  <span aria-hidden="true"><CheckCircle2 size={22} /></span>
+                  <div><strong>You're caught up!</strong><small>{queueBills.length} bill{queueBills.length === 1 ? " is" : "s are"} organized by priority.</small></div>
+                  {nextUpcomingBill && <div><small>Next up: {nextUpcomingBill.name}</small><span>Due {formatDateMDY(nextUpcomingBill.dueDate)} · {formatCurrency(nextUpcomingBill.amount)}</span></div>}
+                  <ChevronRight size={18} aria-hidden="true" />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div id="bills-ledger-panel" className="bills-review-ledger" role="tabpanel" aria-labelledby="bills-ledger-tab">
+              <Spreadsheet
+                config={billsTableConfig}
+                rows={visibleBillRows}
+                sortBy={data.sortBy.bills}
+                onSortChange={updateSort}
+                onRowsChange={updateVisibleBillRows}
+                onDeleteRow={handleDeleteBill}
+                onBillPayment={openBillReview}
+                onResetSection={resetSection}
+                getComputedCell={(row, columnKey) => computedCell("bills", row, columnKey)}
+                selectOptions={{
+                  paymentAccount: billPaymentAccounts.map((account) => ({ value: account.value, label: account.label })),
+                }}
+                addLabel="Add Bill"
+              />
             </div>
           )}
         </section>
@@ -900,27 +962,6 @@ function BillsPage({
         )}
       </section>
 
-      <details className="bills-management">
-        <summary>
-          <span><strong>All bills & editing</strong><small>Add, edit, sort, or reopen any bill.</small></span>
-          <span>Open Full Ledger <ArrowRight size={16} aria-hidden="true" /></span>
-        </summary>
-        <Spreadsheet
-          config={billsTableConfig}
-          rows={visibleBillRows}
-          sortBy={data.sortBy.bills}
-          onSortChange={updateSort}
-          onRowsChange={updateVisibleBillRows}
-          onDeleteRow={handleDeleteBill}
-          onBillPayment={openBillReview}
-          onResetSection={resetSection}
-          getComputedCell={(row, columnKey) => computedCell("bills", row, columnKey)}
-          selectOptions={{
-            paymentAccount: billPaymentAccounts.map((account) => ({ value: account.value, label: account.label })),
-          }}
-          addLabel="Add Bill"
-        />
-      </details>
       <p className="bills-financial-rule"><strong>Rule:</strong> Every paid bill creates one transaction in Transactions and stays in history permanently.</p>
       {deletedBill && (
         <div className="bill-undo-notice" role="status" aria-live="polite">

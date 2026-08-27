@@ -51,7 +51,7 @@ export function applyBillRowsEvent(
   nextBills: SpreadsheetRow[],
   paymentDate?: string,
 ): AppData {
-  assertNewBillPaymentsHaveAccounts(data.sections.bills, nextBills);
+  assertPaymentTransitionsHaveEvidence(data.sections.bills, nextBills);
   const billTransactions = syncBillPaymentTransactions(
     data.sections.bills,
     nextBills,
@@ -264,10 +264,14 @@ export function reconcileCarPaymentRows(
   };
 }
 
-function assertNewBillPaymentsHaveAccounts(previousBills: SpreadsheetRow[], nextBills: SpreadsheetRow[]): void {
+function assertPaymentTransitionsHaveEvidence(previousBills: SpreadsheetRow[], nextBills: SpreadsheetRow[]): void {
   const previousById = new Map(previousBills.map((bill) => [bill.id, bill]));
   for (const bill of nextBills) {
-    if (storedBillStatus(bill) !== "paid" || hasBillPaymentEvidence(previousById.get(bill.id))) continue;
+    if (storedBillStatus(bill) !== "paid") continue;
+    const previousBill = previousById.get(bill.id);
+    const statusBecamePaid = storedBillStatus(previousBill) !== "paid";
+    const evidenceBecameComplete = !hasBillPaymentEvidence(previousBill) && hasBillPaymentEvidence(bill);
+    if (!statusBecamePaid && !evidenceBecameComplete) continue;
     if (!bill.cells.paymentAccount?.trim()) {
       throw new Error(`Choose the account that paid ${bill.cells.name || "this bill"} before marking it paid.`);
     }
