@@ -117,6 +117,42 @@ describe("canonical financial events", () => {
     });
   });
 
+  it("lets a bill payment proceed when unrelated applied transfer history no longer matches available cash", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      row("cash-app", { label: "Cash App", section: "cash", amount: "-50.00" }),
+      row("chime", { label: "Chime", section: "cash", amount: "200.00" }),
+    ];
+    data.sections.transactions = [row("legacy-transfer", {
+      type: "transfer",
+      amount: "100.00",
+      date: "2026-07-01",
+      account: "Cash App",
+      transferDestination: "Chime",
+      transferSourceId: "cash-app",
+      transferDestinationId: "chime",
+      balanceApplied: "yes",
+      balanceApplication: "transaction-editor",
+    })];
+    data.sections.bills = [bill("overdue")];
+
+    const paid = payBillEvent(data, {
+      billId: "phone",
+      paymentAccount: "Chime",
+      paidDate: "2026-08-26",
+    });
+
+    expect(paid.sections.money.find((candidate) => candidate.id === "cash-app")?.cells.amount).toBe("-50.00");
+    expect(paid.sections.money.find((candidate) => candidate.id === "chime")?.cells.amount).toBe("175.00");
+    expect(paid.sections.transactions).toHaveLength(2);
+    expect(paid.sections.transactions.find((candidate) => candidate.cells.billId === "phone")?.cells).toMatchObject({
+      type: "expense",
+      amount: "-25.00",
+      account: "Chime",
+      balanceApplied: "yes",
+    });
+  });
+
   it("creates one canonical transaction when repairing a legacy paid row with complete evidence", () => {
     const data = createZeroData();
     data.sections.money = [row("chime", { label: "Chime", section: "cash", amount: "100.00" })];

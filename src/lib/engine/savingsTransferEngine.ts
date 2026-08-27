@@ -136,10 +136,14 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
     const cleanRow = stripEditorApplication(row);
     if (row.cells.balanceApplied === "yes" && row.cells.balanceApplication !== TRANSACTION_EDITOR) return row;
     const previous = previousTransactions.get(row.id);
+    const balanceChanged = Boolean(previous && balanceFieldsChanged(previous, row));
     const shouldApplyBalance = !previous
       || previous.cells.balanceApplication === TRANSACTION_EDITOR
-      || balanceFieldsChanged(previous, row);
+      || balanceChanged;
     if (!shouldApplyBalance) return row;
+    const shouldValidateAvailableFunds = !previous
+      || previous.cells.balanceApplication !== TRANSACTION_EDITOR
+      || balanceChanged;
     const type = transactionType(row);
 
     if (type === "income" || type === "expense") {
@@ -161,7 +165,7 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
       const shortfallAmount = type === "expense"
         ? Math.max(0, Math.round((amount - Math.max(0, currentBalance)) * 100) / 100)
         : 0;
-      if (type === "expense" && endpoint.kind === "money") {
+      if (shouldValidateAvailableFunds && type === "expense" && endpoint.kind === "money") {
         const account = data.sections.money.find((candidate) => candidate.id === endpoint.id);
         assertChimeBalanceAllowed(account, currentBalance - amount);
       }
@@ -229,7 +233,9 @@ export function syncTransactionTransfers(data: AppData, nextTransactions: Spread
     }
     if (!isValidIsoDate(date)) throw new Error("Choose a valid transfer date.");
     const sourceBalance = endpointBalance(source, moneyBalances, savingsBalances);
-    if (amount > sourceBalance) throw new Error(`This transfer exceeds the ${endpointName(source)} balance.`);
+    if (shouldValidateAvailableFunds && amount > sourceBalance) {
+      throw new Error(`This transfer exceeds the ${endpointName(source)} balance.`);
+    }
 
     adjustEndpointBalance(source.id, -amount, moneyBalances, savingsBalances);
     adjustEndpointBalance(destination.id, amount, moneyBalances, savingsBalances);

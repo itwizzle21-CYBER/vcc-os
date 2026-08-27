@@ -52,6 +52,64 @@ describe("savings transfer engine", () => {
     })).toThrow("exceeds the Debit Card balance");
   });
 
+  it("replays unchanged applied transfer history without blocking a new transaction", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      { id: "cash-app", cells: { label: "Cash App", section: "cash", amount: "-50.00" } },
+      { id: "chime", cells: { label: "Chime", section: "cash", amount: "200.00" } },
+    ];
+    data.sections.transactions = [{
+      id: "legacy-transfer",
+      cells: {
+        type: "transfer",
+        amount: "100.00",
+        date: "2026-07-01",
+        account: "Cash App",
+        transferDestination: "Chime",
+        transferSourceId: "cash-app",
+        transferDestinationId: "chime",
+        balanceApplied: "yes",
+        balanceApplication: "transaction-editor",
+      },
+    }];
+
+    const next = syncTransactionTransfers(data, [
+      data.sections.transactions[0],
+      { id: "new-expense", cells: { type: "expense", amount: "25.00", date: "2026-08-26", account: "Chime" } },
+    ]);
+
+    expect(next.sections.money.find((row) => row.id === "cash-app")?.cells.amount).toBe("-50.00");
+    expect(next.sections.money.find((row) => row.id === "chime")?.cells.amount).toBe("175.00");
+    expect(next.sections.transactions).toHaveLength(2);
+  });
+
+  it("still rejects an applied transfer when its financial inputs are edited beyond available funds", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      { id: "cash-app", cells: { label: "Cash App", section: "cash", amount: "-50.00" } },
+      { id: "chime", cells: { label: "Chime", section: "cash", amount: "200.00" } },
+    ];
+    data.sections.transactions = [{
+      id: "legacy-transfer",
+      cells: {
+        type: "transfer",
+        amount: "100.00",
+        date: "2026-07-01",
+        account: "Cash App",
+        transferDestination: "Chime",
+        transferSourceId: "cash-app",
+        transferDestinationId: "chime",
+        balanceApplied: "yes",
+        balanceApplication: "transaction-editor",
+      },
+    }];
+
+    expect(() => syncTransactionTransfers(data, [{
+      ...data.sections.transactions[0],
+      cells: { ...data.sections.transactions[0].cells, amount: "125.00" },
+    }])).toThrow("exceeds the Cash App balance");
+  });
+
   it("treats a repeated transfer id as an idempotent retry", () => {
     const data = createZeroData();
     data.sections.money = [{ id: "checking", cells: { label: "Checking", section: "cash", amount: "100" } }];
