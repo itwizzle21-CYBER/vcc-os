@@ -4809,6 +4809,17 @@ td textarea[readonly] {
   cursor: pointer;
 }
 
+.money-history-actions button:hover {
+  border-color: color-mix(in srgb, var(--accent) 78%, var(--border));
+  filter: brightness(1.08);
+}
+
+.money-history-actions button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+  opacity: 0.55;
+}
+
 .money-history-actions button.ghost-button {
   border-color: var(--border);
   background: color-mix(in srgb, var(--surface) 88%, transparent);
@@ -4819,6 +4830,29 @@ td textarea[readonly] {
   border-color: color-mix(in srgb, var(--bad) 65%, var(--border));
   background: color-mix(in srgb, var(--bad) 14%, var(--surface));
   color: var(--bad);
+}
+
+.money-history-actions button.danger-button:hover {
+  border-color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 20%, var(--surface));
+}
+
+.money-history-delete-confirm {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--bad) 50%, var(--border));
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--bad) 9%, var(--surface));
+  padding: 0.65rem;
+}
+
+.money-history-record .money-history-delete-confirm > span {
+  flex: 1 1 100%;
+  color: var(--text);
+  font-size: 0.78rem;
 }
 
 .money-history-record > div:first-child,

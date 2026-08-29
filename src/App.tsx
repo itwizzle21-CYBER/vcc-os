@@ -467,13 +467,19 @@ function MoneyPaycheckHistory({
 }) {
   const [sortOrder, setSortOrder] = useState<PaycheckHistorySortOrder>("newest");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [draft, setDraft] = useState<PaycheckRecordInput | null>(null);
   const [historyMessage, setHistoryMessage] = useState("");
+  const deleteConfirmRef = useRef<HTMLButtonElement | null>(null);
   const sortedHistory = useMemo(
     () => sortPaycheckHistory(data.paycheckHistory, sortOrder),
     [data.paycheckHistory, sortOrder],
   );
   const accounts = depositAccountOptions(data);
+
+  useEffect(() => {
+    if (pendingDeleteId) deleteConfirmRef.current?.focus();
+  }, [pendingDeleteId]);
 
   function beginEdit(row: AppData["paycheckHistory"][number]) {
     setEditingId(row.id);
@@ -487,6 +493,7 @@ function MoneyPaycheckHistory({
       spotMeRepayment: row.spotMe,
       myPayRepayment: row.myPay,
     });
+    setPendingDeleteId(null);
     setHistoryMessage("");
   }
 
@@ -524,15 +531,30 @@ function MoneyPaycheckHistory({
     }
   }
 
-  function deleteRecord(historyId: string) {
+  function requestDelete(historyId: string) {
+    setPendingDeleteId(historyId);
+    setHistoryMessage("");
+  }
+
+  function cancelDelete(historyId: string) {
+    setPendingDeleteId(null);
+    requestAnimationFrame(() => document.getElementById(`delete-paycheck-${historyId}`)?.focus());
+  }
+
+  function confirmDelete(historyId: string) {
     try {
-      onChange(deletePaycheckHistoryRecord(data, historyId));
+      const existing = data.paycheckHistory.find((row) => row.id === historyId);
+      if (!existing) throw new Error("That paycheck history record no longer exists.");
+      const deletableData = existing.locked ? setPaycheckHistoryLock(data, historyId, false) : data;
+      onChange(deletePaycheckHistoryRecord(deletableData, historyId));
       if (editingId === historyId) {
         setEditingId(null);
         setDraft(null);
       }
+      setPendingDeleteId(null);
       setHistoryMessage("Paycheck deleted. Its exact deposit and repayment effects were reversed.");
     } catch (error) {
+      setPendingDeleteId(null);
       setHistoryMessage(historyError(error));
     }
   }
@@ -582,10 +604,25 @@ function MoneyPaycheckHistory({
               <strong>{formatCurrency(toNumber(row.remaining))}</strong>
               <small>{row.payDate ? formatDateMDY(row.payDate) : "No pay date"}</small>
               <div className="money-history-actions">
-                {row.locked ? (
+                {pendingDeleteId === row.id ? (
+                  <div className="money-history-delete-confirm" role="group" aria-labelledby={`delete-paycheck-prompt-${row.id}`}>
+                    <span id={`delete-paycheck-prompt-${row.id}`}>Delete this paycheck and reverse its account effects?</span>
+                    <button ref={deleteConfirmRef} type="button" className="danger-button" onClick={() => confirmDelete(row.id)}>
+                      <Trash2 size={16} aria-hidden="true" /> Confirm Delete
+                    </button>
+                    <button type="button" className="ghost-button" onClick={() => cancelDelete(row.id)}>
+                      <X size={16} aria-hidden="true" /> Cancel
+                    </button>
+                  </div>
+                ) : row.locked ? (
+                  <>
                   <button type="button" className="ghost-button" onClick={() => unlockAndEdit(row)}>
                     <LockOpen size={16} aria-hidden="true" /> Unlock
                   </button>
+                    <button id={`delete-paycheck-${row.id}`} type="button" className="danger-button" onClick={() => requestDelete(row.id)}>
+                      <Trash2 size={16} aria-hidden="true" /> Delete
+                    </button>
+                  </>
                 ) : editingId === row.id ? (
                   <>
                     <button type="button" onClick={() => saveEdit(row.id)}>
@@ -594,7 +631,7 @@ function MoneyPaycheckHistory({
                     <button type="button" className="ghost-button" onClick={() => { setEditingId(null); setDraft(null); }}>
                       <X size={16} aria-hidden="true" /> Cancel
                     </button>
-                    <button type="button" className="danger-button" onClick={() => deleteRecord(row.id)}>
+                    <button id={`delete-paycheck-${row.id}`} type="button" className="danger-button" onClick={() => requestDelete(row.id)}>
                       <Trash2 size={16} aria-hidden="true" /> Delete
                     </button>
                   </>
@@ -606,7 +643,7 @@ function MoneyPaycheckHistory({
                     <button type="button" className="ghost-button" onClick={() => lockRecord(row.id)}>
                       <Lock size={16} aria-hidden="true" /> Lock
                     </button>
-                    <button type="button" className="danger-button" onClick={() => deleteRecord(row.id)}>
+                    <button id={`delete-paycheck-${row.id}`} type="button" className="danger-button" onClick={() => requestDelete(row.id)}>
                       <Trash2 size={16} aria-hidden="true" /> Delete
                     </button>
                   </>

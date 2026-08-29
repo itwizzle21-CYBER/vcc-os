@@ -417,6 +417,12 @@ test("edits, locks, unlocks, and deletes paycheck history with exact balance rec
 
   await record.getByRole("button", { name: "Unlock" }).click();
   await record.getByRole("button", { name: "Delete" }).click();
+  await expect(record.getByRole("group", { name: /Delete this paycheck/ })).toBeVisible();
+  await record.getByRole("button", { name: "Cancel" }).click();
+  await expect(record).toHaveCount(1);
+  await record.getByRole("button", { name: "Delete" }).click();
+  await expect(record.getByRole("button", { name: "Confirm Delete" })).toBeFocused();
+  await record.getByRole("button", { name: "Confirm Delete" }).click();
   await expect(record).toHaveCount(0);
   await expect.poll(() => page.evaluate(({ id, paycheckId }) => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -430,6 +436,41 @@ test("edits, locks, unlocks, and deletes paycheck history with exact balance rec
     historyExists: false,
     linkedTransactions: 0,
   });
+});
+
+test("deletes a locked paycheck through explicit confirmation and exact reversal", async ({ page }) => {
+  await page.goto("/money");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}").paycheckPlanner?.depositApplied)).toBe(true);
+  await page.getByRole("tab", { name: /Paychecks/ }).click();
+
+  const before = await page.evaluate(() => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    const history = data.paycheckHistory[0];
+    const account = data.sections.money.find((row: { id: string }) => row.id === history.depositAccountId);
+    const balanceCents = Math.round(Number(account.cells.amount) * 100);
+    const depositCents = Math.round(Number(history.depositAppliedAmount ?? history.remaining) * 100);
+    return {
+      historyId: history.id,
+      accountId: account.id,
+      expectedBalance: ((balanceCents - depositCents) / 100).toFixed(2),
+    };
+  });
+  const record = page.locator(".money-history-record").first();
+  await expect(record.getByText("Locked", { exact: true })).toBeVisible();
+  await record.getByRole("button", { name: "Delete" }).click();
+  await expect(record.getByRole("button", { name: "Confirm Delete" })).toBeFocused();
+  await record.getByRole("button", { name: "Confirm Delete" }).click();
+
+  await expect(record).toHaveCount(0);
+  await expect(page.getByText("Paycheck deleted. Its exact deposit and repayment effects were reversed.")).toBeVisible();
+  await expect.poll(() => page.evaluate(({ historyId, accountId }) => {
+    const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
+    return {
+      balance: data.sections.money.find((row: { id: string }) => row.id === accountId)?.cells.amount,
+      historyExists: data.paycheckHistory.some((row: { id: string }) => row.id === historyId),
+      linkedTransactions: data.sections.transactions.filter((row: { cells: { paycheckHistoryId?: string } }) => row.cells.paycheckHistoryId === historyId).length,
+    };
+  }, before)).toEqual({ balance: before.expectedBalance, historyExists: false, linkedTransactions: 0 });
 });
 
 test("combines accounts and paychecks in one keyboard-accessible Money workspace", async ({ page }) => {
