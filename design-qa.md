@@ -1,66 +1,53 @@
-# Bills Reference-Match Design QA
+# Today’s Mission 2.0 Design QA
 
-- Source: `C:\Users\itwiz\AppData\Local\Temp\codex-clipboard-ebfeb753-09dd-47d7-aeb8-2a2c79f9870a.png`
-- Final implementation capture: `C:\Users\itwiz\Downloads\VCC-OS\output\design-qa\bills-reference-match-final-clean.png`
-- Side-by-side comparison: `C:\Users\itwiz\Downloads\VCC-OS\output\design-qa\bills-reference-comparison.png`
-- Route: `http://127.0.0.1:4173/bills`
-- Comparison viewport: 1200 x 1024 CSS pixels, matching the 1200px-wide app region to the right of the source image's instruction board.
-- Responsive check: 394 x 852 CSS pixels.
-- State note: the source contains four open example bills. The browser contains the user's persisted paid-only local data, so QA used the same screen structure with its real empty-queue and paid-review states instead of overwriting financial records.
+- Source visual truth: `C:/Users/itwiz/AppData/Local/Temp/codex-clipboard-5936bfef-6148-4821-b781-49965eb049d2.png`
+- Desktop implementation evidence: `C:/Users/itwiz/Downloads/VCC-OS/output/design-qa/dashboard-mission-desktop-final.png`
+- Mobile implementation evidence: `C:/Users/itwiz/Downloads/VCC-OS/output/design-qa/dashboard-mission-mobile.png`
+- Combined comparison: `C:/Users/itwiz/Downloads/VCC-OS/output/design-qa/mission-comparison.png`
+- Source pixels: 1536 × 1024 at 1× density.
+- Desktop pixels: 1616 × 1072 at approximately 1× density; CSS viewport 1616 × 1061.
+- Mobile pixels: 382 × 4537 full-page capture; CSS viewport 394 × 846.
+- State: CRITICAL overdue-bills mission with Spendable / Safe unavailable because no canonical cash account exists.
 
-## Visible match
+## Full-view comparison evidence
 
-The implementation now follows the reference hierarchy directly: heading and toolbar, four-part summary strip, priority review queue, upcoming/recently-cleared rail, and a persistent right-side review panel. Desktop proportions resolve to approximately 636px / 288px / 208px for queue, rail, and review panel. The spreadsheet remains collapsed beneath the review surface so all existing data-entry capabilities are preserved without competing with the primary workflow.
+The final implementation preserves the reference’s left-to-right desktop composition: mission identity and metrics, actionable steps, prioritization rationale and CTA, followed by a full-width Spendable / Safe strip. It intentionally retains VCC’s existing Dashboard maximum width, navigation, module cards, theme, and real persisted values rather than reproducing the mockup’s sample data or full-board width.
 
-- Typography: existing Inter/system typography is retained with the source's compact uppercase labels, large monetary values, quiet supporting copy, and single-line review-panel title.
-- Spacing and surfaces: dark navy canvas, low-contrast panel fills, fine blue-gray dividers, compact radii, and yellow primary actions match the source treatment.
-- Color and states: yellow accent, green success, blue informational, amber upcoming, and red urgency tokens map to the reference. Status meaning also has visible text or icons.
-- Icons: all visible icons use the existing Lucide family; no emoji, handcrafted SVG, placeholder illustration, or CSS art was added.
-- Copy: fixed labels match the reference direction while names, dates, amounts, status, and payment evidence remain driven by persisted VCC data.
-- Responsiveness: controls remain visible at mobile width, summary cards become two columns, workspaces stack without horizontal overflow, and tap targets remain usable.
-- Accessibility: one H1, native buttons and forms, named icon controls, visible focus styles, text-backed status indicators, and reduced-motion support are retained.
+Mobile uses the required stacked sequence with no horizontal overflow: identity, metrics, actions, rationale, primary CTA, then Spendable / Safe. The measured page overflow was 0 px; the primary CTA remained a full-width touch target.
 
-## Functionality verified
+## Focused region comparison evidence
 
-- Search and status filter update the queue.
-- Review opens the selected bill; close dismisses the panel.
-- Edit Bill expands the ledger and focuses the exact selected name cell.
-- Paid bills display stored payment account and paid date.
-- Open-bill payment impact uses cent-rounded canonical financial calculations and persists through the existing transaction path.
-- Add, history, delete, sort, reopen, and Undo remain available through the existing ledger and review actions.
-- Production build, lint, TypeScript, and all 186 unit tests pass.
+The combined comparison image was inspected at original resolution. The mission card uses the same outlined icon family, restrained semantic border/glow, compact status badge, two-up critical metrics, numbered action rhythm, inset rationale panel, and prominent state-colored CTA. No reference raster assets were replaced with CSS drawings; the reference contains UI icons rather than photographic or illustrative assets, and the implementation uses VCC’s existing Lucide icon library.
+
+## Required fidelity surfaces
+
+- Fonts and typography: VCC’s existing Inter/system stack is preserved. The final mission title fits on one desktop line; rationale text uses normal sentence case and a readable 500 weight. Hierarchy matches the reference without importing a conflicting display font.
+- Spacing and layout rhythm: the three desktop regions and bottom strip align to a shared grid. Mobile regions stack with 16 px-class spacing and practical touch targets. Existing Dashboard spacing remains intact.
+- Colors and tokens: CRITICAL red, WARNING amber, GOOD green, INFO blue, and SUCCESS purple are mapped through mission-local semantic variables and VCC theme tokens. Light-theme surfaces use the same semantic states without turning the whole card into a bright color block.
+- Image quality and asset fidelity: no image assets were required. Icons are consistent vector components from the product’s existing icon system.
+- Copy and content: the visible copy is deterministic and tied to the selected mission. Metrics use persisted VCC values; unknown financial inputs render as Unavailable, not `$0`.
+- Interactions and accessibility: the Start Mission CTA opens the focused overdue queue; links expose visible focus rings; semantic headings, list structure, region labeling, and touch targets are present.
 
 ## Comparison history
 
-### Pass 1
+### Iteration 1
 
-- [P2] The saved light theme bled into the reference-matched Bills route.
-- [P2] The review panel occupied the wrong grid track at desktop width.
+- P2: the desktop mission title wrapped while the reference title remained on one line.
+- P2: legacy banner styles forced the rationale and Spendable / Safe explanation into uppercase, heavy text.
+- Fixes: removed unnecessary title-row reserve space, adjusted the responsive title scale, and explicitly restored sentence case and 500 weight for explanatory copy.
 
-Fix: scoped the Bills route to the reference dark palette and gave the summary, queue, rail, and review panel explicit desktop grid placement.
+### Iteration 2
 
-### Pass 2
+- Post-fix evidence: `dashboard-mission-desktop-final.png` and `mission-comparison.png`.
+- The title measured as one line, rationale computed to `text-transform: none` and `font-weight: 500`, and page overflow measured 0 px.
+- No actionable P0, P1, or P2 visual findings remain. The narrower overall content width is an accepted existing-product constraint because the brief prohibits redesigning the surrounding Dashboard.
 
-- [P2] The source-width comparison dropped the panel below the queue because the breakpoint and flexible columns resolved too late.
-- [P2] Queue and rail proportions drifted from the source.
+## Interaction and runtime evidence
 
-Fix: moved the desktop breakpoint to 68rem and set stable 636px/288px/208px-equivalent proportions at the comparison viewport.
-
-### Pass 3
-
-- [P2] The review title wrapped and the panel minimum height stretched the entire grid, creating excess vertical space.
-
-Fix: tightened the panel heading scale, removed the track-stretching minimum height, and kept the queue's reference-like vertical rhythm independently.
-
-### Final pass
-
-- Desktop and mobile captures have no horizontal overflow or overlapping controls.
-- Browser diagnostics contain only Vite connection and React development messages; no application errors were observed.
-- No actionable P0, P1, or P2 design findings remain.
-
-## Residual polish
-
-- [P3] A non-persistent seeded visual fixture would allow exact open-payment screenshot parity without touching the user's saved financial data.
-- [P3] The Bills workspace can later be extracted from `App.tsx` to improve code organization without changing behavior or appearance.
+- Start Mission navigated to `/bills?mission=overdue`.
+- The destination showed the Today’s Mission focus notice and only the actual overdue bill record.
+- Desktop and mobile rendered without horizontal overflow.
+- Dashboard refresh reproduced the same derived mission from persisted canonical data.
+- Browser console errors checked: none attributable to Today’s Mission.
 
 final result: passed

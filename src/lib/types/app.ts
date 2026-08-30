@@ -214,6 +214,8 @@ export interface FinancialState {
   cashOnHand: number;
   spendableCash: number;
   safeToSpend: number;
+  spendableSafeAvailable: boolean;
+  spendableSafeMissingInputs: string[];
   protectedSavings: number;
   availableSavings: number;
   borrowedMoney: number;
@@ -230,7 +232,9 @@ export interface FinancialState {
   lastTransaction: string;
   billsDueToday: number;
   billsDueThisWeek: number;
+  billsDueThisWeekAmount: number;
   overdueBills: number;
+  overdueAmount: number;
   billsPressure: number;
   totalDebt: number;
   minimumPayments: number;
@@ -267,10 +271,25 @@ export interface DecisionState {
   todayBriefing: string;
   recommendedMove: string;
   todayMission: {
+    id: string;
     title: string;
     detail: string;
     href: "/" | "/money" | "/bills" | "/inventory" | "/savings" | "/debt" | "/goals" | "/transactions";
+    workflowHref: string;
     priority: "Critical" | "High" | "Medium" | "Low";
+    state: "critical" | "warning" | "good" | "info" | "success";
+    context: string;
+    metrics: Array<{ value: string; label: string; detail: string }>;
+    steps: string[];
+    rationale: string;
+    ctaLabel: string;
+    spendableSafe: {
+      available: boolean;
+      value?: number;
+      detail: string;
+      href: "/money" | "/bills";
+      actionLabel: string;
+    };
   };
   priorityAlerts: Array<{ title: string; detail: string; tone: "warning" | "info" | "success" }>;
   missionStack: Array<{

@@ -14,10 +14,10 @@ import {
   PiggyBank,
   Play,
   ReceiptText,
+  ShieldCheck,
   Target,
   TrendingDown,
   Wallet,
-  Zap,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import type { DepositAccountOption } from "../../lib/engine/paycheckPlannerEngine";
@@ -159,23 +159,67 @@ export default function Dashboard({
       </div>
 
       <div className="dashboard-page-content">
-      <a href={decisionState.todayMission.href} className="mission-banner">
-        <div>
-          <p><Zap size={16} /> Today&apos;s Mission</p>
-          <div className="mission-banner-body">
-            <span>{missionIcon}</span>
+      <section className={`mission-banner mission-state-${decisionState.todayMission.state}`} aria-labelledby="today-mission-title">
+        <span className="mission-priority">
+          <AlertTriangle size={15} aria-hidden="true" /> {decisionState.todayMission.state}
+        </span>
+
+        <div className="mission-identity">
+          <div className="mission-title-row">
+            <span className="mission-hero-icon">{missionIcon}</span>
             <div>
-              <h2>{decisionState.todayMission.title}</h2>
-              <small>{decisionState.todayMission.detail}</small>
+              <p><Target size={16} aria-hidden="true" /> Today&apos;s Mission</p>
+              <h2 id="today-mission-title">{decisionState.todayMission.title}</h2>
             </div>
           </div>
-          <strong className="mission-briefing">{decisionState.todayBriefing}</strong>
+          <div className="mission-context-row">
+            <strong>{decisionState.todayMission.state}</strong>
+            <span>{decisionState.todayMission.context}</span>
+          </div>
+          <div className="mission-metrics" aria-label="Mission metrics">
+            {decisionState.todayMission.metrics.map((metric) => (
+              <div key={`${metric.label}-${metric.value}`}>
+                <strong>{metric.value}</strong>
+                <span>{metric.label}</span>
+                <small>{metric.detail}</small>
+              </div>
+            ))}
+          </div>
         </div>
-        <span className={`mission-priority priority-${decisionState.todayMission.priority.toLowerCase()}`}>
-          {decisionState.todayMission.priority}
-        </span>
-        <ArrowRight size={25} aria-hidden="true" />
-      </a>
+
+        <div className="mission-actions">
+          <h3>What to do</h3>
+          <ol>
+            {decisionState.todayMission.steps.map((step) => (
+              <li key={step}><span><CheckCircle2 size={17} aria-hidden="true" /></span>{step}</li>
+            ))}
+          </ol>
+        </div>
+
+        <aside className="mission-why">
+          <h3>Why this comes first</h3>
+          <p>{decisionState.todayMission.rationale}</p>
+          <a href={decisionState.todayMission.workflowHref} className="mission-start-button">
+            {decisionState.todayMission.ctaLabel} <ArrowRight size={21} aria-hidden="true" />
+          </a>
+        </aside>
+
+        <div className="mission-spendable-strip">
+          <span className="mission-spendable-icon"><ShieldCheck size={23} aria-hidden="true" /></span>
+          <div>
+            <span>Spendable / Safe</span>
+            <strong className={decisionState.todayMission.spendableSafe.available ? undefined : "unavailable"}>
+              {decisionState.todayMission.spendableSafe.available
+                ? formatExactCurrency(decisionState.todayMission.spendableSafe.value ?? 0)
+                : "Unavailable"}
+            </strong>
+          </div>
+          <p>{decisionState.todayMission.spendableSafe.detail}</p>
+          <a href={decisionState.todayMission.spendableSafe.href}>
+            {decisionState.todayMission.spendableSafe.actionLabel} <ArrowRight size={19} aria-hidden="true" />
+          </a>
+        </div>
+      </section>
 
       <section className="dashboard-intelligence-grid" aria-label="Overall system priority output">
         <article className="base-panel dashboard-intelligence-panel">

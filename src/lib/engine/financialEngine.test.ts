@@ -179,4 +179,49 @@ describe("financial dashboard totals", () => {
     expect(state.overdueBills).toBe(0);
     expect(state.billsPressure).toBe(0);
   });
+
+  it("marks Spendable / Safe unavailable when canonical cash evidence is missing", () => {
+    const data = createZeroData();
+    data.paycheckHistory = [{
+      id: "history",
+      incomeSource: "Employer",
+      depositAccountId: "missing-account",
+      payDate: "2026-08-29",
+      income: "500",
+      spotMe: "0",
+      myPay: "0",
+      remaining: "500",
+      weekStart: "2026-08-23",
+      weekEnd: "2026-08-29",
+      locked: true,
+    }];
+
+    const state = computeFinancialState(data, new Date("2026-08-29T12:00:00"));
+
+    expect(state.safeToSpend).toBe(500);
+    expect(state.spendableSafeAvailable).toBe(false);
+    expect(state.spendableSafeMissingInputs).toEqual(["A current cash or checking account"]);
+  });
+
+  it("preserves an explicit zero balance as verified financial data", () => {
+    const data = createZeroData();
+    data.sections.money = [row("cash", { label: "Checking", section: "cash", amount: "0" })];
+
+    expect(computeFinancialState(data)).toMatchObject({
+      spendableCash: 0,
+      safeToSpend: 0,
+      spendableSafeAvailable: true,
+      spendableSafeMissingInputs: [],
+    });
+  });
+
+  it("flags malformed canonical balances instead of presenting them as zero", () => {
+    const data = createZeroData();
+    data.sections.money = [row("cash", { label: "Checking", section: "cash", amount: "not-a-balance" })];
+
+    const state = computeFinancialState(data);
+    expect(state.safeToSpend).toBe(0);
+    expect(state.spendableSafeAvailable).toBe(false);
+    expect(state.spendableSafeMissingInputs).toEqual(["A valid balance for Checking"]);
+  });
 });

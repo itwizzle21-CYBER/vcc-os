@@ -4,10 +4,10 @@ import { summarizeCarLoan } from "./carLoanEngine";
 import { isBalanceAppliedTransaction } from "./savingsTransferEngine";
 import { isChimeAccount } from "./chimeAccountingEngine";
 import { hasBillPaymentEvidence, storedBillStatus } from "./billPaymentSync";
-import { isBlankRow, isValidIsoDate, todayIso, toNumber, weekBounds } from "../calculations/currency";
+import { isBlankRow, isValidIsoDate, toNumber, weekBounds } from "../calculations/currency";
 import type { AppData, FinancialState, SpreadsheetRow } from "../types/app";
 
-export function computeFinancialState(data: AppData): FinancialState {
+export function computeFinancialState(data: AppData, referenceDate = new Date()): FinancialState {
   const carLoanSummary = summarizeCarLoan(data.carLoan);
   const carLoanContract = data.carLoan.contract;
   const money = data.sections.money.filter((row) => !isBlankRow(row.cells));
@@ -26,6 +26,11 @@ export function computeFinancialState(data: AppData): FinancialState {
     section: moneySection(row),
   }));
   const cashRows = moneyRows.filter((item) => item.section === "cash");
+  const invalidCashRows = cashRows.filter((item) => !isFiniteMoneyInput(item.row.cells.amount));
+  const spendableSafeAvailable = cashRows.length > 0 && invalidCashRows.length === 0;
+  const spendableSafeMissingInputs = cashRows.length === 0
+    ? ["A current cash or checking account"]
+    : invalidCashRows.map((item) => `A valid balance for ${item.row.cells.label || "a cash account"}`);
   const cashMoney = cashRows
     .reduce((sum, item) => sum + item.amount, 0);
   const cashOnHand = cashRows
@@ -85,7 +90,7 @@ export function computeFinancialState(data: AppData): FinancialState {
   const transactionIncome = transactions
     .filter((row) => transactionType(row) === "income" && !row.cells.paycheckHistoryId && row.cells.incomeClassification !== "borrowed_advance")
     .reduce((sum, row) => sum + signedTransactionAmount(row), 0);
-  const payWeek = activePayWeek(data);
+  const payWeek = activePayWeek(data, referenceDate);
   const currentWeekTransactions = transactions.filter((row) => isWithinDateRange(row.cells.date, payWeek.start, payWeek.end));
   const currentWeekAdditionalTransactionIncome = currentWeekTransactions
     .filter((row) => transactionType(row) === "income" && !row.cells.paycheckHistoryId && row.cells.incomeClassification !== "borrowed_advance")
@@ -101,10 +106,16 @@ export function computeFinancialState(data: AppData): FinancialState {
   // and transaction activity are reporting signals and must not be added a second time.
   const spendableCash = operatingCash;
 
-  const today = new Date();
+  const today = new Date(referenceDate);
   const billsDueToday = bills.filter((row) => isSameDay(row.cells.dueDate, today) && isOpenBill(row)).length;
   const billsDueThisWeek = bills.filter((row) => isWithinDays(row.cells.dueDate, today, 7) && isOpenBill(row)).length;
+  const billsDueThisWeekAmount = bills
+    .filter((row) => isWithinDays(row.cells.dueDate, today, 7) && isOpenBill(row))
+    .reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
   const overdueBills = bills.filter((row) => isPast(row.cells.dueDate, today) && isOpenBill(row)).length;
+  const overdueAmount = bills
+    .filter((row) => isPast(row.cells.dueDate, today) && isOpenBill(row))
+    .reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
   const billsPressure = bills
     .filter((row) => isDueBy(row.cells.dueDate, today, 7) && isOpenBill(row))
     .reduce((sum, row) => sum + toNumber(row.cells.amount), 0);
@@ -171,6 +182,8 @@ export function computeFinancialState(data: AppData): FinancialState {
     cashOnHand,
     spendableCash,
     safeToSpend,
+    spendableSafeAvailable,
+    spendableSafeMissingInputs,
     protectedSavings,
     availableSavings,
     borrowedMoney,
@@ -187,7 +200,9 @@ export function computeFinancialState(data: AppData): FinancialState {
     lastTransaction: last ? formatTransactionLabel(last, "Transaction") : "None",
     billsDueToday,
     billsDueThisWeek,
+    billsDueThisWeekAmount,
     overdueBills,
+    overdueAmount,
     billsPressure,
     totalDebt,
     minimumPayments,
@@ -277,14 +292,28 @@ function parseDate(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function activePayWeek(data: AppData): { start: string; end: string } {
+function activePayWeek(data: AppData, referenceDate: Date): { start: string; end: string } {
   if (data.paycheckPlanner.weekStart && data.paycheckPlanner.weekEnd) {
-    const today = todayIso();
+    const today = localIsoDate(referenceDate);
     if (today >= data.paycheckPlanner.weekStart && today <= data.paycheckPlanner.weekEnd) {
       return { start: data.paycheckPlanner.weekStart, end: data.paycheckPlanner.weekEnd };
     }
   }
-  return weekBounds(todayIso());
+  return weekBounds(localIsoDate(referenceDate));
+}
+
+function localIsoDate(value: Date): string {
+  return [
+    value.getFullYear(),
+    String(value.getMonth() + 1).padStart(2, "0"),
+    String(value.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function isFiniteMoneyInput(value: string | number | undefined): boolean {
+  if (typeof value === "number") return Number.isFinite(value);
+  const normalized = String(value ?? "").replace(/[$,\s]/g, "");
+  return normalized !== "" && Number.isFinite(Number(normalized));
 }
 
 function isWithinDateRange(value: string, startText: string, endText: string): boolean {

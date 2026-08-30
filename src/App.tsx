@@ -21,6 +21,7 @@ import {
   ReceiptText,
   Save,
   Search,
+  Target,
   Trash2,
   X,
 } from "lucide-react";
@@ -722,8 +723,12 @@ function BillsPage({
   resetSection: (section: SectionKey) => void;
   onChange: (data: AppData) => void;
 }) {
+  const initialMissionFocus = new URLSearchParams(window.location.search).get("mission");
+  const [missionFocus, setMissionFocus] = useState<"overdue" | "upcoming" | null>(
+    initialMissionFocus === "overdue" || initialMissionFocus === "upcoming" ? initialMissionFocus : null,
+  );
   const [billSearch, setBillSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(initialMissionFocus === "overdue" ? "overdue" : "all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [billsWorkspaceView, setBillsWorkspaceView] = useState<"queue" | "ledger">("queue");
   const [billMessage, setBillMessage] = useState("");
@@ -751,7 +756,12 @@ function BillsPage({
   const visibleBillIds = new Set(visibleBillRows.map((row) => row.id));
   const rankedBills = rankBillRows(filledBillRows);
   const attentionBills = rankedBills.filter((bill) => bill.daysUntilDue <= 30);
-  const queueBills = attentionBills.filter((bill) => visibleBillIds.has(bill.row.id));
+  const queueBills = attentionBills.filter((bill) => {
+    if (!visibleBillIds.has(bill.row.id)) return false;
+    if (missionFocus === "overdue") return bill.daysUntilDue < 0;
+    if (missionFocus === "upcoming") return bill.daysUntilDue >= 0 && bill.daysUntilDue <= 7;
+    return true;
+  });
   const billReviewSummary = summarizeBillReview(filledBillRows);
   const upcomingBills = attentionBills
     .filter((bill) => bill.daysUntilDue >= 0 && bill.daysUntilDue <= 30)
@@ -780,6 +790,12 @@ function BillsPage({
   function showBillMessage(message: string, tone: "info" | "success" | "error" = "info") {
     setBillMessage(message);
     setBillMessageTone(tone);
+  }
+
+  function clearMissionFocus() {
+    setMissionFocus(null);
+    setStatusFilter("all");
+    window.history.replaceState({}, "", "/bills");
   }
 
   function showBillsWorkspace(view: "queue" | "ledger") {
@@ -817,6 +833,7 @@ function BillsPage({
   }
 
   function openNewBillEditor() {
+    clearMissionFocus();
     setStatusFilter("all");
     showBillsWorkspace("ledger");
     window.setTimeout(() => {
@@ -959,7 +976,7 @@ function BillsPage({
                   ["paid", "Paid"],
                   ["overdue", "Overdue"],
                 ].map(([value, label]) => (
-                  <button key={value} type="button" aria-pressed={statusFilter === value} onClick={() => { setStatusFilter(value); setFiltersOpen(false); }}>
+                  <button key={value} type="button" aria-pressed={statusFilter === value} onClick={() => { setMissionFocus(null); window.history.replaceState({}, "", "/bills"); setStatusFilter(value); setFiltersOpen(false); }}>
                     <span>{label}</span>{statusFilter === value && <Check size={15} aria-hidden="true" />}
                   </button>
                 ))}
@@ -971,6 +988,17 @@ function BillsPage({
           </button>
         </div>,
         billToolbarTarget,
+      )}
+
+      {missionFocus && (
+        <div className={`bills-mission-focus mission-focus-${missionFocus}`} role="status">
+          <span>
+            <Target size={17} aria-hidden="true" />
+            <strong>Today&apos;s Mission:</strong>
+            {missionFocus === "overdue" ? "Review only overdue bills." : "Review bills due within seven days."}
+          </span>
+          <button type="button" onClick={clearMissionFocus}>Show all bills</button>
+        </div>
       )}
 
       <section className="bills-review-summary" aria-label="Bill summary">
@@ -1066,7 +1094,7 @@ function BillsPage({
         </section>
 
         <aside className="bills-review-rail" aria-label="Upcoming and recently cleared bills">
-          <BillSideList title="Upcoming" subtitle="Next 30 Days" icon={<CalendarDays size={17} />} bills={upcomingBills.slice(0, 3)} empty="No open bills due in the next 30 days." onReview={openBillReview} footerLabel="View All Upcoming" onFooter={() => { setStatusFilter("all"); document.querySelector(".bills-review-queue")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+          <BillSideList title="Upcoming" subtitle="Next 30 Days" icon={<CalendarDays size={17} />} bills={upcomingBills.slice(0, 3)} empty="No open bills due in the next 30 days." onReview={openBillReview} footerLabel="View All Upcoming" onFooter={() => { clearMissionFocus(); document.querySelector(".bills-review-queue")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
           <BillSideList title="Recently Cleared" subtitle="Last paid bills" icon={<CheckCircle2 size={17} />} bills={recentlyClearedBills.slice(0, 3)} empty="Paid bills will appear here." onReview={openBillReview} footerLabel="View Payment History" footerHref="/transactions" />
         </aside>
 

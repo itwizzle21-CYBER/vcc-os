@@ -76,8 +76,12 @@ export function computeDecisionEngine(financialState: FinancialState, data: AppD
 
   return {
     todayBriefing: data.paycheckPlanner.depositApplied
-      ? `Your latest paycheck is recorded. ${formatCurrency(spendableSafe)} is spendable after repayments and bill pressure.`
-      : `Plan the week before spending. Spendable / Safe is ${formatCurrency(spendableSafe)} before the next paycheck.`,
+      ? financialState.spendableSafeAvailable
+        ? `Your latest paycheck is recorded. ${formatCurrency(spendableSafe)} is spendable after repayments and bill pressure.`
+        : "Your latest paycheck is recorded, but Spendable / Safe needs a confirmed cash-account balance."
+      : financialState.spendableSafeAvailable
+        ? `Plan the week before spending. Spendable / Safe is ${formatCurrency(spendableSafe)} before the next paycheck.`
+        : "Add a confirmed cash-account balance before VCC presents a Spendable / Safe amount.",
     recommendedMove,
     todayMission: chooseTodayMission(financialState),
     priorityAlerts: alerts.slice(0, 4),
@@ -118,6 +122,20 @@ function buildSystemPriorityStack(financialState: FinancialState, recentlyComple
       completed: false,
       priority: "High",
       rank: 95,
+    });
+  }
+
+  if (!financialState.spendableSafeAvailable) {
+    missions.push({
+      id: "complete-financial-setup",
+      title: "Complete your financial setup",
+      detail: `${financialState.spendableSafeMissingInputs.join(" and ")} is required before VCC can verify Spendable / Safe.`,
+      href: "/money",
+      target: `${financialState.spendableSafeMissingInputs.length} required input${financialState.spendableSafeMissingInputs.length === 1 ? "" : "s"} missing`,
+      progress: 0,
+      completed: false,
+      priority: "High",
+      rank: 97,
     });
   }
 
@@ -167,7 +185,9 @@ function buildSystemPriorityStack(financialState: FinancialState, recentlyComple
     });
   }
 
-  const billReserveActive = financialState.billsPressure > spendableSafe * 0.5 && financialState.billsPressure > 0;
+  const billReserveActive = financialState.spendableSafeAvailable
+    && financialState.billsPressure > spendableSafe * 0.5
+    && financialState.billsPressure > 0;
   if (!financialState.overdueBills && !financialState.billsDueToday && billReserveActive) {
     missions.push({
       id: "protect-bill-cash",
@@ -230,7 +250,7 @@ function buildSystemPriorityStack(financialState: FinancialState, recentlyComple
       title: "Hold the week steady",
       detail: "No urgent exception is outranking the current cash plan.",
       href: "/money",
-      target: `${formatCurrency(spendableSafe)} Spendable / Safe`,
+      target: financialState.spendableSafeAvailable ? `${formatCurrency(spendableSafe)} Spendable / Safe` : "Spendable / Safe unavailable",
       progress: 100,
       completed: true,
       priority: "Low",
@@ -288,8 +308,10 @@ function chooseRecommendedMove(financialState: FinancialState): string {
   if (financialState.overdueBills > 0) return "Pay overdue bills before new spending.";
   if (financialState.billsDueToday > 0) return "Pay or schedule today’s bills before new spending.";
   if (financialState.accountDeficit > 0) return "Cover the negative account balance before new spending.";
+  if (!financialState.spendableSafeAvailable) return "Add a confirmed cash account and balance before relying on Spendable / Safe.";
   if (financialState.unreconciledCash > 0) return "Reconcile the unaccounted cash source before new spending.";
   if (financialState.borrowedMoney > 0) return "Repay SpotMe/MyPay first, then recalculate Spendable / Safe.";
+  if (financialState.billsDueThisWeek > 0) return "Review bills due within seven days and reserve the required cash.";
   if (financialState.billsPressure > spendableSafe * 0.5) return "Hold cash for bills due this week.";
   if (financialState.criticalItems > 0) return "Refill critical Buy Next items with the lowest-cost run.";
   return "Keep the week steady and avoid adding new fixed costs.";
@@ -298,91 +320,243 @@ function chooseRecommendedMove(financialState: FinancialState): string {
 function chooseTodayMission(financialState: FinancialState): DecisionState["todayMission"] {
   const spendableSafe = mergedSpendable(financialState);
   if (financialState.overdueBills > 0) {
-    return {
+    return createTodayMission(financialState, {
+      id: "stabilize-overdue-bills",
       title: "Stabilize overdue bills",
       detail: `${financialState.overdueBills} overdue bill${financialState.overdueBills === 1 ? "" : "s"} need a decision before new spending.`,
       href: "/bills",
+      workflowHref: "/bills?mission=overdue",
       priority: "Critical",
-    };
-  }
-
-  if (financialState.billsDueToday > 0) {
-    return {
-      title: "Clear today's bills",
-      detail: `${financialState.billsDueToday} bill${financialState.billsDueToday === 1 ? "" : "s"} due today with ${formatCurrency(financialState.billsPressure)} in bill pressure.`,
-      href: "/bills",
-      priority: "High",
-    };
+      state: "critical",
+      context: "Your highest-priority confirmed obligation right now.",
+      metrics: [
+        { value: String(financialState.overdueBills), label: `Bill${financialState.overdueBills === 1 ? "" : "s"} overdue`, detail: "Need a decision" },
+        { value: formatCurrency(financialState.overdueAmount), label: "Total overdue", detail: "Across open bills" },
+      ],
+      steps: ["Review each overdue bill", "Confirm whether it is still outstanding", "Pay, defer, correct, or remove it", "Let VCC recalculate the next mission"],
+      rationale: `${financialState.overdueBills} confirmed bill${financialState.overdueBills === 1 ? " is" : "s are"} overdue. Resolving ${financialState.overdueBills === 1 ? "it" : "them"} outranks discretionary spending because ${financialState.overdueBills === 1 ? "it is" : "they are"} already past due.`,
+      ctaLabel: "Start Mission",
+    });
   }
 
   if (financialState.accountDeficit > 0) {
-    return {
+    return createTodayMission(financialState, {
+      id: "cover-account-deficit",
       title: "Cover the account deficit",
       detail: `${formatCurrency(financialState.accountDeficit)} is below zero across your tracked accounts.`,
       href: "/money",
+      workflowHref: "/money",
       priority: "Critical",
-    };
+      state: "critical",
+      context: "A confirmed negative balance needs immediate attention.",
+      metrics: [{ value: formatCurrency(financialState.accountDeficit), label: "Account deficit", detail: "Across tracked accounts" }],
+      steps: ["Open Money Snapshot", "Confirm the negative balance", "Choose the account to stabilize", "Update the balance after action"],
+      rationale: `Tracked account balances are below zero by ${formatCurrency(financialState.accountDeficit)}. Stabilizing them comes before optional spending because the deficit is already affecting available cash.`,
+      ctaLabel: "Review Accounts",
+    });
+  }
+
+  if (!financialState.spendableSafeAvailable) {
+    const missingCount = financialState.spendableSafeMissingInputs.length;
+    return createTodayMission(financialState, {
+      id: "complete-financial-setup",
+      title: "Complete your financial setup",
+      detail: "VCC needs confirmed balance information before it can calculate a trustworthy Spendable / Safe amount.",
+      href: "/money",
+      workflowHref: "/money",
+      priority: "High",
+      state: "info",
+      context: "One step to better financial clarity.",
+      metrics: [{ value: String(missingCount), label: `Required input${missingCount === 1 ? "" : "s"} missing`, detail: "Needed for a verified result" }],
+      steps: ["Add or confirm a financial account", "Enter its current balance", "Review income information", "Return for a recalculated mission"],
+      rationale: `${financialState.spendableSafeMissingInputs.join(" and ")} is missing. VCC will not treat unknown financial information as $0 or present an unsupported spending recommendation.`,
+      ctaLabel: "Complete Setup",
+    });
   }
 
   if (financialState.unreconciledCash > 0) {
-    return {
+    return createTodayMission(financialState, {
+      id: "reconcile-unaccounted-cash",
       title: "Reconcile unaccounted cash",
       detail: `Confirm where ${formatCurrency(financialState.unreconciledCash)} of shortfall spending came from.`,
       href: "/transactions",
+      workflowHref: "/transactions",
       priority: "High",
-    };
+      state: "info",
+      context: "A missing funding source is blocking full confidence.",
+      metrics: [{ value: formatCurrency(financialState.unreconciledCash), label: "Unreconciled cash", detail: "Funding source unknown" }],
+      steps: ["Open the affected transactions", "Confirm the funding source", "Correct the account link", "Review the recalculated cash position"],
+      rationale: `${formatCurrency(financialState.unreconciledCash)} of recorded spending has no confirmed funding source. Resolving that information comes before optimization because it affects the reliability of the cash plan.`,
+      ctaLabel: "Review Transactions",
+    });
+  }
+
+  if (financialState.billsDueThisWeek > 0) {
+    return createTodayMission(financialState, {
+      id: "prepare-upcoming-bills",
+      title: financialState.billsDueToday > 0 ? "Clear today's bills" : "Prepare for bills due this week",
+      detail: `${financialState.billsDueThisWeek} bill${financialState.billsDueThisWeek === 1 ? " is" : "s are"} due within seven days.`,
+      href: "/bills",
+      workflowHref: "/bills?mission=upcoming",
+      priority: "High",
+      state: "warning",
+      context: "Important obligations are approaching.",
+      metrics: [
+        { value: String(financialState.billsDueThisWeek), label: "Bills due", detail: "Within 7 days" },
+        { value: formatCurrency(financialState.billsDueThisWeekAmount), label: "Total due", detail: "Within 7 days" },
+      ],
+      steps: ["Review upcoming bills", "Verify available funds", "Reserve the required money", "Protect remaining operating cash"],
+      rationale: `${financialState.billsDueThisWeek} required bill${financialState.billsDueThisWeek === 1 ? " is" : "s are"} approaching. Planning for ${formatCurrency(financialState.billsDueThisWeekAmount)} now helps prevent ${financialState.billsDueThisWeek === 1 ? "it" : "them"} from becoming overdue.`,
+      ctaLabel: "Review Upcoming Bills",
+    });
   }
 
   if (financialState.borrowedMoney > 0) {
-    return {
+    return createTodayMission(financialState, {
+      id: "clear-borrowed-money",
       title: "Reduce borrowed cash drag",
       detail: `${formatCurrency(financialState.borrowedMoney)} is lowering Spendable / Safe.`,
       href: "/money",
+      workflowHref: "/money",
       priority: "High",
-    };
+      state: "warning",
+      context: "Borrowed cash is constraining the current plan.",
+      metrics: [{ value: formatCurrency(financialState.borrowedMoney), label: "Borrowed money", detail: "Reducing safe cash" }],
+      steps: ["Review borrowed balances", "Confirm required repayments", "Protect essential cash", "Update balances after repayment"],
+      rationale: `${formatCurrency(financialState.borrowedMoney)} of external borrowing is reducing the verified Spendable / Safe amount. Clearing it improves the reliability and flexibility of the cash plan.`,
+      ctaLabel: "Review Money Snapshot",
+    });
   }
 
   if (financialState.billsPressure > spendableSafe * 0.5 && financialState.billsPressure > 0) {
-    return {
+    return createTodayMission(financialState, {
+      id: "protect-bill-cash",
       title: "Protect cash for bills",
       detail: `${formatCurrency(financialState.billsPressure)} is reserved pressure against ${formatCurrency(spendableSafe)} Spendable / Safe.`,
       href: "/bills",
+      workflowHref: "/bills?mission=upcoming",
       priority: "High",
-    };
+      state: "warning",
+      context: "Near-term obligations are using a large share of safe cash.",
+      metrics: [
+        { value: formatCurrency(financialState.billsPressure), label: "Bill pressure", detail: "Due within 7 days" },
+        { value: formatCurrency(spendableSafe), label: "Spendable / Safe", detail: "After current pressure" },
+      ],
+      steps: ["Review required bills", "Reserve their cash", "Delay optional spending", "Recheck the plan after payment"],
+      rationale: `Near-term bill pressure is large relative to the verified ${formatCurrency(spendableSafe)} Spendable / Safe amount, so protecting required cash comes before optional spending.`,
+      ctaLabel: "Protect Bill Cash",
+    });
   }
 
   if (financialState.criticalItems > 0) {
-    return {
+    return createTodayMission(financialState, {
+      id: "restock-critical-inventory",
       title: "Restock critical inventory",
       detail: `${financialState.criticalItems} critical item${financialState.criticalItems === 1 ? "" : "s"} should be handled from Buy Next.`,
       href: "/inventory",
+      workflowHref: "/inventory",
       priority: "Medium",
-    };
+      state: "warning",
+      context: "Essential inventory needs attention soon.",
+      metrics: [{ value: String(financialState.criticalItems), label: "Critical items", detail: `${formatCurrency(financialState.estimatedRefillCost)} estimated refill` }],
+      steps: ["Open Buy Next", "Confirm essential items", "Choose the lowest-cost run", "Update quantities after purchase"],
+      rationale: `${financialState.criticalItems} critical inventory item${financialState.criticalItems === 1 ? " is" : "s are"} below the minimum. Replenishing essentials is the highest-value next action after current financial obligations are stable.`,
+      ctaLabel: "Open Buy Next",
+    });
   }
 
   if (financialState.totalDebt > 0 && financialState.minimumPayments > 0) {
-    return {
+    return createTodayMission(financialState, {
+      id: "maintain-debt-progress",
       title: "Keep debt progress moving",
       detail: `${formatCurrency(financialState.minimumPayments)} in minimum payments is the next debt checkpoint.`,
       href: "/debt",
+      workflowHref: "/debt",
       priority: "Medium",
-    };
+      state: "good",
+      context: "Your urgent obligations are under control.",
+      metrics: [{ value: formatCurrency(financialState.minimumPayments), label: "Minimum payments", detail: `${financialState.nextPayoff} is next` }],
+      steps: ["Review the next payoff target", "Confirm minimum payments", "Choose an affordable extra amount", "Record the next payment"],
+      rationale: `No more urgent exception is outranking the debt plan. Maintaining the ${formatCurrency(financialState.minimumPayments)} payment checkpoint protects current progress.`,
+      ctaLabel: "Review Debt Plan",
+    });
+  }
+
+  if (financialState.goalsComplete > 0 && financialState.goalCompletionPercent >= 100) {
+    return createTodayMission(financialState, {
+      id: "acknowledge-goal-milestone",
+      title: "Savings milestone reached",
+      detail: `${financialState.goalsComplete} tracked goal${financialState.goalsComplete === 1 ? " has" : "s have"} reached its target.`,
+      href: "/goals",
+      workflowHref: "/goals",
+      priority: "Low",
+      state: "success",
+      context: "A meaningful financial milestone is complete.",
+      metrics: [{ value: String(financialState.goalsComplete), label: `Goal${financialState.goalsComplete === 1 ? "" : "s"} reached`, detail: "Target fully funded" }],
+      steps: ["Review the completed goal", "Protect the funded amount", "Choose the next legitimate objective", "Set the next target when ready"],
+      rationale: "All currently tracked goal targets are funded. Acknowledging the milestone and choosing the next objective is now the highest-value action.",
+      ctaLabel: "Plan the Next Goal",
+    });
   }
 
   if (financialState.goalCompletionPercent < 100 && financialState.closestGoal !== "None") {
-    return {
+    return createTodayMission(financialState, {
+      id: "advance-closest-goal",
       title: "Advance the closest goal",
       detail: `${financialState.closestGoal} is the nearest goal signal from the current data.`,
       href: "/goals",
+      workflowHref: "/goals",
       priority: "Low",
+      state: "good",
+      context: "Your short-term position is stable enough to build forward.",
+      metrics: [{ value: `${Math.round(financialState.goalCompletionPercent)}%`, label: "Goal progress", detail: `${financialState.closestGoal} is closest` }],
+      steps: ["Review the closest goal", "Confirm the target", "Choose a safe contribution", "Record the transfer"],
+      rationale: `No urgent exception is active. ${financialState.closestGoal} is currently the closest supported goal, so a measured contribution is the strongest next move.`,
+      ctaLabel: "Advance Goal",
+    });
+  }
+
+  return createTodayMission(financialState, {
+    id: "hold-week-steady",
+    title: "Stay in control",
+    detail: `Spendable / Safe is ${formatCurrency(spendableSafe)} with no urgent exception detected.`,
+    href: "/money",
+    workflowHref: "/money",
+    priority: "Low",
+    state: "good",
+    context: "Your current position is on track.",
+    metrics: [{ value: formatCurrency(spendableSafe), label: "Spendable / Safe", detail: "Verified current position" }],
+    steps: ["Keep required cash protected", "Review the next upcoming obligation", "Avoid adding unnecessary fixed costs", "Continue the current plan"],
+    rationale: "Canonical balances and current obligations show no urgent or near-term exception. Protecting the current position is the most useful next action.",
+    ctaLabel: "Review Money Snapshot",
+  });
+}
+
+function createTodayMission(
+  financialState: FinancialState,
+  mission: Omit<DecisionState["todayMission"], "spendableSafe">,
+): DecisionState["todayMission"] {
+  return { ...mission, spendableSafe: spendableSafeStatus(financialState) };
+}
+
+function spendableSafeStatus(financialState: FinancialState): DecisionState["todayMission"]["spendableSafe"] {
+  if (!financialState.spendableSafeAvailable) {
+    return {
+      available: false,
+      detail: `${financialState.spendableSafeMissingInputs.join(" and ")} is required before VCC can verify this amount.`,
+      href: "/money",
+      actionLabel: "Go to Money Snapshot",
     };
   }
 
   return {
-    title: "Hold the week steady",
-    detail: `Spendable / Safe is ${formatCurrency(spendableSafe)}. Avoid adding fixed costs today.`,
+    available: true,
+    value: mergedSpendable(financialState),
+    detail: financialState.billsPressure > 0
+      ? `After ${formatCurrency(financialState.billsPressure)} in near-term bill pressure.`
+      : "Calculated from confirmed account balances and current obligations.",
     href: "/money",
-    priority: "Low",
+    actionLabel: "Review Money Snapshot",
   };
 }
 

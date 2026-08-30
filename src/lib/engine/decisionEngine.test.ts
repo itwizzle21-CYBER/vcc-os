@@ -25,12 +25,62 @@ describe("decision engine mission lifecycle", () => {
     const data = createZeroData();
     const today = new Date();
     const todayLocal = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-");
+    data.sections.money = [{ id: "cash", cells: { label: "Checking", section: "cash", amount: "200" } }];
     data.sections.bills = [{ id: "today", cells: { name: "Phone", amount: "20", dueDate: todayLocal, status: "unpaid" } }];
 
     const decision = computeDecisionEngine(computeFinancialState(data), data);
     expect(decision.todayMission.title).toBe("Clear today's bills");
     expect(decision.priorityAlerts.some((alert) => alert.title === "Bill due today")).toBe(true);
     expect(decision.recommendedMove).toContain("today’s bills");
+  });
+
+  it("derives all five semantic mission states from canonical VCC data", () => {
+    const referenceDate = new Date("2026-08-29T12:00:00");
+    const withCash = () => {
+      const data = createZeroData();
+      data.sections.money = [{ id: "cash", cells: { label: "Checking", section: "cash", amount: "1000" } }];
+      return data;
+    };
+
+    const criticalData = createZeroData();
+    criticalData.sections.bills = [{ id: "late", cells: { name: "Rent", amount: "900", dueDate: "2026-08-28", status: "unpaid" } }];
+    const critical = computeDecisionEngine(computeFinancialState(criticalData, referenceDate), criticalData);
+    expect(critical.todayMission).toMatchObject({ state: "critical", id: "stabilize-overdue-bills", workflowHref: "/bills?mission=overdue" });
+    expect(critical.todayMission.metrics).toEqual(expect.arrayContaining([expect.objectContaining({ value: "$900.00", label: "Total overdue" })]));
+    expect(critical.todayMission.spendableSafe.available).toBe(false);
+
+    const warningData = withCash();
+    warningData.sections.bills = [{ id: "soon", cells: { name: "Phone", amount: "120", dueDate: "2026-09-02", status: "unpaid" } }];
+    const warning = computeDecisionEngine(computeFinancialState(warningData, referenceDate), warningData);
+    expect(warning.todayMission).toMatchObject({ state: "warning", id: "prepare-upcoming-bills", workflowHref: "/bills?mission=upcoming" });
+
+    const goodData = withCash();
+    const good = computeDecisionEngine(computeFinancialState(goodData, referenceDate), goodData);
+    expect(good.todayMission).toMatchObject({ state: "good", id: "hold-week-steady" });
+
+    const infoData = createZeroData();
+    const info = computeDecisionEngine(computeFinancialState(infoData, referenceDate), infoData);
+    expect(info.todayMission).toMatchObject({ state: "info", id: "complete-financial-setup" });
+    expect(info.todayMission.spendableSafe).toMatchObject({ available: false });
+
+    const successData = withCash();
+    successData.sections.goals = [{ id: "goal", cells: { name: "Emergency goal", current: "500", target: "500" } }];
+    const success = computeDecisionEngine(computeFinancialState(successData, referenceDate), successData);
+    expect(success.todayMission).toMatchObject({ state: "success", id: "acknowledge-goal-milestone", href: "/goals" });
+  });
+
+  it("recalculates the primary mission when its underlying condition is resolved", () => {
+    const referenceDate = new Date("2026-08-29T12:00:00");
+    const data = createZeroData();
+    data.sections.money = [{ id: "cash", cells: { label: "Checking", section: "cash", amount: "1000" } }];
+    data.sections.bills = [{ id: "late", cells: { name: "Rent", amount: "900", dueDate: "2026-08-28", status: "unpaid" } }];
+
+    expect(computeDecisionEngine(computeFinancialState(data, referenceDate), data).todayMission.state).toBe("critical");
+
+    data.sections.bills = [];
+    const recalculated = computeDecisionEngine(computeFinancialState(data, referenceDate), data);
+    expect(recalculated.todayMission).toMatchObject({ state: "good", id: "hold-week-steady" });
+    expect(recalculated.todayMission.title).not.toBe("Stabilize overdue bills");
   });
 
   it("ranks the dashboard stack across the overall system", () => {
