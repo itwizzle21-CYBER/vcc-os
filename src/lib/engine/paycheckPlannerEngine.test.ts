@@ -3,6 +3,7 @@ import { createZeroData } from "../storage/defaultData";
 import { computeFinancialState } from "./financialEngine";
 import {
   applyPendingPaycheckDeposit,
+  clearPaycheckPlanner,
   deletePaycheckHistoryRecord,
   depositAccountOptions,
   eligibleDepositAccounts,
@@ -14,6 +15,49 @@ import {
 import { applySavingsTransfer } from "./savingsTransferEngine";
 
 describe("connected paycheck planner", () => {
+  it("clears every planner field without removing recorded data", () => {
+    const data = createZeroData();
+    data.paycheckPlanner = {
+      incomeSource: "Work",
+      depositAccountId: "checking",
+      paycheckAmount: "100.00",
+      payDate: "2026-08-21",
+      weekStart: "2026-08-16",
+      weekEnd: "2026-08-22",
+      spotMeRepayment: "10.00",
+      myPayRepayment: "20.00",
+      depositApplied: true,
+      locked: true,
+    };
+    data.paycheckHistory = [{
+      id: "history",
+      payDate: "2026-08-21",
+      income: "100.00",
+      spotMe: "10.00",
+      myPay: "20.00",
+      remaining: "70.00",
+      weekStart: "2026-08-16",
+      weekEnd: "2026-08-22",
+      locked: true,
+    }];
+
+    const cleared = clearPaycheckPlanner(data);
+
+    expect(cleared.paycheckPlanner).toEqual({
+      incomeSource: "",
+      depositAccountId: "",
+      paycheckAmount: "",
+      payDate: "",
+      weekStart: "",
+      weekEnd: "",
+      spotMeRepayment: "",
+      myPayRepayment: "",
+      depositApplied: false,
+      locked: false,
+    });
+    expect(cleared.paycheckHistory).toEqual(data.paycheckHistory);
+  });
+
   it("shares eligible cash accounts with savings transfers without excluding credit-union checking", () => {
     const data = createZeroData();
     data.sections.money = [

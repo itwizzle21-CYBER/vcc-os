@@ -392,8 +392,27 @@ test("edits, locks, unlocks, and deletes paycheck history with exact balance rec
   await planner.getByLabel("Pay Date").fill("2031-12-31");
   await planner.getByLabel("Pay Date").press("Tab");
   await planner.getByLabel("MyPay Repayment").fill("0");
-  await planner.getByLabel("MyPay Repayment").press("Tab");
   await planner.getByRole("button", { name: "Record Paycheck" }).click();
+
+  await expect(planner.getByLabel("Income Source")).toHaveValue("");
+  await expect(planner.getByLabel("Deposit To")).toHaveValue("");
+  await expect(planner.getByLabel("Paycheck Amount")).toHaveValue("");
+  await expect(planner.getByLabel("Pay Date")).toHaveValue("");
+  await expect(planner.getByLabel("Week Start")).toHaveValue("");
+  await expect(planner.getByLabel("Week End")).toHaveValue("");
+  await expect(planner.getByLabel("MyPay Repayment")).toHaveValue("");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}").paycheckPlanner)).toEqual({
+    incomeSource: "",
+    depositAccountId: "",
+    paycheckAmount: "",
+    payDate: "",
+    weekStart: "",
+    weekEnd: "",
+    spotMeRepayment: "",
+    myPayRepayment: "",
+    depositApplied: false,
+    locked: false,
+  });
 
   const record = page.locator(".money-history-record").filter({ hasText: "12-31-2031" });
   await expect(record).toHaveCount(1);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatCurrency, formatDateMDY, toNumber, weekBounds } from "../../lib/calculations/currency";
-import { applyPendingPaycheckDeposit, depositAccountOptions, paycheckBreakdown, recordPaycheck } from "../../lib/engine/paycheckPlannerEngine";
+import { applyPendingPaycheckDeposit, clearPaycheckPlanner, depositAccountOptions, paycheckBreakdown, recordPaycheck } from "../../lib/engine/paycheckPlannerEngine";
 import type { AppData, PaycheckHistoryRow, PaycheckPlanner as Planner } from "../../lib/types/app";
 import BufferedTextInput from "../shared/BufferedTextInput";
 
@@ -15,6 +15,7 @@ export default function PaycheckPlanner({
 }) {
   const [selected, setSelected] = useState<PaycheckHistoryRow | null>(null);
   const [plannerMessage, setPlannerMessage] = useState("");
+  const [plannerDraftVersion, setPlannerDraftVersion] = useState(0);
   const planner = data.paycheckPlanner;
   const depositAccounts = depositAccountOptions(data);
   const breakdown = paycheckBreakdown(data);
@@ -43,7 +44,9 @@ export default function PaycheckPlanner({
 
   function savePaycheck() {
     try {
-      onChange(recordPaycheck(data));
+      const recorded = recordPaycheck(data);
+      onChange(clearPaycheckPlanner(recorded));
+      setPlannerDraftVersion((version) => version + 1);
       setPlannerMessage(`${formatCurrency(remaining)} remaining was recorded and added to the selected Money Snapshot account.`);
     } catch (error) {
       setPlannerMessage(error instanceof Error ? error.message : "The paycheck could not be recorded.");
@@ -52,7 +55,7 @@ export default function PaycheckPlanner({
 
   return (
     <section className="planner-panel">
-      <div className="planner-form">
+      <div className="planner-form" key={plannerDraftVersion}>
         <div>
           <p className="eyebrow">Current Week Planner</p>
           <h2>Weekly Paycheck</h2>

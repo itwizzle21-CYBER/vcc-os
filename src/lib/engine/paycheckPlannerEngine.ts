@@ -1,5 +1,5 @@
 import { isValidIsoDate, toNumber } from "../calculations/currency";
-import type { AppData, PaycheckHistoryRow, SpreadsheetRow } from "../types/app";
+import type { AppData, PaycheckHistoryRow, PaycheckPlanner, SpreadsheetRow } from "../types/app";
 import { automaticSpotMeRepayment, isChimeAccount } from "./chimeAccountingEngine";
 
 export interface DepositAccountOption {
@@ -146,6 +146,23 @@ export function recordPaycheck(data: AppData): AppData {
     throw new Error("Unlock the matching paycheck in History before changing it.");
   }
   return applyPaycheckRecord(data, data.paycheckPlanner, existing?.id);
+}
+
+export function clearPaycheckPlanner(data: AppData): AppData {
+  const paycheckPlanner: PaycheckPlanner = {
+    incomeSource: "",
+    depositAccountId: "",
+    paycheckAmount: "",
+    payDate: "",
+    weekStart: "",
+    weekEnd: "",
+    spotMeRepayment: "",
+    myPayRepayment: "",
+    depositApplied: false,
+    locked: false,
+  };
+
+  return { ...data, paycheckPlanner };
 }
 
 /** @deprecated Kept for compatibility with older callers. Recording no longer locks the planner. */
