@@ -61,12 +61,14 @@ export default function PaycheckPlanner({
           <h2>Weekly Paycheck</h2>
         </div>
         <PlannerInput label="Income Source" value={planner.incomeSource} onChange={(value) => updatePlanner({ incomeSource: value })} />
-        <PlannerSelect label="Deposit To" value={planner.depositAccountId} onChange={(value) => updatePlanner({ depositAccountId: value })} options={depositAccounts.map((account) => ({ value: account.id, label: account.isNew ? `${account.label} · add account` : `${account.label} · ${formatCurrency(account.balance)}` }))} />
+        <PlannerSelect label="Deposit To" value={planner.depositAccountId} onChange={(value) => updatePlanner({ depositAccountId: value, spotMeRepayment: "" })} options={depositAccounts.map((account) => ({ value: account.id, label: account.isNew ? `${account.label} · add account` : `${account.label} · ${formatCurrency(account.balance)}` }))} />
         <PlannerInput label="Paycheck Amount" value={planner.paycheckAmount} onChange={(value) => updatePlanner({ paycheckAmount: value })} />
         <PlannerInput label="Pay Date" type="date" value={planner.payDate} onChange={(value) => updatePlanner({ payDate: value })} />
         <PlannerInput label="Week Start" type="date" value={planner.weekStart} onChange={(value) => updatePlanner({ weekStart: value })} />
         <PlannerInput label="Week End" type="date" value={planner.weekEnd} onChange={(value) => updatePlanner({ weekEnd: value })} />
-        <PlannerInput label={breakdown.spotMeAutomatic ? "SpotMe Auto-Repayment" : "SpotMe Repayment"} value={breakdown.spotMeAutomatic ? breakdown.spotMeRepayment.toFixed(2) : planner.spotMeRepayment} disabled={breakdown.spotMeAutomatic} onChange={(value) => updatePlanner({ spotMeRepayment: value })} />
+        {breakdown.isChimeDeposit && (
+          <PlannerInput label="SpotMe Auto-Repayment" value={breakdown.spotMeRepayment.toFixed(2)} disabled onChange={() => undefined} />
+        )}
         <PlannerInput label="MyPay Repayment" value={planner.myPayRepayment} onChange={(value) => updatePlanner({ myPayRepayment: value })} />
         <div className="planner-result">
           <span>Remaining After Repayment</span>

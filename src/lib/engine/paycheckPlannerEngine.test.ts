@@ -8,6 +8,7 @@ import {
   depositAccountOptions,
   eligibleDepositAccounts,
   lockPaycheckWeek,
+  paycheckBreakdown,
   reconcilePaycheckHistoryAccountLinks,
   setPaycheckHistoryLock,
   updatePaycheckHistoryRecord,
@@ -111,8 +112,8 @@ describe("connected paycheck planner", () => {
     const applied = applyPendingPaycheckDeposit(data);
     const unchanged = applyPendingPaycheckDeposit(applied);
 
-    expect(applied.sections.money[0].cells.amount).toBe("725.00");
-    expect(applied.paycheckHistory[0].remaining).toBe("600.00");
+    expect(applied.sections.money[0].cells.amount).toBe("775.00");
+    expect(applied.paycheckHistory[0].remaining).toBe("650.00");
     expect(applied.paycheckHistory[0]).toMatchObject({ incomeSource: "Paycheck", depositAccountId: "checking" });
     expect(applied.paycheckPlanner.depositApplied).toBe(true);
     expect(unchanged).toBe(applied);
@@ -142,11 +143,55 @@ describe("connected paycheck planner", () => {
     ]);
   });
 
+  it("exposes SpotMe only as a Chime-derived automatic repayment", () => {
+    const data = createZeroData();
+    data.sections.money = [
+      { id: "chime", cells: { label: "Chime Checking", section: "cash", amount: "-40.00" } },
+      { id: "checking", cells: { label: "Checking", section: "cash", amount: "0.00" } },
+    ];
+    data.paycheckPlanner = {
+      incomeSource: "Work",
+      depositAccountId: "chime",
+      paycheckAmount: "100.00",
+      payDate: "2026-08-21",
+      weekStart: "2026-08-16",
+      weekEnd: "2026-08-22",
+      spotMeRepayment: "25.00",
+      myPayRepayment: "10.00",
+      depositApplied: false,
+      locked: false,
+    };
+
+    expect(paycheckBreakdown(data)).toEqual({
+      spotMeRepayment: 40,
+      myPayRepayment: 10,
+      remaining: 50,
+      isChimeDeposit: true,
+    });
+
+    data.paycheckPlanner.depositAccountId = "checking";
+    expect(paycheckBreakdown(data)).toEqual({
+      spotMeRepayment: 0,
+      myPayRepayment: 10,
+      remaining: 90,
+      isChimeDeposit: false,
+    });
+
+    data.paycheckPlanner.depositAccountId = "chime";
+    data.sections.money[0].cells.amount = "0.00";
+    expect(paycheckBreakdown(data)).toEqual({
+      spotMeRepayment: 0,
+      myPayRepayment: 10,
+      remaining: 90,
+      isChimeDeposit: true,
+    });
+  });
+
   it("applies a sourced paycheck to one account and carries it into a savings transfer without double-counting", () => {
     const data = createZeroData();
     data.sections.money = [
       { id: "chime", cells: { label: "Chime Card", section: "cash", amount: "100.00" } },
-      { id: "borrowed", cells: { label: "SpotMe / MyPay", section: "borrowed", amount: "150.00" } },
+      { id: "borrowed", cells: { label: "MyPay", section: "borrowed", amount: "50.00" } },
     ];
     data.sections.savings = [{ id: "emergency", cells: { name: "Emergency Fund", balance: "50.00", protected: "Yes" } }];
     data.paycheckPlanner = {
@@ -163,11 +208,11 @@ describe("connected paycheck planner", () => {
     };
 
     const locked = lockPaycheckWeek(data);
-    expect(locked.sections.money.find((row) => row.id === "chime")?.cells.amount).toBe("950.00");
+    expect(locked.sections.money.find((row) => row.id === "chime")?.cells.amount).toBe("1050.00");
     expect(locked.sections.money.find((row) => row.id === "borrowed")?.cells.amount).toBe("0.00");
-    expect(locked.paycheckHistory[0]).toMatchObject({ incomeSource: "Acme Payroll", depositAccountId: "chime", remaining: "850.00" });
+    expect(locked.paycheckHistory[0]).toMatchObject({ incomeSource: "Acme Payroll", depositAccountId: "chime", spotMe: "0.00", myPay: "50.00", remaining: "950.00" });
     expect(locked.sections.transactions[0]).toMatchObject({ cells: { type: "income", account: "Chime Card", balanceApplied: "yes" } });
-    expect(computeFinancialState(locked).totalCash).toBe(1000);
+    expect(computeFinancialState(locked).totalCash).toBe(1100);
     expect(computeFinancialState(locked).receivedIncome).toBe(1000);
     expect(computeFinancialState(locked).borrowedMoney).toBe(0);
 
@@ -179,11 +224,11 @@ describe("connected paycheck planner", () => {
       transferId: "savings-transfer",
     });
     const state = computeFinancialState(transferred);
-    expect(transferred.sections.money.find((row) => row.id === "chime")?.cells.amount).toBe("750.00");
+    expect(transferred.sections.money.find((row) => row.id === "chime")?.cells.amount).toBe("850.00");
     expect(transferred.sections.savings[0].cells.balance).toBe("250.00");
     expect(transferred.sections.transactions).toHaveLength(2);
-    expect(state.totalCash).toBe(1000);
-    expect(state.spendableCash).toBe(750);
+    expect(state.totalCash).toBe(1100);
+    expect(state.spendableCash).toBe(850);
     expect(state.protectedSavings).toBe(250);
   });
 
@@ -213,11 +258,11 @@ describe("connected paycheck planner", () => {
     expect(second.sections.transactions).toHaveLength(1);
   });
 
-  it("recalculates borrowed-money repayments when a paycheck is re-locked", () => {
+  it("recalculates MyPay repayments when a paycheck is re-locked", () => {
     const data = createZeroData();
     data.sections.money = [
       { id: "checking", cells: { label: "Checking", section: "cash", amount: "0" } },
-      { id: "spotme", cells: { label: "SpotMe", section: "borrowed", amount: "100" } },
+      { id: "mypay", cells: { label: "MyPay", section: "borrowed", amount: "100" } },
     ];
     data.paycheckPlanner = {
       incomeSource: "Work",
@@ -227,19 +272,19 @@ describe("connected paycheck planner", () => {
       weekStart: "2026-07-19",
       weekEnd: "2026-07-25",
       spotMeRepayment: "50",
-      myPayRepayment: "0",
+      myPayRepayment: "50",
       depositApplied: false,
       locked: false,
     };
 
     const first = lockPaycheckWeek(data);
     first.paycheckHistory[0] = { ...first.paycheckHistory[0], locked: false };
-    first.paycheckPlanner = { ...first.paycheckPlanner, spotMeRepayment: "100", locked: false };
+    first.paycheckPlanner = { ...first.paycheckPlanner, spotMeRepayment: "100", myPayRepayment: "100", locked: false };
     const second = lockPaycheckWeek(first);
 
     expect(second.sections.money.find((row) => row.id === "checking")?.cells.amount).toBe("400.00");
-    expect(second.sections.money.find((row) => row.id === "spotme")?.cells.amount).toBe("0.00");
-    expect(second.paycheckHistory[0].borrowedRepayments).toEqual([{ rowId: "spotme", label: "SpotMe", amount: 100 }]);
+    expect(second.sections.money.find((row) => row.id === "mypay")?.cells.amount).toBe("0.00");
+    expect(second.paycheckHistory[0].borrowedRepayments).toEqual([{ rowId: "mypay", label: "MyPay", amount: 100 }]);
   });
 
   it("uses a negative Chime balance as SpotMe and does not deduct its repayment twice", () => {
@@ -286,13 +331,13 @@ describe("connected paycheck planner", () => {
       weekStart: "2026-07-19",
       weekEnd: "2026-07-25",
       spotMeRepayment: "-10",
-      myPayRepayment: "0",
+      myPayRepayment: "-10",
       depositApplied: false,
       locked: false,
     };
 
     expect(() => lockPaycheckWeek(data)).toThrow("cannot be negative");
-    data.paycheckPlanner.spotMeRepayment = "0";
+    data.paycheckPlanner.myPayRepayment = "0";
     data.paycheckPlanner.payDate = "2026-02-30";
     expect(() => lockPaycheckWeek(data)).toThrow("valid paycheck date");
   });
@@ -301,7 +346,7 @@ describe("connected paycheck planner", () => {
     const data = createZeroData();
     data.sections.money = [
       { id: "checking", cells: { label: "Checking", section: "cash", amount: "100.00" } },
-      { id: "spotme", cells: { label: "SpotMe", section: "borrowed", amount: "80.00" } },
+      { id: "mypay", cells: { label: "MyPay", section: "borrowed", amount: "80.00" } },
     ];
     data.paycheckPlanner = {
       incomeSource: "Work",
@@ -311,7 +356,7 @@ describe("connected paycheck planner", () => {
       weekStart: "2026-08-16",
       weekEnd: "2026-08-22",
       spotMeRepayment: "50.00",
-      myPayRepayment: "0",
+      myPayRepayment: "50.00",
       depositApplied: false,
       locked: false,
     };
@@ -332,11 +377,11 @@ describe("connected paycheck planner", () => {
       weekStart: "2026-08-16",
       weekEnd: "2026-08-22",
       spotMeRepayment: "80.00",
-      myPayRepayment: "0",
+      myPayRepayment: "80.00",
     });
 
     expect(edited.sections.money.find((row) => row.id === "checking")?.cells.amount).toBe("620.00");
-    expect(edited.sections.money.find((row) => row.id === "spotme")?.cells.amount).toBe("0.00");
+    expect(edited.sections.money.find((row) => row.id === "mypay")?.cells.amount).toBe("0.00");
     expect(edited.paycheckHistory).toHaveLength(1);
     expect(edited.paycheckHistory[0]).toMatchObject({
       id: historyId,

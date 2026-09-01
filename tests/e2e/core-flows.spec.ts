@@ -378,7 +378,19 @@ test("edits, locks, unlocks, and deletes paycheck history with exact balance rec
   await page.getByRole("tab", { name: /Paychecks/ }).click();
   const planner = page.locator(".planner-form");
   const deposit = planner.getByLabel("Deposit To");
-  await deposit.selectOption({ index: 1 });
+  const chimeOption = deposit.locator("option").filter({ hasText: /Chime/i }).first();
+  const chimeAccountId = await chimeOption.getAttribute("value");
+  expect(chimeAccountId).toBeTruthy();
+  await deposit.selectOption(chimeAccountId!);
+  await expect(planner.getByLabel("SpotMe Auto-Repayment")).toBeVisible();
+  await expect(planner.getByLabel("SpotMe Auto-Repayment")).toBeDisabled();
+
+  const nonChimeOption = deposit.locator("option").filter({ hasNotText: /Chime|Select card or account/i }).first();
+  const nonChimeAccountId = await nonChimeOption.getAttribute("value");
+  expect(nonChimeAccountId).toBeTruthy();
+  await deposit.selectOption(nonChimeAccountId!);
+  await expect(planner.getByLabel("SpotMe Auto-Repayment")).toHaveCount(0);
+  await deposit.selectOption(chimeAccountId!);
   const accountId = await deposit.inputValue();
   const initialBalance = await page.evaluate((id) => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -401,6 +413,7 @@ test("edits, locks, unlocks, and deletes paycheck history with exact balance rec
   await expect(planner.getByLabel("Week Start")).toHaveValue("");
   await expect(planner.getByLabel("Week End")).toHaveValue("");
   await expect(planner.getByLabel("MyPay Repayment")).toHaveValue("");
+  await expect(planner.getByLabel("SpotMe Auto-Repayment")).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}").paycheckPlanner)).toEqual({
     incomeSource: "",
     depositAccountId: "",

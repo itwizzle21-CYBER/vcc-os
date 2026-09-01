@@ -211,19 +211,17 @@ function applyPaycheckRecord(data: AppData, input: PaycheckRecordInput, replaceH
   const suggestedDepositAccount = suggestedAccounts.find((account) => account.id === input.depositAccountId);
   const depositAccount = existingDepositAccount || (suggestedDepositAccount ? createMoneyAccount(suggestedDepositAccount.id, suggestedDepositAccount.label) : undefined);
   const incomeCents = toCents(input.paycheckAmount);
-  const requestedSpotMeRepaymentCents = toCents(input.spotMeRepayment);
   const myPayRepaymentCents = toCents(input.myPayRepayment);
   const embeddedSpotMeRepaymentCents = toCents(automaticSpotMeRepayment(depositAccount, incomeCents / 100));
-  const spotMeIsEmbedded = isChimeAccount(depositAccount) && embeddedSpotMeRepaymentCents > 0;
-  const spotMeRepaymentCents = spotMeIsEmbedded ? embeddedSpotMeRepaymentCents : requestedSpotMeRepaymentCents;
+  const spotMeRepaymentCents = isChimeAccount(depositAccount) ? embeddedSpotMeRepaymentCents : 0;
   const remainingCents = incomeCents - spotMeRepaymentCents - myPayRepaymentCents;
-  const depositAppliedCents = incomeCents - myPayRepaymentCents - (spotMeIsEmbedded ? 0 : spotMeRepaymentCents);
+  const depositAppliedCents = incomeCents - myPayRepaymentCents;
 
   if (!incomeSource) throw new Error("Add the source of this income before recording the paycheck.");
   if (!depositAccount) throw new Error("Choose the card or account receiving this paycheck.");
   if (!isValidIsoDate(input.payDate)) throw new Error("Choose a valid paycheck date before recording the paycheck.");
   if (incomeCents <= 0) throw new Error("Enter a paycheck amount greater than $0.");
-  if (requestedSpotMeRepaymentCents < 0 || myPayRepaymentCents < 0) throw new Error("Repayment amounts cannot be negative.");
+  if (myPayRepaymentCents < 0) throw new Error("Repayment amounts cannot be negative.");
   if (remainingCents < 0) throw new Error("Repayments cannot exceed the paycheck amount.");
 
   const historyId = existing?.id || `paycheck-${input.payDate}-${Date.now()}`;
@@ -232,7 +230,7 @@ function applyPaycheckRecord(data: AppData, input: PaycheckRecordInput, replaceH
     : [...base.sections.money, depositAccount];
   const borrowedRepayments = allocateBorrowedRepayments(
     moneyBeforeDeposit,
-    spotMeIsEmbedded ? 0 : spotMeRepaymentCents,
+    0,
     myPayRepaymentCents,
   );
   const historyRow: PaycheckHistoryRow = {
@@ -359,7 +357,6 @@ function recordInputMatchesHistory(input: PaycheckRecordInput, history: Paycheck
     && input.payDate === history.payDate
     && input.weekStart === history.weekStart
     && input.weekEnd === history.weekEnd
-    && toCents(input.spotMeRepayment) === toCents(history.spotMe)
     && toCents(input.myPayRepayment) === toCents(history.myPay);
 }
 
@@ -374,9 +371,7 @@ function paycheckTransaction(history: PaycheckHistoryRow, depositAccount: Spread
       amount: currencyValue(toNumber(history.income)),
       date: history.payDate,
       account: depositAccount.cells.label || "Money Snapshot account",
-      notes: repaymentTotal > 0
-        ? `$${currencyValue(toNumber(history.spotMe))} repaid to SpotMe first and $${currencyValue(toNumber(history.myPay))} repaid to MyPay; $${currencyValue(toNumber(history.remaining))} remained available.`
-        : `$${currencyValue(toNumber(history.remaining))} deposited and applied to the account balance.`,
+      notes: repaymentTotal > 0 ? paycheckRepaymentNote(history) : `$${currencyValue(toNumber(history.remaining))} deposited and applied to the account balance.`,
       paycheckHistoryId: history.id,
       depositAccountId: depositAccount.id,
       balanceApplied: "yes",
@@ -384,17 +379,25 @@ function paycheckTransaction(history: PaycheckHistoryRow, depositAccount: Spread
   };
 }
 
-export function paycheckBreakdown(data: AppData): { spotMeRepayment: number; myPayRepayment: number; remaining: number; spotMeAutomatic: boolean } {
+function paycheckRepaymentNote(history: PaycheckHistoryRow): string {
+  const spotMe = toNumber(history.spotMe);
+  const myPay = toNumber(history.myPay);
+  const remaining = `$${currencyValue(toNumber(history.remaining))} remained available.`;
+  if (spotMe > 0 && myPay > 0) return `$${currencyValue(spotMe)} automatically repaid SpotMe first and $${currencyValue(myPay)} repaid MyPay; ${remaining}`;
+  if (spotMe > 0) return `$${currencyValue(spotMe)} automatically repaid SpotMe; ${remaining}`;
+  return `$${currencyValue(myPay)} repaid MyPay; ${remaining}`;
+}
+
+export function paycheckBreakdown(data: AppData): { spotMeRepayment: number; myPayRepayment: number; remaining: number; isChimeDeposit: boolean } {
   const planner = data.paycheckPlanner;
   const existingAccount = eligibleDepositAccounts(data).find((row) => row.id === planner.depositAccountId);
   const suggestedAccount = suggestedAccounts.find((row) => row.id === planner.depositAccountId);
   const account = existingAccount || (suggestedAccount ? createMoneyAccount(suggestedAccount.id, suggestedAccount.label) : undefined);
   const income = toNumber(planner.paycheckAmount);
-  const automaticRepayment = automaticSpotMeRepayment(account, income);
-  const spotMeAutomatic = isChimeAccount(account) && automaticRepayment > 0;
-  const spotMeRepayment = spotMeAutomatic ? automaticRepayment : toNumber(planner.spotMeRepayment);
+  const isChimeDeposit = isChimeAccount(account);
+  const spotMeRepayment = isChimeDeposit ? automaticSpotMeRepayment(account, income) : 0;
   const myPayRepayment = toNumber(planner.myPayRepayment);
-  return { spotMeRepayment, myPayRepayment, remaining: income - spotMeRepayment - myPayRepayment, spotMeAutomatic };
+  return { spotMeRepayment, myPayRepayment, remaining: income - spotMeRepayment - myPayRepayment, isChimeDeposit };
 }
 
 function toCents(value: string | number | undefined): number {
