@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createZeroData } from "../../src/lib/storage/defaultData";
+import { normalizeAppData } from "../../src/lib/storage/localStore";
 import { createVccBackup, parseVccBackup } from "../../src/lib/storage/backup";
 import { computeFinancialState } from "../../src/lib/engine/financialEngine";
 import { payBillEvent } from "../../src/lib/engine/financialEventEngine";
 import { mergeAppDataWithReport } from "../../src/lib/cloud/syncMerge";
 import { buildTrendReport, transactionDateMatchesReport } from "../../src/components/modules/ReportsPage";
-import type { SpreadsheetRow } from "../../src/lib/types/app";
+import type { AppData, SpreadsheetRow } from "../../src/lib/types/app";
 
 const row = (id: string, cells: Record<string, string>): SpreadsheetRow => ({ id, cells });
 const today = new Date("2026-09-12T09:00:00");
@@ -17,6 +18,15 @@ const bill = (id: string, amount: string, dueDate = "2026-09-12") => row(id, {
 afterEach(() => vi.useRealTimers());
 
 describe("VCC readiness contracts — failures are unresolved product defects", () => {
+  it("S1: a legacy workspace never acquires another owner's loan evidence", () => {
+    const legacy: Partial<AppData> = createZeroData();
+    delete legacy.carLoan;
+    const normalized = normalizeAppData(legacy);
+    // Assert booleans/counts so CI failures do not print private record fields.
+    expect(normalized.carLoan.contract === null).toBe(true);
+    expect(normalized.carLoan.receipts.length).toBe(0);
+  });
+
   it("control: a single-device bill event is idempotent and reconciles cash", () => {
     const base = createZeroData();
     base.sections.money = [account()];

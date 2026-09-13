@@ -1,5 +1,15 @@
 # Sprint History
 
+## Sprint 0.29: Release Gates
+
+Date: 2026-09-13
+
+Completed: reusable local readiness command, independent GitHub Actions gates, a privacy normalization reproducer, and current QA/release evidence. Changes are limited to package scripts, tests, CI, and documentation.
+
+Validation: lint, both type checks, 201 unit tests, build budgets, and dependency audit pass. The nine-case readiness suite has eight failures and one passing control; the aggregate command correctly exits 1. Browser coverage from Sprint 0.28 remains red and was not repeated locally for unchanged browser/application code.
+
+Status: production NO-GO; financial/privacy/application repairs are still blocked by the active no-application-code instruction. Branch protection and Vercel gating have not been configured. See [sprint evidence](SPRINT_0_29_RELEASE_GATES.md).
+
 ## Sprint 0.28: Product Readiness Audit
 
 Date: 2026-09-12

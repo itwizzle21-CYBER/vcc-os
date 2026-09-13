@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-13 - Sprint 0.29 Release Gates
+
+- Added one fail-fast readiness command and independent GitHub Actions quality, financial/privacy, and browser jobs with read-only permissions and pinned actions.
+- Added a privacy normalization contract without printing owner record fields; readiness now has eight failures and one passing control.
+- Verified lint, application/QA types, 201 unit tests, bundle budgets, and zero published dependency advisories. The aggregate command correctly exits nonzero on unresolved product contracts.
+- Disabled automatic browser artifact publication while fixtures/runtime contain owner evidence. Required branch checks and deployment gating remain unconfigured.
+- Application code unchanged; production remains NO-GO. See [sprint evidence](SPRINT_0_29_RELEASE_GATES.md).
+
 ## 2026-09-12 - Sprint 0.28 Product Readiness Audit
 
 - Added a dedicated red readiness gate reproducing seven financial/sync/backup/reporting defects with synthetic data and separately checked audit/e2e test types.

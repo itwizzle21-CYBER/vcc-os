@@ -8,8 +8,11 @@
     "build": "tsc --noEmit && vite build && node scripts/check-bundle-budget.mjs",
     "lint": "eslint src main.tsx vite.config.ts --max-warnings=0",
     "typecheck": "tsc --noEmit",
+    "typecheck:qa": "tsc --project tests/audit/tsconfig.json",
     "test": "vitest run --exclude tests/e2e/**",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:readiness": "vitest run --config tests/audit/vitest.config.ts",
+    "check:readiness": "npm run lint && npm run typecheck && npm run typecheck:qa && npm test && npm run build && npm run test:readiness && npm run test:e2e && npm audit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

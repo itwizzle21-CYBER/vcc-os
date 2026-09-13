@@ -1,6 +1,6 @@
 # Roadmap
 
-Updated 2026-09-12. Repository restoration and canonical financial-engine foundations are already implemented. The next work is correctness and privacy, with acceptance checks rather than an arbitrary readiness percentage.
+Updated 2026-09-13. Repository restoration and canonical financial-engine foundations are already implemented. Sprint 0.29 adds local and CI readiness checks. The next product work is correctness and privacy, with acceptance checks rather than an arbitrary readiness percentage.
 
 ## Next sprint: Financial integrity and private data
 
@@ -14,7 +14,7 @@ Production release remains NO-GO until these are addressed:
 6. Reject future backup data versions before normalization or state mutation.
 7. Validate calendar dates and use calendar boundaries consistently in reports. Keep different years distinct in all-time trends.
 
-The seven executable R1–R7 contracts are in `tests/audit/readiness.audit.ts`. Run the dedicated config in addition to the ordinary suite.
+The executable R1–R7 and S1 privacy contracts are in `tests/audit/readiness.audit.ts`. Run `npm run check:readiness`; its current failure blocks a readiness claim. CI runs all three gate groups independently. Required branch checks and deployment gating remain to be configured after reviewing the workflow; preview deployment success alone is not release acceptance.
 
 ## Following sprint: Resilience and verifiable operations
 
@@ -24,7 +24,7 @@ The seven executable R1–R7 contracts are in `tests/audit/readiness.audit.ts`. 
 - Make evidence attachments portable or clearly disclose device-only attachment recovery.
 - Bound OCR image bytes/pixels and verify offline OCR behavior.
 - Scope service-worker cache cleanup and cache the required runtime shell.
-- Add CI release gates, live test-account RLS checks, accessible keyboard/screen-reader review, field performance measurements, and production error monitoring.
+- Enforce the implemented CI checks through branch/deployment policy; add live test-account RLS checks, accessible keyboard/screen-reader review, field performance measurements, and production error monitoring.
 - Refresh derived date-sensitive decisions across midnight without requiring a data edit.
 
 See [readiness audit](VCC_READINESS_AUDIT_2026-09-12.md) for evidence, confidence, and release limitations. Product code remediation remains constrained by the active no-application-code instruction.
