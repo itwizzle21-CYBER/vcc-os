@@ -7,6 +7,7 @@ The next roadmap product sprint needs application changes, which the active inst
 ## Implemented
 
 - `npm run typecheck:qa` checks audit and browser test types.
+- The ordinary test command quotes its browser exclusion glob so Linux shells pass it to Vitest unchanged. The first hosted run exposed shell expansion that accidentally collected a Playwright file; this is a tooling fix, not a change to product expectations.
 - `npm run test:readiness` runs the dedicated financial/privacy contracts.
 - `npm run check:readiness` requires lint, application/QA types, ordinary tests, build budgets, readiness contracts, browser tests, and the dependency audit. It stops at the first failure and returns that failure.
 - `.github/workflows/readiness.yml` runs quality/dependency, financial/privacy, and browser jobs independently on pushes, pull requests, and manual runs. No failure is ignored. Jobs use Node 24, bounded timeouts, read-only repository permissions, and checkout without persisted credentials.
