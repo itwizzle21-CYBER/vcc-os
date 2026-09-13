@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-12 - Sprint 0.28 Product Readiness Audit
+
+- Added a dedicated red readiness gate reproducing seven financial/sync/backup/reporting defects with synthetic data and separately checked audit/e2e test types.
+- Updated stale browser selectors/workflows for mission navigation and Bills payment review, filters, tabs, and keyboard editing.
+- Patched compatible tooling lockfile resolutions; npm audit reports zero published advisories and all 201 ordinary unit tests pass.
+- Completed a partial-coverage security scan with two medium findings and separately inspected live Supabase RLS/policy/grant metadata without financial reads or writes.
+- Replaced historical QA/security/engineering/architecture/roadmap claims with current behavior and prioritized correctness/privacy remediation.
+- Product readiness remains NO-GO; application fixes are prohibited by the active workspace instruction. No application code was modified.
+
 ## 2026-09-12 - Sprint 0.27 AI Environment Verification
 
 - Refreshed all skill, MCP, and app/service inventories with explicit session-availability and live-verification distinctions.

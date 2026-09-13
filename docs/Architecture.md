@@ -1,115 +1,30 @@
 # Architecture
 
-## Current Repository Shape
+Updated 2026-09-12. The original flat-export/tRPC/MySQL baseline is historical and superseded by the current implementation below.
 
-This snapshot is a flat export of application files at the repository root. Several imports reference a fuller intended structure such as `@/components`, `@/lib/trpc`, `./modules/*`, `../drizzle/schema`, and `./_core/*`, but those directories are not present in this repository snapshot.
+## Runtime and routing
 
-Sprint 1.3 verified that the current working directory and Git root are both `C:\Users\itwiz\Downloads\VCC-OS`. This is the only VCC-OS repository found under `C:\Users\itwiz\Downloads`, but it is not yet a verified buildable application root because it lacks `package.json`, `src`, `public`, TypeScript config, Vite config, Playwright config, and `.vercel/project.json`.
+VCC-OS is a React 18 + TypeScript application built as static Vite assets. `main.tsx` loads financial data and mounts `src/App.tsx`; the app resolves the current pathname to modules. Vercel serves the static output with SPA rewrites and security headers declared in `vercel.json`. No application API server, tRPC runtime, or payment-transfer backend was found in the current product source.
 
-Current top-level file groups:
+## Data ownership
 
-- React app shell: `App.tsx`, `Dashboard.tsx`
-- Module pages/cards: `BillsPage.tsx`, `DebtPage.tsx`, `SavingsPage.tsx`, `InventoryPage.tsx`, cards, and forms
-- Data/calculation helpers: `calculations.ts`, `vehicleCalculations.ts`, `bills.ts`, `data.ts`
-- Backend/router placeholders: `router.ts`, `routers.ts`, `moduleLoader.ts`, `registry.ts`, `db.ts`
-- Schema/migration: `schema.ts`, `0001_cheerful_steve_rogers.sql`
-- Tests: `*.test.ts`, `*.test.tsx`
-- Canonical docs: `docs/`
+Canonical domain engines under `src/lib/engine` calculate financial summaries and apply financial events. Modules edit shared AppData; App normalizes, saves, and recomputes derived state.
 
-## Application Architecture
+The complete local workspace is stored in origin-local localStorage (`vcc-os:data:v2`, schema version 5), with three quota-aware recovery points. Evidence attachment blobs are stored separately in IndexedDB (`vcc-os-private-evidence`). Local workspace/recovery keys are not partitioned by Supabase user. Signing out retains local finances.
 
-The intended architecture appears to be:
+Portable JSON exports include workspace data and preferences, but not IndexedDB attachment blobs. Cross-device attachment recovery requires a separate workflow.
 
-```text
-App.tsx
-  Router via wouter
-  ThemeProvider
-  TooltipProvider
-  Toaster
-  Dashboard route
-  Dynamically loaded module routes
+## Optional Supabase synchronization
 
-Dashboard.tsx
-  tRPC dashboard queries
-  Dashboard cards
-  Mock fallback data
+Build-time VITE Supabase URL/publishable-key configuration enables browser OTP sign-in and owner-scoped synchronization. App snapshots, receipt rows, and predecessor history have owner RLS declarations in repository migrations. Client optimistic revision checks and three-way field merging coordinate same-account devices. Live migration and policy enforcement must be verified separately.
 
-Modules
-  Bills
-  Debt
-  Savings
-  Inventory
-  Goals
-  Trading
+VitaScan performs OCR through a bundled Tesseract worker and same-origin English language model. Cloud receipt sync sends structured reviewed fields and formatted OCR archive text, including `raw_text`; inspected image/evidence blobs stay on-device.
 
-Backend
-  tRPC routers
-  Drizzle database helpers
-  Session-based auth context
-```
+## Known architectural gaps
 
-## Routing
+The generic field merge can retain two bill payments while losing one shared-account deduction. Reports still implement some calculations in UI code and have calendar/bucket errors. URL session detection and automatic initial workspace upload lack account-attachment confirmation. Actual verified loan reference records remain reachable in public runtime assets. These are unresolved release blockers documented in [readiness audit](VCC_READINESS_AUDIT_2026-09-12.md).
 
-`App.tsx` uses `wouter` and attempts to load module routes dynamically. `routers.ts` defines a tRPC app router with dashboard, debt, savings, inventory, and auth routers. The referenced module directories are missing in this snapshot, so route integrity is a high-risk area.
-
-## Component Hierarchy
-
-Known UI components include:
-
-- Dashboard cards: daily briefing, mission, money snapshot, priority alerts, buy next, goal progress
-- Module cards: bills, debt, savings, inventory
-- Module pages: bills, debt, savings, inventory
-- Vehicle debt tracker
-- Bill form
-
-Several imports use aliases or paths that do not exist in this snapshot, so the source tree needs reconciliation before reliable builds.
-
-## Data Flow
-
-Two data patterns coexist:
-
-1. Dashboard and some pages call tRPC queries and mutations.
-2. Some pages keep local React state with hard-coded sample data.
-
-This creates a risk that dashboard data, module pages, and database state diverge.
-
-## Supabase
-
-No active Supabase client, Supabase configuration, or Supabase migration folder was found. The SQL migration and `db.ts` use MySQL/Drizzle patterns. Supabase RLS policies were not found.
-
-## Authentication
-
-`routers.ts` references cookie-based auth and `protectedProcedure` from missing `_core` modules. Authentication should be treated as incomplete until the missing server core is restored or replaced.
-
-## Storage
-
-No localStorage/sessionStorage persistence was found in this snapshot. No offline cache implementation was found. Database persistence appears intended through Drizzle and tRPC.
-
-## Engineering Environment
-
-Current local evidence:
-
-- Canonical local folder candidate: `C:\Users\itwiz\Downloads\VCC-OS`.
-- Git root: `C:/Users/itwiz/Downloads/VCC-OS`.
-- Local Git branch: `main`.
-- Git remote `origin`: not configured.
-- Local Vercel link: missing.
-- Local build manifest and app configs: missing.
-
-Live Vercel evidence:
-
-- Vercel project: `crlzel/vcc-os`.
-- Project ID: `prj_ZSUV6VGFxLlyLQCUAwATsFOQce78`.
-- Production URL: `https://vcc-os.vercel.app`.
-- Vercel build command: `npm run build`.
-- Vercel output directory: `dist`.
-- Vercel Node version: `24.x`.
-
-Architecture implication: the local repository snapshot and deployed Vercel source are out of sync. Implementation sprints must not proceed until the complete buildable application root is restored into the canonical repository and linked to GitHub/Vercel.
-
-## Decision Engine
-
-Decision-engine behavior is present conceptually through dashboard cards, priority alerts, buy-next logic, and AI briefing cache, but there is no single central decision-engine module in this snapshot.
+Build/lint/typecheck/unit and Playwright tooling work. Current operational evidence supersedes historical missing-manifest, missing-origin, and missing-Vercel-link statements. The sections below describe implemented financial and evidence models; their presence does not certify correctness or privacy.
 
 ## Financial Engine
 

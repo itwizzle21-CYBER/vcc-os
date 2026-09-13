@@ -28,4 +28,4 @@ Date: 2026-07-18
 
 - Mobile-to-desktop identity requires the same authenticated VCC account on both devices. The current adapter can create an anonymous secure session, but anonymous sessions are device-specific. Add shared email/passkey authentication before calling cross-device sync production-ready.
 - OCR quality depends on screenshot clarity. The review step is intentionally mandatory because financial records must not be silently accepted from imperfect OCR.
-- Receipt images remain on-device in this first version; only confirmed structured fields are designed for cloud sync.
+- Current implementation check (2026-09-12): receipt images remain on-device in the inspected adapter. Cloud sync sends confirmed structured fields and formatted OCR archive text in raw_text. Shared email OTP authentication is implemented; live account/RLS and cross-device behavior still require separate verification.

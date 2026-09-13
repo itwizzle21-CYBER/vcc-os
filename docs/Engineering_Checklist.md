@@ -1,59 +1,26 @@
 # Engineering Checklist
 
-Sprint: 1.3 - Engineering Environment Validation
+Updated 2026-09-12. The old Sprint 1.3 missing-tooling/root findings are historical; current build, lint, type checking, unit tests, Git origin, and Vercel linkage work.
 
-Date: 2026-07-04
+## Preflight
 
-| Check | Status | Evidence / Blocker |
-| --- | --- | --- |
-| Repository verified | Partial | `C:\Users\itwiz\Downloads\VCC-OS` is a Git root and the only VCC-OS folder found under Downloads. |
-| Correct root | Blocked | Local folder is not buildable and does not match the complete source Vercel is building. |
-| Documentation root verified | Pass | `/docs` exists and contains canonical project documentation. |
-| Build passes | Fail | `npm run build` fails because `package.json` is missing. |
-| Lint passes | Fail | `npm run lint` fails because `package.json` is missing. |
-| Type check passes | Blocked | No local TypeScript config or dependency install exists. |
-| Tests pass | Blocked | No local test runner config or package manifest exists. |
-| Smoke test passes | Blocked | Local HTTP clients failed before response due Windows TLS/credential layer; Vercel deployment itself reports `READY`. |
-| Git verified | Partial | Git work tree exists on `main`; no `origin` remote is configured; work tree has uncommitted docs/archive changes. |
-| GitHub verified | Fail | Cannot verify GitHub repository because `origin` is not configured. |
-| Vercel verified | Partial | Vercel account and project `crlzel/vcc-os` exist; production deployment is `READY`; local folder is not linked. |
-| Playwright verified | Blocked | No Playwright config or local install found. |
-| Deployment verified | Partial | Production and preview deployments exist and are `READY`; local source cannot be proven to be their source. |
+1. Verify working directory and Git root.
+2. Inspect working changes before editing.
+3. Verify package manifest, source, public assets, and test configurations.
+4. Verify the intended Git remote and Vercel project without exposing credentials.
+5. Read the active task constraints.
 
-## Required Per-Sprint Preflight
+## Completion gate
 
-Every future sprint must begin with:
+1. Run QA commands in [QA Standards](QA_Standards.md), including the dedicated readiness audit.
+2. Review source/test/documentation changes and run git diff --check.
+3. Fix authorized failures and document exact constraints on remaining failures.
+4. Commit and push only reviewed, authorized changes.
+5. Deploy a preview when authorized; verify its deployed Git revision and relevant routes.
+6. Record the release report, test counts, commit, branch, deployment URL, and limitations.
 
-1. Confirm `pwd`.
-2. Confirm `git rev-parse --show-toplevel`.
-3. Confirm `package.json` exists at the Git root.
-4. Confirm `src/`, `public/`, TypeScript config, Vite config, and test config exist.
-5. Confirm `git remote -v`.
-6. Confirm `.vercel/project.json` points to the intended project.
-7. Run build, lint, type check, tests, smoke test, and `git diff --check`.
+Passing build or Vercel READY does not override failing financial/security contracts. Known defects make production release NO-GO. A documentation/test review preview must be described as such.
 
-## Required Per-Sprint Completion Gate
+## Current constraint
 
-Every sprint, feature, bug fix, or workflow change must end with:
-
-1. Build the project.
-2. Run lint.
-3. Run type checks.
-4. Run all relevant tests.
-5. Fix any failures before continuing.
-6. Commit changes with a clear commit message.
-7. Push to GitHub.
-8. Deploy to Vercel.
-9. Smoke test the deployed site.
-10. Present a clickable Preview URL before asking for review.
-11. Publish a Release Report with:
-    - Files changed
-    - Features added
-    - Bugs fixed
-    - Tests run
-    - Commit hash
-    - GitHub branch
-    - Deployment URL
-    - Smoke test result
-
-If deployment fails, diagnose the issue, fix it when safely actionable, redeploy, and verify before ending the task. If an environment blocker prevents completion, record the exact blocker and next required manual action.
+The active workspace instruction prohibits application code changes. This audit can improve tests, documentation, and compatible tooling dependencies. Product remediation is blocked by that instruction; the unresolved cases in [readiness audit](VCC_READINESS_AUDIT_2026-09-12.md) must remain visible.

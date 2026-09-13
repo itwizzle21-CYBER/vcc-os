@@ -1,5 +1,13 @@
 # Sprint History
 
+## Sprint 0.28: Product Readiness Audit
+
+Date: 2026-09-12
+
+Completed: seven executable readiness reproducers, compatible tooling security patches, current browser workflow coverage, corrected engineering/security/architecture documentation, a sealed partial security scan, and deployed database policy metadata checks.
+
+Status: production NO-GO. See [readiness audit](VCC_READINESS_AUDIT_2026-09-12.md) for test evidence and [roadmap](Roadmap.md) for the next repair sprint. The active no-application-code instruction prevents product remediation.
+
 ## Sprint 0: Repository Governance And Documentation Foundation
 
 Date: 2026-07-04

@@ -1,60 +1,35 @@
 # QA Standards
 
-## Validation Levels
+Updated 2026-09-12. The repository has a working React/Vite toolchain, Vitest, and Playwright. Historical Sprint 0 tooling limitations are superseded.
 
-Use the strongest available validation for the current repository state:
+## Required validation
 
-1. Build
-2. Lint
-3. Type check
-4. Unit tests
-5. Component tests
-6. Route smoke tests
-7. Production smoke tests
-8. Manual QA for touched flows
+Run from the Git root:
 
-## Current Sprint 0 Limitation
-
-This snapshot has no `package.json`, lockfile, TypeScript config, Vite config, or test runner config. Standard build/lint/type/test commands cannot run until tooling is restored.
-
-## Required Future Checks
-
-Once tooling is restored:
-
-- `npm.cmd run build`
-- `npm.cmd run lint`
-- `npm.cmd run test`
-- `npm.cmd run smoke`
+- `npm run lint`
+- `npm run typecheck`
+- `npx tsc --project tests/audit/tsconfig.json`
+- `npm test`
+- `npm run build`
+- `npx vitest run --config tests/audit/vitest.config.ts`
+- `npm run test:e2e`
+- `npm audit`
 - `git diff --check`
 
-## Manual QA Checklist
+There is no `npm run smoke` script. Use the Playwright route/navigation suite for local smoke coverage; verify a deployed preview separately.
 
-- Dashboard loads.
-- Daily Briefing card is visible.
-- Today's Mission card is visible.
-- Money Snapshot card is visible.
-- Priority Alerts card is visible.
-- Buy Next card is visible.
-- Goal Progress card is visible.
-- Bills page opens and core actions are visible.
-- Debt page opens and vehicle tracker is visible.
-- Savings page opens.
-- Inventory page opens and shows critical/low/buy-next tabs.
-- No console errors.
-- Mobile layout remains usable.
+## Readiness gate
 
-## Bug Reporting Template
+The ordinary unit suite is regression coverage, not a release certificate. The dedicated audit suite contains correct financial/reporting/backup expectations for known unresolved defects. Its seven current failures block readiness. Do not skip them, invert expectations, or report the ordinary suite alone as a passing release.
 
-```markdown
-## Bug
+See [current readiness audit](VCC_READINESS_AUDIT_2026-09-12.md) for reproductions and priorities. Application code edits are prohibited by the active workspace instruction; that restriction does not make failing contracts acceptable.
 
-- Area:
-- Steps to reproduce:
-- Expected:
-- Actual:
-- Severity:
-- Evidence:
-- Suspected cause:
-- Suggested fix:
-```
+## Browser contracts
 
+Bills starts in Review Queue. Open the All Bills tab for spreadsheet tests. Choosing paid status opens payment review; only the explicit Mark Paid submission should change cash and create the linked transaction. Exercise delete/undo, reload persistence, cancellation/reopening, keyboard navigation, dashboard mission CTA navigation, and narrow-screen usability.
+
+Use invented financial fixtures and isolated browser storage. Do not test account attacks or private data transfers against live services.
+
+## Release evidence
+
+Record exact commands, exit status, passed/failed/skipped counts, reviewed revision, and deployment identity. Distinguish local browser tests from live Supabase authentication/RLS and production verification. Keep traces/screenshots for failures. Report incomplete checks as incomplete.

@@ -3,14 +3,19 @@ import { createStarterData } from "../../src/lib/storage/defaultData";
 
 const regressionFixture = createStarterData();
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  const fixture = structuredClone(regressionFixture);
+  if (testInfo.title === "exercises major navigation, filter, report, and car-loan controls") {
+    fixture.sections.bills[0].cells.dueDate = "2099-01-01";
+    fixture.sections.bills[0].cells.status = "unpaid";
+  }
   await page.addInitScript((fixture) => {
     if (window.sessionStorage.getItem("vcc-e2e-initialized")) return;
     window.localStorage.clear();
     window.sessionStorage.clear();
     window.localStorage.setItem("vcc-os:data:v2", JSON.stringify(fixture));
     window.sessionStorage.setItem("vcc-e2e-initialized", "true");
-  }, regressionFixture);
+  }, fixture);
 });
 
 test("shows a brief, skippable welcome before the dashboard", async ({ page }) => {
@@ -66,11 +71,11 @@ test("dashboard exposes trustworthy decisions, metrics, and module routes", asyn
   expect(viewport).not.toContain("user-scalable=no");
   expect(viewport).not.toContain("maximum-scale=1");
 
-  const mission = page.locator(".mission-banner");
+  const mission = page.locator(".mission-banner .mission-start-button");
   const missionHref = await mission.getAttribute("href");
-  expect(["/money", "/bills", "/inventory", "/savings", "/debt", "/goals", "/transactions"]).toContain(missionHref);
+  expect(["/money", "/bills", "/inventory", "/savings", "/debt", "/goals", "/transactions"]).toContain(new URL(missionHref!, page.url()).pathname);
   await mission.click();
-  await expect(page).toHaveURL(new RegExp(`${missionHref}$`));
+  await expect(page).toHaveURL(new URL(missionHref!, page.url()).href);
 });
 
 test("dashboard keeps system status readable in light mode", async ({ page }) => {
@@ -165,6 +170,7 @@ test("keeps desktop navigation labels visible and navigates correctly", async ({
 
 test("deletes a bill immediately and offers undo without a confirmation dialog", async ({ page }) => {
   await page.goto("/bills");
+  await page.getByRole("tab", { name: /^All Bills/ }).click();
   const rows = page.locator("table tbody tr");
   const initialCount = await rows.count();
   let dialogCount = 0;
@@ -204,6 +210,7 @@ test("keeps every core domain page available without a page-level hide control",
 
 test("posting a paid bill debits one account and creates one linked transaction", async ({ page }) => {
   await page.goto("/bills");
+  await page.getByRole("tab", { name: /^All Bills/ }).click();
   const initial = await page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
     const bill = data.sections.bills[0];
@@ -215,7 +222,7 @@ test("posting a paid bill debits one account and creates one linked transaction"
   });
 
   await page.getByRole("combobox", { name: /Status, Bills row 1/ }).selectOption("paid");
-  await expect(page.getByRole("alert")).toContainText("Choose Paid From for Electric bill");
+  await expect(page.locator(".table-validation")).toContainText("Review the payment details for Electric bill, then confirm Mark Paid.");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -225,10 +232,10 @@ test("posting a paid bill debits one account and creates one linked transaction"
     return { status: bill.cells.status, linked: linked.length, balance: Number.parseFloat(account.cells.amount.replace(/[^0-9.-]/g, "")) };
   })).toEqual({ status: initial.status, linked: 0, balance: initial.balance });
 
-  await page.getByRole("combobox", { name: /Paid From, Bills row 1/ }).selectOption("Chime Checking");
-  await expect(page.getByRole("alert")).toContainText("Paid From saved for Electric bill");
-  await expect(page.getByRole("combobox", { name: /Paid From, Bills row 1/ })).toHaveValue("Chime Checking");
-  await page.getByRole("button", { name: "Mark Electric bill paid" }).click();
+  const review = page.getByRole("complementary", { name: "Review Bill" });
+  await review.getByRole("combobox", { name: "Pay from" }).selectOption("Chime Checking");
+  await expect(review.getByRole("combobox", { name: "Pay from" })).toHaveValue("Chime Checking");
+  await review.getByRole("button", { name: "Mark Paid", exact: true }).click();
 
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -244,6 +251,7 @@ test("posting a paid bill debits one account and creates one linked transaction"
     return data.sections.transactions.filter((row: { cells: { billId?: string } }) => row.cells.billId === data.sections.bills[0].id).length;
   })).toBe(1);
 
+  await page.getByRole("tab", { name: /^All Bills/ }).click();
   await page.getByRole("button", { name: "Delete Bills row 1" }).click();
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
@@ -264,12 +272,14 @@ test("posting a paid bill debits one account and creates one linked transaction"
 
 test("preserves supported bill statuses and clears payment evidence when a bill is reopened", async ({ page }) => {
   await page.goto("/bills");
+  await page.getByRole("tab", { name: /^All Bills/ }).click();
   const status = page.getByRole("combobox", { name: /Status, Bills row 1/ });
   const paidFrom = page.getByRole("combobox", { name: /Paid From, Bills row 1/ });
 
   await status.selectOption("cancelled");
   await expect(status).toHaveValue("cancelled");
   await page.reload();
+  await page.getByRole("tab", { name: /^All Bills/ }).click();
   await expect(page.getByRole("combobox", { name: /Status, Bills row 1/ })).toHaveValue("cancelled");
 
   const beforeAccountSelection = await page.evaluate(() => {
@@ -298,8 +308,10 @@ test("preserves supported bill statuses and clears payment evidence when a bill 
     ...beforeAccountSelection,
   });
   await page.reload();
+  await page.getByRole("tab", { name: /^All Bills/ }).click();
   await expect(page.getByRole("combobox", { name: /Paid From, Bills row 1/ })).toHaveValue("Chime Checking");
   await status.selectOption("paid");
+  await page.getByRole("complementary", { name: "Review Bill" }).getByRole("button", { name: "Mark Paid", exact: true }).click();
   await expect.poll(() => page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("vcc-os:data:v2") || "{}");
     return data.sections.bills[0].cells;
@@ -320,6 +332,7 @@ test("preserves supported bill statuses and clears payment evidence when a bill 
 
 test("uses one spreadsheet focus highlight and keeps Paid From choices readable", async ({ page }, testInfo) => {
   await page.goto("/bills");
+  await page.getByRole("tab", { name: /^All Bills/ }).click();
   const billEditor = page.getByRole("textbox", { name: "Bill, Bills row 1", exact: true });
   await billEditor.click();
   await expect(billEditor).toBeFocused();
@@ -815,6 +828,7 @@ test("has no measurable accessibility failures across every application route", 
   ]) {
     await page.goto(path);
     if (path === "/") await expect(page.getByRole("status", { name: /Welcome to VCC-OS/i })).toBeHidden({ timeout: 6_000 });
+    await expect(page.locator("main h1")).toHaveCount(1);
     const routeFailures = await page.evaluate(() => {
     const visible = (element: Element) => {
       const box = element.getBoundingClientRect();
@@ -829,7 +843,7 @@ test("has no measurable accessibility failures across every application route", 
       const name = control.textContent?.trim() || control.getAttribute("aria-label");
       const box = control.getBoundingClientRect();
       if (!name) issues.push("Visible control missing an accessible name");
-      if (box.width < 24 || box.height < 24) issues.push(`Undersized target: ${Math.round(box.width)}x${Math.round(box.height)}`);
+      if (box.width < 24 || box.height < 24) issues.push(`Undersized target: ${name} (${Math.round(box.width)}x${Math.round(box.height)})`);
     });
     document.querySelectorAll("input,select,textarea").forEach((control) => {
       if (!visible(control) || (control as HTMLInputElement).type === "hidden") return;
@@ -1062,12 +1076,13 @@ test("keeps wide-screen context rails readable", async ({ page }, testInfo) => {
   );
   await page.goto("/bills");
 
-  const billsMeasure = await page.locator(".bills-due-primary h2").evaluate((heading) => {
+  await expect(page.getByRole("tab", { name: /^Review Queue/ })).toHaveAttribute("aria-selected", "true");
+  const billsMeasure = await page.locator(".bill-review-row-name strong").first().evaluate((heading) => {
     const rect = heading.getBoundingClientRect();
     const lineHeight = Number.parseFloat(getComputedStyle(heading).lineHeight);
     return { lines: rect.height / lineHeight, width: rect.width };
   });
-  expect(billsMeasure.width).toBeGreaterThan(200);
+  expect(billsMeasure.width).toBeGreaterThan(100);
   expect(billsMeasure.lines).toBeLessThanOrEqual(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
@@ -1202,16 +1217,21 @@ test("exercises major navigation, filter, report, and car-loan controls", async 
   await page.setViewportSize({ width: 1600, height: 900 });
 
   await page.goto("/bills");
-  await expect(page.getByRole("link", { name: "Notification settings" })).toHaveAttribute("href", "/settings#settings-notifications");
+  await page.getByRole("tab", { name: /^All Bills/ }).click();
   for (const filter of ["Overdue", "Unpaid"]) {
-    const button = page.getByRole("button", { name: filter });
+    await page.getByRole("button", { name: /^Filter/ }).click();
+    const button = page.getByRole("group", { name: "Bill status filter" }).getByRole("button", { name: filter, exact: true });
     await button.click();
+    await expect(page.getByLabel(`Current filter: ${filter.toLowerCase()}`)).toBeVisible();
+    await page.getByRole("button", { name: /^Filter/ }).click();
     await expect(button).toHaveAttribute("aria-pressed", "true");
-    const shownStat = page.locator(".bills-inline-stats span").first();
-    await expect(shownStat).toHaveText(/^\d+ shown$/);
-    const shownCount = Number((await shownStat.textContent())?.split(" ")[0]);
-    await expect(page.locator("table tbody tr")).toHaveCount(shownCount);
+    const statuses = await page.locator('select[aria-label^="Status, Bills row"]').evaluateAll((elements) => elements.map((element) => (element as HTMLSelectElement).value));
+    expect(statuses).toHaveLength(filter === "Overdue" ? 3 : 1);
+    expect(statuses.every((status) => status === filter.toLowerCase())).toBe(true);
+    await page.getByRole("button", { name: /^Filter/ }).click();
   }
+  await page.goto("/money");
+  await expect(page.getByRole("link", { name: "Notification settings" })).toHaveAttribute("href", "/settings#settings-notifications");
   await page.getByRole("textbox", { name: "Search VCC OS" }).fill("Goals");
   await expect(page.locator(".search-results").getByRole("link", { name: /Goals/ }).first()).toBeVisible();
 
@@ -1606,6 +1626,7 @@ test("applies cash income to Money Snapshot and keeps dropdown choices readable"
 
 test("keeps spreadsheet cells ready for immediate desktop typing and keyboard navigation", async ({ page }) => {
   await page.goto("/bills");
+  await page.getByRole("tab", { name: /^All Bills/ }).click();
   const description = page.locator('textarea[data-column-key="name"]').first();
   const descriptionCell = description.locator("..");
 
@@ -1635,7 +1656,7 @@ test("keeps spreadsheet cells ready for immediate desktop typing and keyboard na
   await expect(descriptionCell).not.toHaveClass(/cell-editing/);
   await expect(description).toHaveValue("Edited paycheck");
 
-  await page.getByRole("button", { name: "Add Bill" }).click();
+  await page.locator(".spreadsheet-panel").getByRole("button", { name: "Add Bill", exact: true }).click();
   const newDescription = page.locator('textarea[data-column-key="name"]').last();
   await expect(newDescription).toBeFocused();
   await expect(newDescription.locator("..")).toHaveClass(/cell-editing/);
