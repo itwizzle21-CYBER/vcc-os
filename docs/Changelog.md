@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-12 - Sprint 0.27 AI Environment Verification
+
+- Refreshed all skill, MCP, and app/service inventories with explicit session-availability and live-verification distinctions.
+- Verified GitHub, Supabase, Context7, Playwright, in-app Browser, and linked Vercel CLI access; documented Vercel connector and Chrome native-host gaps.
+- Recorded duplicate-name/content conflicts, guidance for all 13 requested domains, Git readiness, a 90% environment score, and release evidence.
+- Application code unchanged; build, lint, TypeScript, 201 unit tests, existing desktop Playwright smoke, dependency audit, and Git connectivity passed.
+
 ## 2026-08-25 - Sprint 0.25 Bills Review Queue Redesign
 
 - Rebuilt Bills around a responsive priority review queue with canonical summaries, search/status filters, upcoming and recently-cleared rails, and a focused review panel.

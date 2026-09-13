@@ -401,3 +401,8 @@ Release status:
 
 - GO for commit, push, and official production deployment.
 
+# Sprint 0.27: AI Environment Verification
+
+Date: 2026-09-12.
+
+Refreshed the Sprint 0.6 stack report with the current advertised/disk-only skill inventory, MCP/app provenance, seven integration checks, SHA-256 duplicate review, domain recommendations, and a transparent 90% environment-readiness score. Application code was not modified. Build, lint, TypeScript, 201 unit tests, dependency audit, Git connectivity, and the existing desktop Playwright smoke passed. See `SPRINT_0_27_AI_ENVIRONMENT_VERIFICATION.md` for scope, limitations, commit/deployment procedure, and remaining connector setup actions.
