@@ -1,5 +1,7 @@
 # VCC Product Readiness Audit — 2026-09-12
 
+Follow-up 2026-09-14: the dedicated gate now includes S1 legacy privacy and S2 URL session adoption: **nine failures and one passing control**. See [Sprint 0.31 public-bundle gate](SPRINT_0_31_PUBLIC_BUNDLE_PRIVACY.md) and [Sprint 0.32 auth contract](SPRINT_0_32_AUTH_SESSION_CONTRACT.md). Original audit results below describe the reviewed Sprint 0.28 snapshot.
+
 **Decision: NO-GO for production readiness.** Passing build, ordinary regression tests, dependency audit, or Vercel READY cannot override incorrect financial contracts or private-data exposure. “110% ready” is not a measurable release guarantee.
 
 Reviewed product revision: `cdb31656c7440668ce499e1852814ed3d6dd2ed3` on `codex/backlog-fix-sprint`. Product source was inspected without modifying application code. Authorized changes improve documentation, tests, and compatible tooling lockfile resolutions.

@@ -1,5 +1,15 @@
 # Sprint History
 
+## Sprint 0.32: Auth Session Contract
+
+Date: 2026-09-14
+
+Completed: synthetic auth/browser harness using the installed SDK and actual VCC auth options, S2 URL-adoption/persistence readiness contract, and three passing sign-out/disabled-callback/OTP controls.
+
+Validation: 29 files and 214 ordinary tests pass; QA types pass; the dedicated ten-case readiness suite exits 1 with nine failures and one passing control. S2 verifies a session and storage write after an uninitiated token URL using a fake server; no real account, database, or financial upload was used.
+
+Limit: auth configuration and application code are unchanged under the active restriction. This adds executable evidence and a gate; it does not fix session adoption or first-upload consent. See [sprint report](SPRINT_0_32_AUTH_SESSION_CONTRACT.md).
+
 ## Sprint 0.31: Public Bundle Privacy Gate
 
 Date: 2026-09-13

@@ -1,6 +1,6 @@
 # Roadmap
 
-Updated 2026-09-13. Repository restoration and canonical financial-engine foundations are already implemented. Sprint 0.29 adds local and CI readiness checks; Sprint 0.30 replaces inherited browser loan evidence with invented fixtures and checks all browser test types; Sprint 0.31 adds preserved-reference checks for emitted JavaScript. The next product work is correctness and privacy, with acceptance checks rather than an arbitrary readiness percentage.
+Updated 2026-09-14. Repository restoration and canonical financial-engine foundations are already implemented. Sprint 0.29 adds local and CI readiness checks; Sprint 0.30 replaces inherited browser loan evidence with invented fixtures and checks all browser test types; Sprint 0.31 adds preserved-reference checks for emitted JavaScript; Sprint 0.32 makes URL session adoption executable with an isolated SDK harness. The next product work is correctness and privacy, with acceptance checks rather than an arbitrary readiness percentage.
 
 ## Next sprint: Financial integrity and private data
 
@@ -14,7 +14,7 @@ Production release remains NO-GO until these are addressed:
 6. Reject future backup data versions before normalization or state mutation.
 7. Validate calendar dates and use calendar boundaries consistently in reports. Keep different years distinct in all-time trends.
 
-The executable R1–R7 and S1 privacy contracts are in `tests/audit/readiness.audit.ts`. `npm run check:privacy` additionally detects ten known identifiers in emitted JavaScript. Run `npm run check:readiness`; its current failure blocks a readiness claim. CI runs all four gate groups independently. Required branch checks and deployment gating remain to be configured after reviewing the workflow; preview deployment success alone is not release acceptance.
+The executable R1–R7 and S1 privacy contracts are in `tests/audit/readiness.audit.ts`; S2 is in `tests/audit/authSession.audit.ts`. Nine contracts currently fail. `npm run check:privacy` additionally detects ten known identifiers in emitted JavaScript. Run `npm run check:readiness`; its current failure blocks a readiness claim. CI runs all four gate groups independently. Required branch checks and deployment gating remain to be configured after reviewing the workflow; preview deployment success alone is not release acceptance.
 
 ## Following sprint: Resilience and verifiable operations
 

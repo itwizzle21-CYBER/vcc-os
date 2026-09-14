@@ -1,6 +1,6 @@
 # Security Standards
 
-Updated 2026-09-12 for the implemented React/Vite browser application.
+Updated 2026-09-14 for the implemented React/Vite browser application.
 
 ## Actual boundaries
 
@@ -26,3 +26,5 @@ VitaScan sends reviewed structured fields and formatted OCR archive text to Supa
 Use durable auth user IDs for row ownership, never editable metadata. Updates require both USING and WITH CHECK ownership predicates. Privileged history triggers must use qualified objects, a constrained search path, revoked direct execution, and owner-filtered reads. Browser filters do not replace database enforcement.
 
 Record source review and live verification separately. See [current readiness audit](VCC_READINESS_AUDIT_2026-09-12.md). Do not claim a clean security assessment while these findings remain unresolved.
+
+The S2 executable auth contract now reproduces SDK session adoption/persistence with synthetic URL tokens and a fake auth response using actual VCC options. Disabled callback detection prevents adoption while an explicit OTP verification control still passes. This is isolated client verification; it does not validate live JWTs, exercise database policies, or reproduce the downstream first financial upload. The current ordinary source configuration test still expects URL detection enabled; it describes existing behavior and is not security acceptance.

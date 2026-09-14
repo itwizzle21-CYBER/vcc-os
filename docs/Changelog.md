@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-14 - Sprint 0.32 Auth Session Contract
+
+- Added an isolated installed-SDK auth harness with invented tokens/user data, fake browser storage, and synthetic-host-only fetch responses.
+- Added the S2 readiness contract reproducing uninitiated URL session adoption and persistence without live requests or financial uploads.
+- Added passing controls for an empty signed-out browser, disabled callback adoption, and explicit OTP verification; all 214 ordinary unit tests pass.
+- Readiness now has nine unresolved contracts and one passing payment control. Application code/auth configuration is unchanged.
+- Recorded completed Sprint 0.31 browser evidence: 100 pass, three fail, 11 intentional skips. See [sprint report](SPRINT_0_32_AUTH_SESSION_CONTRACT.md).
+
 ## 2026-09-13 - Sprint 0.31 Public Bundle Privacy Gate
 
 - Added preserved fingerprints and a decoded JavaScript-literal privacy check with count-only output, covering known owner references even after source cleanup.
