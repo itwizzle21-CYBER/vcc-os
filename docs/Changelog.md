@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-13 - Sprint 0.31 Public Bundle Privacy Gate
+
+- Added preserved fingerprints and a decoded JavaScript-literal privacy check with count-only output, covering known owner references even after source cleanup.
+- Added seven scanner regressions for nested chunks, escapes, regex/template syntax, clean controls, and incomplete/invalid inputs; ordinary tests total 211.
+- Added an independent public-bundle CI job and included the privacy check in the aggregate readiness command.
+- Current emitted assets fail correctly: ten protected identifiers remain in one of 25 JavaScript files. Application code is unchanged and S1 remains unresolved.
+- Recorded complete Sprint 0.30 Linux browser evidence: 100 pass, three fail, 11 intentional skips. See [sprint report](SPRINT_0_31_PUBLIC_BUNDLE_PRIVACY.md).
+
 ## 2026-09-13 - Sprint 0.30 Browser Fixture Privacy
 
 - Replaced inherited loan contracts, receipts, communications, schedules, legacy summaries, and derived browser transactions with invented evidence in both Playwright suites.

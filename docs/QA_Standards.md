@@ -11,6 +11,7 @@ Run `npm run check:readiness` from the Git root, followed by `git diff --check`.
 - `npm run typecheck:qa`
 - `npm test`
 - `npm run build`
+- `npm run check:privacy`
 - `npm run test:readiness`
 - `npm run test:e2e`
 - `npm audit`
@@ -22,7 +23,9 @@ There is no `npm run smoke` script. Use the Playwright route/navigation suite fo
 
 The ordinary unit suite is regression coverage, not a release certificate. The dedicated audit suite contains correct financial/reporting/backup/privacy expectations for known unresolved defects. Its eight current failures (R1–R7 and S1) block readiness; the idempotent payment control passes. Do not skip them, invert expectations, or report the ordinary suite alone as a passing release.
 
-The [readiness workflow](../.github/workflows/readiness.yml) runs quality/dependency, financial/privacy, and browser gates independently on pushes and pull requests. Failed contracts fail CI. Required branch checks and a Vercel deployment dependency have not been configured; automatic previews can still build when CI is red. See [Sprint 0.29](SPRINT_0_29_RELEASE_GATES.md).
+The [readiness workflow](../.github/workflows/readiness.yml) runs quality/dependency, financial/privacy, public-bundle privacy, and browser gates independently on pushes and pull requests. Failed contracts fail CI. Required branch checks and a Vercel deployment dependency have not been configured; automatic previews can still build when CI is red. See [Sprint 0.31](SPRINT_0_31_PUBLIC_BUNDLE_PRIVACY.md).
+
+`npm run check:privacy` parses emitted JavaScript and compares decoded string literals against preserved reference fingerprints. It currently fails on ten known owner identifiers in one of 25 JavaScript files. The aggregate command stops here, before the financial/browser/audit commands; run remaining checks independently when collecting evidence. Output contains counts only. Preserve the fingerprint baseline across source cleanup; do not regenerate it to hide a failure. This is bounded regression coverage for known literals, not a general secret or asset scanner.
 
 See [current readiness audit](VCC_READINESS_AUDIT_2026-09-12.md) for reproductions and priorities. Application code edits are prohibited by the active workspace instruction; that restriction does not make failing contracts acceptable.
 

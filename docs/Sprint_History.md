@@ -1,5 +1,15 @@
 # Sprint History
 
+## Sprint 0.31: Public Bundle Privacy Gate
+
+Date: 2026-09-13
+
+Completed: preserved known-reference fingerprints, decoded JavaScript-literal scanner, seven regression checks, an independent CI privacy job, and the local readiness privacy gate.
+
+Validation: scanner controls pass and the real emitted bundle fails correctly on ten identifiers in one of 25 JavaScript files. Lint, application/QA types, ordinary tests, production build, and bundle budgets pass. The aggregate readiness command exits 1 at the privacy check.
+
+Limit: this gate detects known direct string literals; it does not remove the records or provide comprehensive asset/secret coverage. Product fixes remain prohibited. See [sprint report](SPRINT_0_31_PUBLIC_BUNDLE_PRIVACY.md).
+
 ## Sprint 0.30: Browser Fixture Privacy
 
 Date: 2026-09-13

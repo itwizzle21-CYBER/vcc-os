@@ -12,7 +12,8 @@
     "test": "vitest run --exclude \"tests/e2e/**\"",
     "test:e2e": "playwright test",
     "test:readiness": "vitest run --config tests/audit/vitest.config.ts",
-    "check:readiness": "npm run lint && npm run typecheck && npm run typecheck:qa && npm test && npm run build && npm run test:readiness && npm run test:e2e && npm audit"
+    "check:privacy": "node scripts/check-public-privacy.mjs",
+    "check:readiness": "npm run lint && npm run typecheck && npm run typecheck:qa && npm test && npm run build && npm run check:privacy && npm run test:readiness && npm run test:e2e && npm audit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
