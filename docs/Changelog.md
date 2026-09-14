@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-13 - Sprint 0.30 Browser Fixture Privacy
+
+- Replaced inherited loan contracts, receipts, communications, schedules, legacy summaries, and derived browser transactions with invented evidence in both Playwright suites.
+- Added serialized-identifier, cent-reconciliation, and fixture-isolation tests; all 204 unit tests pass.
+- Expanded QA type coverage to every browser/fixture file and fixed existing persistence instrumentation typings.
+- Verified five affected browser cases with one intentional project skip; eight product contracts remain red. Runtime privacy repair still requires prohibited application changes.
+- Recorded the prior complete Linux browser result: 100 pass, three fail, 11 intentional skips. Browser artifact uploads remain disabled.
+
 ## 2026-09-13 - Sprint 0.29 Release Gates
 
 - Added one fail-fast readiness command and independent GitHub Actions quality, financial/privacy, and browser jobs with read-only permissions and pinned actions.

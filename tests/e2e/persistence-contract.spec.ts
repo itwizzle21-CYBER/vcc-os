@@ -1,8 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { createStarterData } from "../../src/lib/storage/defaultData";
+import { createBrowserData } from "../fixtures/browserData";
+
+declare global {
+  interface Window {
+    __vccAppWrites: string[];
+  }
+}
 
 const APP_DATA_STORAGE_KEY = "vcc-os:data:v2";
-const regressionFixture = createStarterData();
+const regressionFixture = createBrowserData();
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(({ fixture, storageKey }) => {

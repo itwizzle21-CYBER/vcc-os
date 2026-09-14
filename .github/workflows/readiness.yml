@@ -65,5 +65,5 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      # Do not upload traces: starter fixtures and the runtime still contain
-      # owner loan evidence tracked by S1. Revisit after the privacy repair.
+      # Browser loan fixtures are invented, but runtime assets still contain
+      # owner evidence tracked by S1. Do not upload traces until that repair.

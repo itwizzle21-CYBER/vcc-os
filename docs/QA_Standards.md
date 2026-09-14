@@ -30,7 +30,7 @@ See [current readiness audit](VCC_READINESS_AUDIT_2026-09-12.md) for reproductio
 
 Bills starts in Review Queue. Open the All Bills tab for spreadsheet tests. Choosing paid status opens payment review; only the explicit Mark Paid submission should change cash and create the linked transaction. Exercise delete/undo, reload persistence, cancellation/reopening, keyboard navigation, dashboard mission CTA navigation, and narrow-screen usability.
 
-Use invented financial fixtures and isolated browser storage. The existing browser starter fixture currently inherits owner loan evidence; replacing it and removing public runtime evidence remain privacy repair work under S1. Do not publish browser traces or screenshots while that evidence is present. Do not test account attacks or private data transfers against live services.
+Use invented financial fixtures and isolated browser storage. Both browser suites use `tests/fixtures/browserData.ts`, which replaces inherited loan evidence, the legacy loan summary, and linked receipt transactions with invented records. Fixture tests check serialized identifiers, cent-level component reconciliation, and workspace isolation. Runtime assets still contain owner evidence under S1; do not publish browser traces or screenshots until that is repaired. Do not test account attacks or private data transfers against live services.
 
 ## Release evidence
 

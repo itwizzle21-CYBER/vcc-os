@@ -1,6 +1,6 @@
 # Roadmap
 
-Updated 2026-09-13. Repository restoration and canonical financial-engine foundations are already implemented. Sprint 0.29 adds local and CI readiness checks. The next product work is correctness and privacy, with acceptance checks rather than an arbitrary readiness percentage.
+Updated 2026-09-13. Repository restoration and canonical financial-engine foundations are already implemented. Sprint 0.29 adds local and CI readiness checks; Sprint 0.30 replaces inherited browser loan evidence with invented fixtures and checks all browser test types. The next product work is correctness and privacy, with acceptance checks rather than an arbitrary readiness percentage.
 
 ## Next sprint: Financial integrity and private data
 

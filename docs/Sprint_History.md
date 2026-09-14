@@ -1,5 +1,15 @@
 # Sprint History
 
+## Sprint 0.30: Browser Fixture Privacy
+
+Date: 2026-09-13
+
+Completed: invented loan evidence shared by both browser suites; privacy, cent-reconciliation, and isolation regression tests; full browser/fixture QA type coverage; persistence instrumentation type repair.
+
+Validation: 27 unit files and 204 cases pass; QA types pass; five affected browser cases pass with one intentional mobile skip. The readiness suite remains eight failures and one passing control. Application code is unchanged.
+
+Limit: public runtime evidence, financial defects, session adoption, and desktop layout/accessibility failures remain unresolved. See [sprint evidence](SPRINT_0_30_BROWSER_FIXTURE_PRIVACY.md).
+
 ## Sprint 0.29: Release Gates
 
 Date: 2026-09-13

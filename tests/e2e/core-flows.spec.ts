@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { createStarterData } from "../../src/lib/storage/defaultData";
+import { createBrowserData } from "../fixtures/browserData";
 
-const regressionFixture = createStarterData();
+const regressionFixture = createBrowserData();
 
 test.beforeEach(async ({ page }, testInfo) => {
   const fixture = structuredClone(regressionFixture);
